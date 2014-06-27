@@ -1,0 +1,3 @@
+bind diff T !git difftool
+bind status T !git difftool
+set show-id = true

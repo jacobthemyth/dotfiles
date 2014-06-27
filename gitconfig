@@ -1,0 +1,75 @@
+[user]
+	name = Jake Smith
+	email = jake@mustconverge.com
+[apply]
+  whitespace = nowarn
+[branch]
+  autosetuprebase = always
+  autosetupmerge = always
+[color]
+	status = auto
+	diff = auto
+	branch = auto
+	interactive = auto
+	ui = true
+[color "branch"]
+  current = yellow reverse
+  local = yellow
+  remote = green
+[color "diff"]
+  meta = yellow bold
+  frag = magenta bold
+  old = red bold
+  new = green bold
+[color "status"]
+  added = yellow
+  changed = green
+  untracked = cyan
+[core]
+	excludesfile = /Users/jake/.gitignore_global
+	quotepath = false
+	trustctime = false
+	pager = less -FRSX
+[alias]
+  st = status
+  ci = commit
+  ca = commit -a -m
+  co = checkout
+  di = diff
+  dc = diff --cached
+  dt = difftool
+  dtc = difftool --cached
+  amend = commit --amend
+  aa = add --all
+  ff = merge --ff-only
+  pullff = pull --ff-only
+  noff = merge --no-ff
+  fa = fetch --all
+  pom = push origin master
+  b = branch
+  ds = diff --stat=160,120
+  dh1 = diff HEAD~1
+[merge]
+	tool = Kaleidoscope
+[format]
+	numbered = auto
+	pretty = %C(yellow)%h%Creset %s %C(red)(%an, %cr)%Creset
+[diff]
+	tool = Kaleidoscope
+[difftool "Kaleidoscope"]
+	cmd = ksdiff --partial-changeset --relative-path \"$MERGED\" -- \"$LOCAL\" \"$REMOTE\"
+[difftool]
+	prompt = false
+[mergetool "Kaleidoscope"]
+	cmd = ksdiff --merge --output \"$MERGED\" --base \"$BASE\" -- \"$LOCAL\" --snapshot \"$REMOTE\" --snapshot
+	trustExitCode = true
+[mergetool]
+	prompt = false
+[github]
+	user = jacobthemyth
+[grep]
+  lineNumber = true
+[push]
+	default = simple
+[init]
+	templatedir = ~/.git_template
