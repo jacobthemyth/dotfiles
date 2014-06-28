@@ -1,73 +1,16 @@
 " Jake Smith's .vimrc
-" Vundle {{{
-filetype off " required by vundle!
-set rtp+=~/.vim/bundle/Vundle.vim
-call vundle#begin()
-
-" let Vundle manage Vundle
-" required!
-Plugin 'gmarik/Vundle.vim'
-
-" Tools
-Plugin 'mileszs/ack.vim'
-Plugin 'tpope/vim-fugitive'
-Plugin 'tpope/vim-commentary'
-Plugin 'Yggdroot/indentLine'
-Plugin 'scrooloose/nerdtree'
-Plugin 'tpope/vim-endwise'
-Plugin 'sjl/gundo.vim'
-Plugin 'tpope/vim-surround'
-Plugin 'majutsushi/tagbar'
-Plugin 'tpope/vim-unimpaired'
-Plugin 'tpope/vim-repeat'
-Plugin 'kien/ctrlp.vim'
-Plugin 'bling/vim-airline'
-Plugin 'airblade/vim-gitgutter'
-Plugin 'scrooloose/syntastic'
-Plugin 'nelstrom/vim-visual-star-search'
-Plugin 'nelstrom/vim-qargs'
-Plugin 'christoomey/vim-tmux-navigator'
-Plugin 'edkolev/tmuxline.vim'
-Plugin 'Valloric/YouCompleteMe'
-Plugin 'mattn/emmet-vim'
-Plugin 'godlygeek/tabular'
-Plugin 'benmills/vimux'
-
-" Text Objects
-Plugin 'kana/vim-textobj-user'
-Plugin 'kana/vim-textobj-lastpat'
-Plugin 'michaeljsmith/vim-indent-object'
-
-" Langs
-Plugin 'kchmck/vim-coffee-script'
-Plugin 'tpope/vim-git'
-Plugin 'mustache/vim-mustache-handlebars'
-Plugin 'pangloss/vim-javascript'
-Plugin 'tpope/vim-rails.git'
-Plugin 'vim-ruby/vim-ruby'
-Plugin 'vim-scripts/ruby-matchit'
-Plugin 'jc00ke/vim-tomdoc'
-Plugin 'duwanis/tomdoc.vim'
-Plugin 'tpope/vim-markdown'
-Plugin 'cakebaker/scss-syntax.vim'
-
-" Colors
-Plugin 'tpope/vim-cucumber'
-Plugin 'altercation/vim-colors-solarized'
-Plugin 'telamon/vim-color-github'
-Plugin 'skammer/vim-css-color'
-
-call vundle#end()             " required by vundle!
-filetype plugin indent on     " required by vundle!
-" }}}
+if filereadable(expand("~/.vimrc.bundles"))
+  source ~/.vimrc.bundles
+endif
 
 " Basic Setup {{{
-set nocompatible      " be iMproved
+set nocompatible      " this must be as early as possible
 set encoding=utf-8    " Set default encoding to UTF-8
 set modelines=1
 set ttyfast " Send more characters for redraws
 set switchbuf+=usetab
 set hidden
+set autowrite
 
 " Enable mouse use in all modes
 set mouse=a
@@ -91,6 +34,9 @@ set scrolloff=3       " keep 3 lines visible
 set showmatch " show matching brackets
 set cmdheight=2
 set laststatus=2  " always show the status bar
+" Open new split panes to right and bottom
+set splitbelow
+set splitright
 " }}}
 
 " GUI {{{
@@ -170,11 +116,6 @@ set backupdir^=~/.vim/_backup//    " where to put backup files.
 set directory^=~/.vim/_temp//      " where to put swap files.
 " }}}
 
-" Filetypes {{{
-au bufread,BufNewFile *.md set filetype=markdown
-au bufread,BufNewFile *.scss set filetype=scss
-" }}}
-
 " Misc settings {{{
 " fix regexes default regex handling by auto-inserting \v before every REGEX.
 " Now regexs are Ruby compatible
@@ -188,7 +129,7 @@ xnoremap & :&&<CR>
 " replace last 'c' character with $
 set cpoptions+=$
 
-set history=10000 " remember lots of : commands and search patterns
+set history=50 " remember lots of : commands and search patterns
 set t_ti= t_te= " leave vim session in terminal after quit
 
 " Open quickfix after any grep
@@ -198,14 +139,6 @@ autocmd QuickFixCmdPost *grep* cwindow
 let g:ctrlp_custom_ignore = {
   \ 'dir':  '\v[\/](\.git|\.template|node_modules|development|release)$',
   \ }
-" }}}
-
-" Syntastic {{{
-" Make syntastic ignore problematic filetypes
-let syntastic_mode_map = { 'passive_filetypes': ['html', 'hbs', 'scss'] }
-
-" Modify coffeelint options
-let g:syntastic_coffee_coffeelint_args = "--csv --file ~/.coffeelint.json"
 " }}}
 
 " Misc bindings {{{
@@ -258,6 +191,17 @@ nnoremap <silent> <leader>s :wincmd s<CR> " open split
 map <Leader>= <C-w>= " Adjust viewports to the same size
 " }}}
 
+" Syntastic {{{
+" Make syntastic ignore problematic filetypes
+let syntastic_mode_map = { 'passive_filetypes': ['html', 'hbs', 'scss'] }
+
+" Modify coffeelint options
+let g:syntastic_coffee_coffeelint_args = "--csv --file ~/.coffeelint.json"
+
+" check on open as well as save
+let g:syntastic_check_on_open=1
+" }}}
+
 " NERDTree {{{
 let NERDTreeShowLineNumbers=1
 " Don't let NERDTree overwrite C-J/C-K
@@ -268,6 +212,45 @@ let g:NERDTreeMapJumpPrevSibling=''
 " Airline {{{
 let g:airline_powerline_fonts = 1
 let g:airline#extensions#tabline#enabled = 1
+" }}}
+
+" The Silver Searcher {{{
+if executable('ag')
+  " Use Ag over Grep
+  set grepprg=ag\ --nogroup\ --nocolor
+
+  " Use ag in CtrlP for listing files. Lightning fast and respects .gitignore
+  let g:ctrlp_user_command = 'ag %s -l --nocolor -g ""'
+
+  " ag is fast enough that CtrlP doesn't need to cache
+  let g:ctrlp_use_caching = 0
+
+  " Use ag for Ack.vim
+  let g:ackprg = 'ag --nogroup --nocolor --column'
+endif
+" }}}
+
+" Auto Commands {{{
+augroup vimrcEx
+  autocmd!
+
+  " When editing a file, always jump to the last known cursor position.
+  " Don't do it for commit messages, when the position is invalid, or when
+  " inside an event handler (happens when dropping a file on gvim).
+  autocmd BufReadPost *
+    \ if &ft != 'gitcommit' && line("'\"") > 0 && line("'\"") <= line("$") |
+    \   exe "normal g`\"" |
+    \ endif
+
+  au bufread,BufNewFile *.md set filetype=markdown
+  au bufread,BufNewFile *.scss set filetype=scss
+
+  " Enable spellchecking for Markdown
+  autocmd FileType markdown setlocal spell
+
+  " Automatically wrap at 80 characters for Markdown
+  autocmd BufRead,BufNewFile *.md setlocal textwidth=80
+augroup END
 " }}}
 
 " Functions {{{

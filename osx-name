@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+# Ask for the administrator password upfront
+sudo -v
+
+# Set computer name (as done via System Preferences → Sharing)
+sudo scutil --set ComputerName "🐑💨✨"
+sudo scutil --set HostName "🐑💨✨"
+sudo scutil --set LocalHostName "OneMillionYearsDungeon"
+sudo defaults write /Library/Preferences/SystemConfiguration/com.apple.smb.server NetBIOSName -string "🐑💨✨"

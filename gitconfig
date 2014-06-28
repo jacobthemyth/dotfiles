@@ -73,3 +73,5 @@
 	default = simple
 [init]
 	templatedir = ~/.git_template
+[fetch]
+  prune = true
