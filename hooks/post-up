@@ -1,6 +1,25 @@
 #!/bin/sh
 
-if [ ! -e $HOME/.vim/bundle/Vundle.vim ]; then
-  git clone https://github.com/gmarik/Vundle.vim.git $HOME/.vim/bundle/Vundle.vim
-fi
-vim -u $HOME/.vimrc.bundles +BundleInstall +qa
+main () {
+  init_vundle
+  safely_replace_with_link \
+    "$HOME/.KeyRemap4MacBook.xml" \
+    "$HOME/Library/Application Support/KeyRemap4MacBook/private.xml"
+}
+
+init_vundle () {
+  if [ ! -e $HOME/.vim/bundle/Vundle.vim ]; then
+    echo "Cloning Vundle.vim"
+    git clone https://github.com/gmarik/Vundle.vim.git $HOME/.vim/bundle/Vundle.vim
+  fi
+  vim +PluginInstall +qall
+}
+
+safely_replace_with_link () {
+  if [[ -f $2 ]]; then
+    mv "$2" "$2.`date +%s`.bak"
+  fi
+  ln -s "$1" "$2"
+}
+
+main

@@ -1,10 +1,11 @@
 " Jake Smith's .vimrc
+set nocompatible      " this must be as early as possible
+
 if filereadable(expand("~/.vimrc.bundles"))
   source ~/.vimrc.bundles
 endif
 
 " Basic Setup {{{
-set nocompatible      " this must be as early as possible
 set encoding=utf-8    " Set default encoding to UTF-8
 set modelines=1
 set ttyfast " Send more characters for redraws
