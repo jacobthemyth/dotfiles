@@ -1,1 +1,1 @@
-DOTFILES_DIRS=".dotfiles .private-dotfiles"
+DOTFILES_DIRS=".dotfiles .dotfiles-local"
