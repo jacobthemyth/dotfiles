@@ -251,6 +251,9 @@ augroup vimrcEx
 
   " Automatically wrap at 80 characters for Markdown
   autocmd BufRead,BufNewFile *.md setlocal textwidth=80
+
+  " Turn off smartindent for coffeescript
+  autocmd FileType coffee setlocal nosmartindent
 augroup END
 " }}}
 

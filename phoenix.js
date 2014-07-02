@@ -1,4 +1,3 @@
-var mash = ["cmd", "alt", "shift"];
 var hyper = ["cmd", "alt", "ctrl", "shift"]
 
 var MARGIN_X = 5;
