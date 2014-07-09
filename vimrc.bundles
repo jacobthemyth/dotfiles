@@ -30,8 +30,6 @@ Plugin 'Valloric/YouCompleteMe'
 Plugin 'mattn/emmet-vim'
 Plugin 'godlygeek/tabular'
 Plugin 'benmills/vimux'
-Plugin 'dsawardekar/portkey'
-Plugin 'dsawardekar/ember.vim'
 
 " Text Objects
 Plugin 'kana/vim-textobj-user'
