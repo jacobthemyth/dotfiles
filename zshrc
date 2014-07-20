@@ -49,8 +49,6 @@ setopt extendedglob
 
 # vi mode
 bindkey -v
-bindkey "^F" vi-cmd-mode
-bindkey jj vi-cmd-mode
 
 # backspace ,^h, ^u working even after returning from command mode
 bindkey '^?' backward-delete-char
@@ -68,5 +66,9 @@ bindkey '^[[B' down-line-or-search
 
 bindkey "^A" beginning-of-line
 bindkey "^E" end-of-line
+
+mkcd () {
+    mkdir -p "$@" && cd "$@"
+}
 
 [[ -f ~/.aliases ]] && source ~/.aliases

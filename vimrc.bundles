@@ -48,6 +48,7 @@ Plugin 'jc00ke/vim-tomdoc'
 Plugin 'duwanis/tomdoc.vim'
 Plugin 'tpope/vim-markdown'
 Plugin 'cakebaker/scss-syntax.vim'
+Plugin 'digitaltoad/vim-jade'
 
 " Colors
 Plugin 'tpope/vim-cucumber'

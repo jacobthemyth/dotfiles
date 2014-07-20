@@ -65,8 +65,10 @@ set smartindent
 " List chars
 set list                  " Show invisible characters
 set listchars=""          " Reset the listchars
-set listchars=tab:\ \     " a tab should display as "  "
-set listchars+=trail:.    " show trailing spaces as dots
+" a tab should display as French quotes
+exec "set listchars=tab:\uBB\uBB"
+" show trailing spaces as dots
+exec "set listchars+=trail:\uB7"
 set listchars+=extends:>  " The character to show in the last column when wrap is
                           " off and the line continues beyond the right of the screen
 set listchars+=precedes:< " The character to show in the last column when wrap is
@@ -179,6 +181,9 @@ map <leader>d :call OpenChangedFiles()<cr>
 
 nnoremap <silent> <Leader><CR> :call VimuxSendKeys("Enter")<CR>
 noremap <Leader>vp :VimuxPromptCommand<CR>
+
+" allow the . to execute once for each line of a visual selection
+vnoremap . :normal .<CR>
 " }}}
 
 " Navigation bindings {{{
@@ -250,9 +255,6 @@ augroup vimrcEx
 
   " Enable spellchecking for Markdown
   autocmd FileType markdown setlocal spell
-
-  " Automatically wrap at 80 characters for Markdown
-  autocmd BufRead,BufNewFile *.md setlocal textwidth=80
 
   " Turn off smartindent for coffeescript
   autocmd FileType coffee setlocal nosmartindent
