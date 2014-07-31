@@ -213,6 +213,14 @@ let NERDTreeShowLineNumbers=1
 " Don't let NERDTree overwrite C-J/C-K
 let g:NERDTreeMapJumpNextSibling=''
 let g:NERDTreeMapJumpPrevSibling=''
+
+let NERDTreeIgnore=['\.pyc$', '\.pyo$', '\.rbc$', '\.rbo$', '\.class$', '\.o$', '\~$']
+
+augroup AuNERDTreeCmd
+autocmd AuNERDTreeCmd VimEnter * call s:CdIfDirectory(expand("<amatch>"))
+autocmd AuNERDTreeCmd FocusGained * call s:UpdateNERDTree()
+
+noremap <silent> <leader>d :NERDTreeToggle<CR>
 " }}}
 
 " Airline {{{
