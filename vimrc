@@ -1,4 +1,4 @@
-" Jake Smith's .vimrc
+" Jacob Smith's .vimrc
 set nocompatible      " this must be as early as possible
 
 if filereadable(expand("~/.vimrc.bundles"))
