@@ -1,0 +1,2 @@
+#! /bin/bash
+perl -MCompress::Zlib -e 'undef $/; print uncompress(<>)' < $1

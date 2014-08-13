@@ -16,5 +16,5 @@ alias localip="ipconfig getifaddr en1"
 alias gitjk="history 10 | tail -r | gitjk_cmd"
 
 # Applications
-alias marked="open -a Marked.app"
+alias marked="open -a Marked\ 2.app"
 alias ft="open -a FoldingText.app"

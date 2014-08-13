@@ -39,6 +39,7 @@ export CLICOLOR=1
 setopt hist_ignore_all_dups inc_append_history
 HISTSIZE=4096
 SAVEHIST=4096
+unsetopt histverify # Don't verify history expansion, e.g. !!
 
 # awesome cd movements from zshkit
 setopt autocd autopushd pushdminus pushdsilent pushdtohome cdablevars
