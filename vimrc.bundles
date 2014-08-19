@@ -7,54 +7,67 @@ call vundle#begin()
 Plugin 'gmarik/Vundle.vim'
 
 " Tools
-Plugin 'mileszs/ack.vim'
-Plugin 'tpope/vim-fugitive'
-Plugin 'tpope/vim-commentary'
-Plugin 'Yggdroot/indentLine'
-Plugin 'scrooloose/nerdtree'
-Plugin 'tpope/vim-endwise'
-Plugin 'sjl/gundo.vim'
-Plugin 'tpope/vim-surround'
-Plugin 'majutsushi/tagbar'
-Plugin 'tpope/vim-unimpaired'
-Plugin 'tpope/vim-repeat'
+Plugin 'godlygeek/tabular' " Aligning text
 Plugin 'kien/ctrlp.vim'
-Plugin 'bling/vim-airline'
-Plugin 'airblade/vim-gitgutter'
-Plugin 'scrooloose/syntastic'
-Plugin 'nelstrom/vim-visual-star-search'
+Plugin 'majutsushi/tagbar'
+Plugin 'mattn/emmet-vim'
 Plugin 'nelstrom/vim-qargs'
+Plugin 'nelstrom/vim-visual-star-search'
+Plugin 'rking/ag.vim'
+Plugin 'sjl/gundo.vim'
+Plugin 'tpope/vim-characterize' " Unicode metadata enhancements
+Plugin 'tpope/vim-commentary'
+Plugin 'tpope/vim-dispatch'
+Plugin 'tpope/vim-endwise' " auto add block endings
+Plugin 'tpope/vim-fireplace' " Clojure REPL
+Plugin 'tpope/vim-fugitive'
+Plugin 'tpope/vim-jdaddy' " JSON plugin
+Plugin 'tpope/vim-leiningen'
+Plugin 'tpope/vim-projectionist' " project configuration
+Plugin 'tpope/vim-repeat'
+Plugin 'tpope/vim-sexp-mappings-for-regular-people'
+Plugin 'tpope/vim-surround'
+Plugin 'tpope/vim-unimpaired'
+Plugin 'tpope/vim-vinegar' " netrw enhancements
+Plugin 'Valloric/YouCompleteMe'
+
+" UI
+Plugin 'Yggdroot/indentLine'
+Plugin 'airblade/vim-gitgutter'
+Plugin 'bling/vim-airline'
+Plugin 'scrooloose/syntastic'
+
+" Tmux integration
 Plugin 'christoomey/vim-tmux-navigator'
 Plugin 'edkolev/tmuxline.vim'
-Plugin 'Valloric/YouCompleteMe'
-Plugin 'mattn/emmet-vim'
-Plugin 'godlygeek/tabular'
-Plugin 'benmills/vimux'
 
 " Text Objects
-Plugin 'kana/vim-textobj-user'
 Plugin 'kana/vim-textobj-lastpat'
+Plugin 'kana/vim-textobj-user'
 Plugin 'michaeljsmith/vim-indent-object'
 
 " Langs
-Plugin 'kchmck/vim-coffee-script'
-Plugin 'tpope/vim-git'
-Plugin 'mustache/vim-mustache-handlebars'
-Plugin 'pangloss/vim-javascript'
-Plugin 'tpope/vim-rails.git'
-Plugin 'vim-ruby/vim-ruby'
-Plugin 'vim-scripts/ruby-matchit'
-Plugin 'jc00ke/vim-tomdoc'
-Plugin 'duwanis/tomdoc.vim'
-Plugin 'tpope/vim-markdown'
 Plugin 'cakebaker/scss-syntax.vim'
 Plugin 'digitaltoad/vim-jade'
+Plugin 'duwanis/tomdoc.vim'
+Plugin 'jc00ke/vim-tomdoc'
+Plugin 'kchmck/vim-coffee-script'
+Plugin 'mustache/vim-mustache-handlebars'
+Plugin 'pangloss/vim-javascript'
+Plugin 'tpope/vim-git'
+Plugin 'tpope/vim-markdown'
+Plugin 'tpope/vim-rails'
+Plugin 'vim-ruby/vim-ruby'
+Plugin 'vim-scripts/ruby-matchit'
 
 " Colors
-Plugin 'tpope/vim-cucumber'
 Plugin 'altercation/vim-colors-solarized'
-Plugin 'telamon/vim-color-github'
 Plugin 'skammer/vim-css-color'
+Plugin 'telamon/vim-color-github'
+Plugin 'tpope/vim-cucumber'
+
+" Sensible defaults
+Plugin 'tpope/vim-sensible' " needs to be last
 
 call vundle#end()             " required by vundle!
 filetype plugin indent on     " required by vundle!
