@@ -70,6 +70,9 @@ xnoremap & :&&<CR>
 
 " Expand %% to current directory
 cnoremap %% <C-R>=fnameescape(expand('%:h')).'/'<cr>
+
+" Random Commands
+command! Marked !open -a Marked\ 2.app %
 " }}}
 
 " Keyboard bindings {{{
@@ -97,6 +100,9 @@ map <leader>d :Explore<cr>
 nnoremap <leader>t :TagbarToggle<CR>
 nnoremap <leader>g :GitGutterToggle<CR>
 nnoremap <silent> <leader>u :GundoToggle<CR>
+
+noremap <leader>y "*y
+noremap <leader>p "*p
 " }}}
 
 " Plugin settings {{{
@@ -153,8 +159,8 @@ augroup vimrcEx
     \   exe "normal g`\"" |
     \ endif
 
-  au bufread,BufNewFile *.md set filetype=markdown
-  au bufread,BufNewFile *.scss set filetype=scss
+  au BufRead,BufNewFile *.md set filetype=markdown
+  au BufRead,BufNewFile *.scss set filetype=scss
 
   " Enable spellchecking for Markdown
   autocmd FileType markdown setlocal spell
@@ -162,9 +168,6 @@ augroup END
 " }}}
 
 " Functions {{{
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-" RENAME CURRENT FILE
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 function! RenameFile()
     let old_name = expand('%')
     let new_name = input('New file name: ', expand('%'), 'file')
@@ -174,7 +177,6 @@ function! RenameFile()
         redraw!
     endif
 endfunction
-" }}}
 
 " GUI {{{
 " Needs to be last, to override CLI settings

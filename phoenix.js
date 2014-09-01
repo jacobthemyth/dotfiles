@@ -60,6 +60,23 @@ api.bind('RIGHT', hyper, function() { Window.focusedWindow().focusWindowRight();
 api.bind('UP', hyper, function() { Window.focusedWindow().focusWindowUp(); });
 api.bind('DOWN', hyper, function() { Window.focusedWindow().focusWindowDown(); });
 
+api.bind(']', hyper, function() {
+  var win = Window.focusedWindow();
+  var f = {y: 0, h: 2};
+  f.x = Math.floor(GRID_WIDTH / 2);
+  f.w = Math.floor(GRID_WIDTH / 2);
+  win.setGrid(f, win.screen());
+  return true;
+});
+
+api.bind('[', hyper, function() {
+  var win = Window.focusedWindow();
+  var f = {x: 0, y: 0, h: 2};
+  f.w = Math.floor(GRID_WIDTH / 2);
+  win.setGrid(f, win.screen());
+  return true;
+});
+
 api.bind('M', hyper, function() {
   var win = Window.focusedWindow();
   var f = {x: 0, y: 0, w: GRID_WIDTH, h: 2};
