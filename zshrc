@@ -48,6 +48,9 @@ DIRSTACKSIZE=5
 # Enable extended globbing
 setopt extendedglob
 
+# Disable globbing for commands that need special characters
+alias rake="noglob rake"
+
 # vi mode
 bindkey -v
 
@@ -72,4 +75,10 @@ mkcd () {
     mkdir -p "$@" && cd "$@"
 }
 
+growl() {
+  terminal-notifier -activate com.googlecode.iterm2 -title "Beep Boop Beep Boop" -message "$@"
+  say -v "Ting-Ting" -r 275 "Beep Boop Beep Boop"
+}
+
 [[ -f ~/.aliases ]] && source ~/.aliases
+[[ -f ~/.bin/tmuxinator.zsh ]] && source ~/.bin/tmuxinator.zsh

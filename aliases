@@ -10,10 +10,7 @@ alias -g ONE="| awk '{ print \$1}'"
 alias e="$EDITOR"
 alias v="$VISUAL"
 alias ip="dig +short myip.opendns.com @resolver1.opendns.com"
-alias localip="ipconfig getifaddr en1"
-
-# Git
-alias gitjk="history 10 | tail -r | gitjk_cmd"
+alias localip="ipconfig getifaddr en0"
 
 # Applications
 alias marked="open -a Marked\ 2.app"
