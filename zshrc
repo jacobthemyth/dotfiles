@@ -1,12 +1,11 @@
+source $HOME/.profile
+
 ZSH_CUSTOM=$HOME/.zsh
 ZSH=$HOME/.oh-my-zsh
 ZSH_THEME="avit"
 
 # Turn off control flow
 stty -ixon -ixoff
-
-# PATH
-export PATH=$HOME/.bin:$PATH
 
 # Vim
 export VISUAL=vim
@@ -27,6 +26,7 @@ plugins=(tm tmux vi-mode zsh-syntax-highlighting)
 source $ZSH/oh-my-zsh.sh
 
 if which rbenv > /dev/null; then eval "$(rbenv init -)"; fi
+if which homework > /dev/null; then eval "$(homework setup -)"; fi
 
 # makes color constants available
 autoload -U colors
