@@ -16,3 +16,6 @@ alias localip="ipconfig getifaddr en0"
 alias marked="open -a Marked\ 2.app"
 alias ft="open -a FoldingText.app"
 alias hw="homework"
+
+# Misc
+alias ssh="TERM=xterm-256color ssh" # Don't use italic term

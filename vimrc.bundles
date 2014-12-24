@@ -30,12 +30,11 @@ Plugin 'Valloric/YouCompleteMe'
 " UI
 Plugin 'Yggdroot/indentLine'
 Plugin 'airblade/vim-gitgutter'
-Plugin 'bling/vim-airline'
 Plugin 'scrooloose/syntastic'
+Plugin 'bling/vim-airline'
 
 " Tmux integration
 Plugin 'christoomey/vim-tmux-navigator'
-Plugin 'edkolev/tmuxline.vim'
 
 " Text Objects
 Plugin 'kana/vim-textobj-lastpat'
@@ -64,6 +63,7 @@ Plugin 'kien/rainbow_parentheses.vim'
 
 " Colors
 Plugin 'altercation/vim-colors-solarized'
+Plugin 'reedes/vim-colors-pencil'
 
 " Sensible defaults
 Plugin 'tpope/vim-sensible' " needs to be last

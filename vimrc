@@ -19,8 +19,15 @@ set infercase   " Use the correct case when autocompleting
 
 syntax enable         " Turn on syntax highlighting allowing local overrides
 set background=dark
-let g:solarized_termcolors=16
-colorscheme solarized
+let g:pencil_terminal_italics = 1
+colorscheme pencil
+
+let g:airline_theme = 'pencil'
+let g:airline_left_sep = ' '
+let g:airline_right_sep = ' '
+let g:airline#extensions#tabline#enabled = 1
+let g:airline#extensions#tabline#left_sep = ' '
+let g:airline#extensions#tabline#left_alt_sep = '|'
 
 set number            " Show line numbers
 set colorcolumn=81
@@ -117,12 +124,6 @@ let g:syntastic_coffee_coffeelint_args = "--csv --file ~/.coffeelint.json"
 " check on open as well as save
 let g:syntastic_check_on_open=1
 
-" Airline
-let g:airline_theme = 'solarized'
-let g:airline_powerline_fonts = 1
-let g:airline#extensions#tabline#enabled = 1
-let g:airline#extensions#tmuxline#enabled = 0
-
 " The Silver Searcher
 if executable('ag')
   " Use Ag over Grep
@@ -159,11 +160,12 @@ augroup vimrcEx
     \   exe "normal g`\"" |
     \ endif
 
+  " Markdown
   au BufRead,BufNewFile *.md set filetype=markdown
-  au BufRead,BufNewFile *.scss set filetype=scss
-
-  " Enable spellchecking for Markdown
+  au BufRead,BufNewFile *.md setlocal textwidth=80
   autocmd FileType markdown setlocal spell
+
+  au BufRead,BufNewFile *.scss set filetype=scss
 augroup END
 " }}}
 
@@ -186,10 +188,7 @@ if has("gui_running")
     autocmd VimResized * wincmd =
   endif
 
-  set guifont=Sauce\ Code\ Powerline:h13
   set guioptions-=r
-  set background=light
-  let g:airline_theme = 'solarized'
 endif
 
 if has("gui_macvim")

@@ -2,6 +2,8 @@
 
 main () {
   init_vundle
+  [[ -f ~/.xterm-256color-italic.terminfo ]] && tic ~/.xterm-256color-italic.terminfo
+  [[ -f ~/.screen-256color-italic.terminfo ]] && tic ~/.screen-256color-italic.terminfo
 }
 
 init_vundle () {

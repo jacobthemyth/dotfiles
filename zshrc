@@ -81,4 +81,3 @@ growl() {
 }
 
 [[ -f ~/.aliases ]] && source ~/.aliases
-[[ -f ~/.bin/tmuxinator.zsh ]] && source ~/.bin/tmuxinator.zsh
