@@ -26,8 +26,11 @@ let g:airline_theme = 'pencil'
 let g:airline_left_sep = ' '
 let g:airline_right_sep = ' '
 let g:airline#extensions#tabline#enabled = 1
+let g:airline#extensions#tabline#show_buffers = 0
 let g:airline#extensions#tabline#left_sep = ' '
 let g:airline#extensions#tabline#left_alt_sep = '|'
+let g:airline#extensions#tabline#right_sep = ' '
+let g:airline#extensions#tabline#right_alt_sep = '|'
 
 set number            " Show line numbers
 set colorcolumn=81
@@ -188,7 +191,9 @@ if has("gui_running")
     autocmd VimResized * wincmd =
   endif
 
+  set guifont=Cousine:h14
   set guioptions-=r
+  set background=light
 endif
 
 if has("gui_macvim")

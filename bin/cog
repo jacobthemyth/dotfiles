@@ -1,4 +1,3 @@
 #! /bin/zsh
 cd ~/Dropbox/Cog
-filename=`find . \( ! -name '.*' \) | ~/.bin/choose`
-[[ -n $filename ]] && open $filename
+tat
