@@ -1,4 +1,4 @@
-var hyper = ["cmd", "alt", "ctrl", "shift"]
+var hyper = ["cmd", "alt", "ctrl", "shift"];
 
 var MARGIN_X = 5;
 var MARGIN_Y = 5;
@@ -34,13 +34,13 @@ Window.prototype.setGrid = function(grid, screen) {
   newFrame.height -= (MARGIN_Y * 2.0);
 
   this.setFrame(newFrame);
-}
+};
 
 Window.prototype.snapToGrid = function() {
   if (this.isNormalWindow()) {
     this.setGrid(this.getGrid(), this.screen());
   }
-}
+};
 
 function changeGridWidth(by) {
   GRID_WIDTH = Math.max(1, GRID_WIDTH + by);

@@ -41,8 +41,6 @@ set cmdheight=2
 set splitbelow
 set splitright
 
-let g:netrw_liststyle=3 " Default to tree view
-
 set foldmethod=indent   " fold based on indent level
 set foldnestmax=10      " max 10 depth
 set foldenable          " don't fold files by default on open
@@ -65,6 +63,21 @@ set list          " show invisible listchars
 set backup
 set backupdir^=~/.vim/_backup//    " where to put backup files.
 set directory^=~/.vim/_temp//      " where to put swap files.
+
+" vspilt files to the right window
+let g:netrw_altv = 1
+
+" 30% of window for netrw, 70% for file
+let g:netrw_winsize = 70
+
+" don't write error msgs to separate window
+let g:netrw_use_errorwindow = 0
+
+" Files and directories to hide
+let &wildignore = join(map(split(substitute(
+  \ netrw_gitignore#Hide(), '\\.', '.', 'g'), ','), "v:val.','.v:val.'/'"), ',')
+set wildignore+=.git/
+set wildignore+=.DS_Store
 " }}}
 
 " Tweaks {{{
@@ -106,13 +119,14 @@ nnoremap <leader><leader> <c-^>
 nnoremap <silent> <leader><bar> :wincmd v<CR> " open vertical split
 nnoremap <silent> <leader>- :wincmd s<CR> " open horizontal split
 
-map <leader>d :Explore<cr>
 nnoremap <leader>t :TagbarToggle<CR>
 nnoremap <leader>g :GitGutterToggle<CR>
 nnoremap <silent> <leader>u :GundoToggle<CR>
 
 noremap <leader>y "*y
 noremap <leader>p "*p
+
+nnoremap <leader>d :Explore<CR>
 " }}}
 
 " Plugin settings {{{
