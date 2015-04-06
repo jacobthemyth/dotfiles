@@ -13,6 +13,7 @@ Plugin 'majutsushi/tagbar'
 Plugin 'mattn/emmet-vim'
 Plugin 'nelstrom/vim-qargs'
 Plugin 'nelstrom/vim-visual-star-search'
+Plugin 'osyo-manga/vim-over'                        " :substitute preview
 Plugin 'rking/ag.vim'
 Plugin 'sjl/gundo.vim'
 Plugin 'tpope/vim-commentary'

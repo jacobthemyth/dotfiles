@@ -95,7 +95,7 @@ xnoremap & :&&<CR>
 cnoremap %% <C-R>=fnameescape(expand('%:h')).'/'<cr>
 
 " Random Commands
-command! Marked !open -a Marked\ 2.app %
+command! Marked !open -a Marked\ 2.app "%"
 " }}}
 
 " Keyboard bindings {{{
@@ -163,6 +163,12 @@ let g:ctrlp_custom_ignore = {
 
 " GitGutter
 let g:gitgutter_enabled = 0
+
+" Rainbow Parens
+au VimEnter * RainbowParenthesesToggle
+au Syntax * RainbowParenthesesLoadRound
+au Syntax * RainbowParenthesesLoadSquare
+au Syntax * RainbowParenthesesLoadBraces
 " }}}
 
 " Auto Commands {{{
@@ -205,7 +211,7 @@ if has("gui_running")
     autocmd VimResized * wincmd =
   endif
 
-  set guifont=Cousine:h14
+  set guifont=Cousine:h16
   set guioptions-=r
   set background=light
 endif
