@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 output=${1-"output.gif"}
 prev_delay=0
 skipped=0

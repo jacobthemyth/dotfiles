@@ -1,7 +1,11 @@
 #!/bin/sh
+
+set -e
+
 if [ -z "$1" ]
 then
-  echo "Which folder do you want to deploy to GitHub Pages?"
+  echo "You need to specify which directory you want to deploy to GitHub Pages"
   exit 1
 fi
+git push origin :gh-pages
 git subtree push --prefix $1 origin gh-pages

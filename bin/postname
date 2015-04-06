@@ -1,4 +1,7 @@
 #! /bin/bash
+
+set -e
+
 title=${1// /-}
 extension=${2:-md}
 slug=$(echo $title | tr '[:upper:]' '[:lower:]')

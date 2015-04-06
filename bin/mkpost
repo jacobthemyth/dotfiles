@@ -1,0 +1,23 @@
+#! /bin/bash
+
+set -e
+
+slug=${1-"title"}
+filename=`date +"%Y-%m-%d"`-"$slug".md
+
+title=$(gsed -e 's/-\([a-z]\)/ \u\1/g' -e 's/^[a-z]/\u&/' <<< $slug)
+
+if [ -e $filename ]; then
+  echo "File $filename already exists"
+  exit 1
+else
+
+echo "Making $filename"
+cat > $filename <<- EOF
+---
+layout: post
+title: $title
+---
+EOF
+
+fi

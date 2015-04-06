@@ -4,6 +4,8 @@
 #
 # replace foo bar **/*.rb
 
+set -e
+
 find_this=$1
 shift
 replace_with=$1

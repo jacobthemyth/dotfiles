@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 SWAP_FILE_DIR=~/.vim/_temp
 IFS=$'\n'
 

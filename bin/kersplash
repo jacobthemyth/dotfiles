@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+
+set -e
+
 if [ -z "$*" ]; then
   echo "You must supply a logo!"
   echo "e.g. \`kersplash logo.png\`"
