@@ -4,7 +4,6 @@
 [apply]
   whitespace = nowarn
 [branch]
-  autosetuprebase = always
   autosetupmerge = always
 [color]
 	status = auto
