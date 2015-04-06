@@ -15,6 +15,9 @@ export EDITOR=$VISUAL
 # while waiting for completion
 COMPLETION_WAITING_DOTS="true"
 
+# Prevent zsh from changing tmux titles
+DISABLE_AUTO_TITLE=true
+
 # Comment out following line if you want greedy autocomplete
 setopt MENU_COMPLETE
 
@@ -50,6 +53,7 @@ setopt extendedglob
 
 # Disable globbing for commands that need special characters
 alias rake="noglob rake"
+alias git="noglob git"
 
 # vi mode
 bindkey -v
