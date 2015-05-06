@@ -9,7 +9,11 @@ endif
 set modelines=1 " Allow modelines (i.e. executable comments)
 set switchbuf+=usetab
 set hidden
-set mouse=a " Enable mouse use in all modes
+set mouse+=a " Enable mouse use in all modes
+if &term =~ '^screen'
+    " tmux knows the extended mouse mode
+    set ttymouse=xterm2
+endif
 
 " Search
 set hlsearch    " highlight matches
@@ -96,6 +100,16 @@ cnoremap %% <C-R>=fnameescape(expand('%:h')).'/'<cr>
 
 " Random Commands
 command! Marked !open -a Marked\ 2.app "%"
+
+" Open binary files externally
+autocmd BufRead *.png,*.jpg,*.jpeg,*.pdf silent :execute '!open ' . escape(expand('%'), ' ') . ' &'
+
+"since we do not really open the file, go back to the previous buffer
+autocmd BufEnter *.png,*.jpg,*.jpeg,*.pdf call GoBackToPreviousAndDelete()
+function GoBackToPreviousAndDelete()
+  b#
+  bdelete#
+endfunction
 " }}}
 
 " Keyboard bindings {{{
@@ -126,10 +140,47 @@ nnoremap <silent> <leader>u :GundoToggle<CR>
 noremap <leader>y "*y
 noremap <leader>p "*p
 
-nnoremap <leader>d :Explore<CR>
+nnoremap <leader>d :VimFiler<CR>
+nnoremap <leader>e :VimFilerExplorer<CR>
+
+nnoremap <leader>w :Goyo<CR>
+nnoremap <silent> <leader>gq :g/^/norm gqq<CR> " format all paragraphs
+nnoremap <silent> <leader>gj :%norm vipJ<CR> " unformat all paragraphs
+
+nnoremap <leader>s :OverCommandLine<CR>
 " }}}
 
 " Plugin settings {{{
+" VimFiler
+let g:vimfiler_as_default_explorer = 1
+autocmd FileType vimfiler nunmap <buffer> <C-l>
+autocmd FileType vimfiler nmap <buffer> <C-r> <Plug>(vimfiler_redraw_screen)
+autocmd FileType vimfiler nmap <buffer> c <Plug>(vimfiler_mark_current_line)<Plug>(vimfiler_copy_file)
+autocmd FileType vimfiler nmap <buffer> m <Plug>(vimfiler_mark_current_line)<Plug>(vimfiler_move_file)
+autocmd FileType vimfiler nmap <buffer> d <Plug>(vimfiler_mark_current_line)<Plug>(vimfiler_delete_file)
+autocmd FileType vimfiler nmap <buffer> <BS> <Plug>(vimfiler_close)
+autocmd FileType vimfiler nmap <buffer> - <Plug>(vimfiler_switch_to_parent_directory)
+
+" Goyo
+function! s:goyo_enter()
+  set noshowmode
+  set noshowcmd
+  set scrolloff=999
+  Limelight
+endfunction
+
+function! s:goyo_leave()
+  set showmode
+  set showcmd
+  set scrolloff=5
+  set background=dark
+  Limelight!
+endfunction
+
+autocmd! User GoyoEnter
+autocmd! User GoyoLeave
+autocmd  User GoyoEnter nested call <SID>goyo_enter()
+autocmd  User GoyoLeave nested call <SID>goyo_leave()
 
 " Syntastic
 " Make syntastic ignore problematic filetypes
@@ -197,8 +248,8 @@ function! RenameFile()
     let old_name = expand('%')
     let new_name = input('New file name: ', expand('%'), 'file')
     if new_name != '' && new_name != old_name
-        exec ':saveas ' . new_name
-        exec ':silent !rm ' . old_name
+        exec ':saveas ' . escape(new_name, ' ')
+        exec ':silent !rm ' . escape(old_name, ' ')
         redraw!
     endif
 endfunction

@@ -28,6 +28,12 @@ Plugin 'tpope/vim-unimpaired'
 Plugin 'tpope/vim-vinegar'
 Plugin 'Valloric/YouCompleteMe'
 
+Plugin 'junegunn/goyo.vim'
+Plugin 'junegunn/limelight.vim'
+
+Plugin 'Shougo/unite.vim' " required by vimfiler
+Plugin 'Shougo/vimfiler.vim' " file explorer
+
 " UI
 Plugin 'Yggdroot/indentLine'
 Plugin 'airblade/vim-gitgutter'
