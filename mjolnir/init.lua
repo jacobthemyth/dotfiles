@@ -43,6 +43,16 @@ hotkey.bind(hyper, "'", snapvisiblewindows)
 hotkey.bind(hyper, '=', function() changegridwidth(1) end)
 hotkey.bind(hyper, '-', function() changegridwidth(-1) end)
 
+-- Push the window into the exact center of the screen
+hotkey.bind(hyper, '0', function()
+  frame = window.focusedwindow():screen():frame()
+  frame.x = (frame.w / 2) - (frame.w / 4)
+  frame.y = 0
+  frame.w = frame.w / 2
+  frame.h = frame.h
+  window.focusedwindow():setframe(frame)
+end)
+
 hotkey.bind(hyper, ']', function()
   x = math.floor(grid.GRIDWIDTH / 2)
   w = math.floor(grid.GRIDWIDTH / 2)

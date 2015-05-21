@@ -29,6 +29,7 @@
 	quotepath = false
 	trustctime = false
 	pager = less -FRSX
+	editor = nano
 [alias]
   st = status
   ci = commit

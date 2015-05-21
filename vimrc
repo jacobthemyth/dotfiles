@@ -140,7 +140,7 @@ nnoremap <silent> <leader>u :GundoToggle<CR>
 noremap <leader>y "*y
 noremap <leader>p "*p
 
-nnoremap <leader>d :VimFiler<CR>
+nnoremap <leader>d :VimFilerBufferDir<CR>
 nnoremap <leader>e :VimFilerExplorer<CR>
 
 nnoremap <leader>w :Goyo<CR>
