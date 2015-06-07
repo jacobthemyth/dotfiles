@@ -5,11 +5,11 @@ local fnutils = require "mjolnir.fnutils"
 local grid = require "mjolnir.bg.grid"
 local alert = require "mjolnir.alert"
 
-local hyper = {"cmd", "alt", "ctrl", "shift"}
+local hyper = {"ctrl", "shift", "alt"}
 local meta = {"cmd", "alt"}
 
-grid.GRIDHEIGHT = 2
-grid.GRIDWIDTH = 6
+grid.GRIDHEIGHT = 4
+grid.GRIDWIDTH = 10
 grid.MARGINX = 5
 grid.MARGINY = 5
 
@@ -17,12 +17,6 @@ local snapvisiblewindows = function()
   for i, win in ipairs(window.visiblewindows()) do
     grid.snap(win)
   end
-end
-
-local changegridwidth = function(by)
-  grid.adjustheight(math.max(1, grid.GRIDWIDTH + by))
-  alert.show("grid is now " .. grid.GRIDWIDTH .. " tiles wide", 1)
-  snapvisiblewindows()
 end
 
 local setcurrentwindow = function(x, y, w, h)
@@ -40,8 +34,6 @@ hotkey.bind(hyper, '`', mjolnir.openconsole)
 -- grid
 hotkey.bind(hyper, ';', function() grid.snap(window.focusedwindow()) end)
 hotkey.bind(hyper, "'", snapvisiblewindows)
-hotkey.bind(hyper, '=', function() changegridwidth(1) end)
-hotkey.bind(hyper, '-', function() changegridwidth(-1) end)
 
 -- Push the window into the exact center of the screen
 hotkey.bind(hyper, '0', function()
@@ -69,31 +61,23 @@ hotkey.bind(hyper, 'M', function()
 end)
 
 hotkey.bind(hyper, 'H', grid.pushwindow_left)
-hotkey.bind(hyper, 'J', function()
-  grid.adjust_focused_window(function(cell)
-    cell.h = math.ceil(grid.GRIDHEIGHT / 2)
-    return cell
-  end)
-  grid.pushwindow_down()
-end)
-hotkey.bind(hyper, 'K', function()
-  grid.adjust_focused_window(function(cell)
-    cell.h = math.ceil(grid.GRIDHEIGHT / 2)
-    return cell
-  end)
-  grid.pushwindow_up()
-end)
+hotkey.bind(hyper, 'J', grid.pushwindow_down)
+hotkey.bind(hyper, 'K', grid.pushwindow_up)
 hotkey.bind(hyper, 'L', grid.pushwindow_right)
 
-hotkey.bind(hyper, 'O', grid.resizewindow_wider)
-hotkey.bind(hyper, 'I', grid.resizewindow_thinner)
-hotkey.bind(hyper, 'U', grid.resizewindow_taller)
-hotkey.bind(hyper, 'Y', grid.resizewindow_shorter)
+-- < decrease current window width --
+hotkey.bind(hyper, ',', grid.resizewindow_thinner)
+-- > increase current window width --
+hotkey.bind(hyper, '.', grid.resizewindow_wider)
+-- + increase current window height --
+hotkey.bind(hyper, '=', grid.resizewindow_taller)
+-- - decrease current window height --
+hotkey.bind(hyper, '-', grid.resizewindow_shorter)
 
-hotkey.bind(hyper, "left", function() window.focusedwindow():focuswindow_west() end)
-hotkey.bind(hyper, "right", function() window.focusedwindow():focuswindow_east() end)
-hotkey.bind(hyper, "down", function() window.focusedwindow():focuswindow_south() end)
-hotkey.bind(hyper, "up", function() window.focusedwindow():focuswindow_north() end)
+hotkey.bind(meta, 'H', function() window.focusedwindow():focuswindow_west() end)
+hotkey.bind(meta, 'J', function() window.focusedwindow():focuswindow_south() end)
+hotkey.bind(meta, 'K', function() window.focusedwindow():focuswindow_north() end)
+hotkey.bind(meta, 'L', function() window.focusedwindow():focuswindow_east() end)
 
 hotkey.bind(hyper, "N", grid.pushwindow_nextscreen)
 hotkey.bind(hyper, "P", grid.pushwindow_prevscreen)

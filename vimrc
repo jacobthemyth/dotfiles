@@ -106,7 +106,7 @@ autocmd BufRead *.png,*.jpg,*.jpeg,*.pdf silent :execute '!open ' . escape(expan
 
 "since we do not really open the file, go back to the previous buffer
 autocmd BufEnter *.png,*.jpg,*.jpeg,*.pdf call GoBackToPreviousAndDelete()
-function GoBackToPreviousAndDelete()
+function! GoBackToPreviousAndDelete()
   b#
   bdelete#
 endfunction
@@ -166,7 +166,6 @@ function! s:goyo_enter()
   set noshowmode
   set noshowcmd
   set scrolloff=999
-  Limelight
 endfunction
 
 function! s:goyo_leave()
@@ -174,7 +173,6 @@ function! s:goyo_leave()
   set showcmd
   set scrolloff=5
   set background=dark
-  Limelight!
 endfunction
 
 autocmd! User GoyoEnter
