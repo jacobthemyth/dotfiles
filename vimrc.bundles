@@ -6,73 +6,35 @@ call vundle#begin()
 " required!
 Plugin 'gmarik/Vundle.vim'
 
-" Tools
-Plugin 'godlygeek/tabular'                          " Aligning text
-Plugin 'kien/ctrlp.vim'
-Plugin 'majutsushi/tagbar'
-Plugin 'mattn/emmet-vim'
-Plugin 'nelstrom/vim-qargs'
-Plugin 'nelstrom/vim-visual-star-search'
-Plugin 'osyo-manga/vim-over'                        " :substitute preview
-Plugin 'rking/ag.vim'
-Plugin 'sjl/gundo.vim'
-Plugin 'tpope/vim-commentary'
-Plugin 'tpope/vim-dispatch'
-Plugin 'tpope/vim-endwise'                          " auto add block endings
-Plugin 'tpope/vim-eunuch'                           " UNIX helpers
-Plugin 'tpope/vim-fugitive'
-Plugin 'tpope/vim-projectionist'                    " project configuration
-Plugin 'tpope/vim-repeat'
-Plugin 'tpope/vim-surround'
-Plugin 'tpope/vim-unimpaired'
-Plugin 'tpope/vim-vinegar'
-Plugin 'Valloric/YouCompleteMe'
 
-Plugin 'junegunn/goyo.vim'
-
-Plugin 'Shougo/unite.vim' " required by vimfiler
-Plugin 'Shougo/vimfiler.vim' " file explorer
-
-Plugin 'djoshea/vim-autoread'
-Plugin 'jceb/vim-orgmode'
-
-" UI
-Plugin 'Yggdroot/indentLine'
-Plugin 'airblade/vim-gitgutter'
-Plugin 'scrooloose/syntastic'
-Plugin 'bling/vim-airline'
-
-" Tmux integration
-Plugin 'christoomey/vim-tmux-navigator'
-
-" Text Objects
-Plugin 'kana/vim-textobj-lastpat'
-Plugin 'kana/vim-textobj-user'
-Plugin 'michaeljsmith/vim-indent-object'
-
-" Langs
-Plugin 'cakebaker/scss-syntax.vim'
-Plugin 'digitaltoad/vim-jade'
-Plugin 'kchmck/vim-coffee-script'
-Plugin 'mustache/vim-mustache-handlebars'
-Plugin 'pangloss/vim-javascript'
-Plugin 'tpope/vim-git'
-Plugin 'tpope/vim-markdown'
-Plugin 'tpope/vim-rails'
-Plugin 'vim-ruby/vim-ruby'
-
-" Clojure
-Plugin 'guns/vim-sexp'
-Plugin 'tpope/vim-sexp-mappings-for-regular-people'
-Plugin 'tpope/vim-fireplace'                        " Clojure REPL
-Plugin 'guns/vim-clojure-static'
-Plugin 'guns/vim-clojure-highlight'
-Plugin 'tpope/vim-leiningen'
-Plugin 'kien/rainbow_parentheses.vim'
-
-" Colors
-Plugin 'altercation/vim-colors-solarized'
-Plugin 'reedes/vim-colors-pencil'
+Plugin 'bling/vim-airline'                " status/tabline
+Plugin 'christoomey/vim-tmux-navigator'   " seamless navigation between tmux panes and vim splits
+Plugin 'godlygeek/tabular'                " Aligning text
+Plugin 'junegunn/goyo.vim'                " distraction-free writing
+Plugin 'kana/vim-textobj-user'            " Create your own text objects (required by rubyblock)
+Plugin 'kien/ctrlp.vim'                   " fuzzy finder
+Plugin 'mattn/emmet-vim'                  " web dev workflow toolkit
+Plugin 'mustache/vim-mustache-handlebars' " mustache and handlebars mode for vim
+Plugin 'nelstrom/vim-qargs'               " load quickfix files into args
+Plugin 'nelstrom/vim-textobj-rubyblock'   " A custom text object for selecting ruby blocks
+Plugin 'nelstrom/vim-visual-star-search'  " start a * or # search from a visual block
+Plugin 'reedes/vim-colors-pencil'         " Light (& dark) color scheme inspired by iA Writer
+Plugin 'scrooloose/syntastic'             " syntax checking
+Plugin 'tpope/vim-bundler'                " Lightweight support for Ruby's Bundler
+Plugin 'tpope/vim-commentary'             " comment mappings
+Plugin 'tpope/vim-dispatch'               " asynchronous build and test dispatcher
+Plugin 'tpope/vim-endwise'                " auto add block endings
+Plugin 'tpope/vim-eunuch'                 " UNIX helpers
+Plugin 'tpope/vim-fugitive'               " git wrapper
+Plugin 'tpope/vim-projectionist'          " project configuration
+Plugin 'tpope/vim-rails'                  " Ruby on Rails power tools
+Plugin 'tpope/vim-repeat'                 " enable repeating supported plugin maps with .
+Plugin 'tpope/vim-rsi'                    " readline style insertion
+Plugin 'tpope/vim-surround'               " quoting/parenthesizing made simple
+Plugin 'tpope/vim-unimpaired'             " pairs of handy bracket mappings
+Plugin 'tpope/vim-vinegar'                " netrw improvements
+Plugin 'Valloric/YouCompleteMe'           " code-completion engine
+Plugin 'Yggdroot/indentLine'              " display the indention levels with thin vertical lines
 
 " Sensible defaults
 Plugin 'tpope/vim-sensible' " needs to be last
