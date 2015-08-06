@@ -4,7 +4,7 @@
 PROMPT='$(_user_host)%{$fg[grey]%}[%c] %{$reset_color%}'
 
 # The right-hand prompt
-RPROMPT='%{$fg[magenta]%}$(_git_time_since_commit) $(git_prompt_info)%{$reset_color%}$(git_prompt_status)%{$reset_color%}$(git_prompt_ahead)%{$reset_color%} ${_return_status}'
+RPROMPT='%{$fg[magenta]%}$(_git_time_since_commit) $(git_prompt_info)%{$reset_color%}$(git_prompt_status)%{$reset_color%} ${_return_status}'
 
 local _return_status="%{$fg[red]%}%(?..⍉)%{$reset_color%}"
 
@@ -22,15 +22,14 @@ function _user_host() {
 ZSH_THEME_GIT_PROMPT_PREFIX="%{$fg[green]%}"
 ZSH_THEME_GIT_PROMPT_SUFFIX="%{$reset_color%}"
 ZSH_THEME_GIT_PROMPT_DIRTY=" %{$fg[red]%}✗%{$reset_color%}"
-ZSH_THEME_GIT_PROMPT_UNTRACKED=" %{$fg[grey]%}◒ "
+ZSH_THEME_GIT_PROMPT_UNTRACKED="%{$fg[grey]%}◒ "
 ZSH_THEME_GIT_PROMPT_CLEAN=" %{$fg[green]%}✔%{$reset_color%}"
-
-ZSH_THEME_GIT_PROMPT_ADDED=" %{$fg[cyan]%} ✚" # ⓐ ⑃
-ZSH_THEME_GIT_PROMPT_MODIFIED=" %{$fg[yellow]%}⚑"
-ZSH_THEME_GIT_PROMPT_DELETED=" %{$fg[red]%} ✖" # ⓧ ⑂
-ZSH_THEME_GIT_PROMPT_RENAMED=" %{$fg[blue]%} ➜" # ⓡ ⑄
-ZSH_THEME_GIT_PROMPT_UNMERGED=" %{$fg[cyan]%}§"
-ZSH_THEME_GIT_PROMPT_AHEAD="%{$fg[blue]%} 𝝙"
+ZSH_THEME_GIT_PROMPT_ADDED="%{$fg[cyan]%}✚ "
+ZSH_THEME_GIT_PROMPT_MODIFIED="%{$fg[yellow]%}⚑ "
+ZSH_THEME_GIT_PROMPT_DELETED="%{$fg[red]%}✖ "
+ZSH_THEME_GIT_PROMPT_RENAMED="%{$fg[blue]%}➜ "
+ZSH_THEME_GIT_PROMPT_UNMERGED="%{$fg[cyan]%}§ "
+ZSH_THEME_GIT_PROMPT_AHEAD="%{$fg[blue]%}𝝙 "
 
 # Colors vary depending on time lapsed.
 ZSH_THEME_GIT_TIME_SINCE_COMMIT_SHORT="%{$fg[green]%}"
