@@ -7,6 +7,9 @@ call vundle#begin()
 Plugin 'gmarik/Vundle.vim'
 
 
+
+Plugin 'Valloric/YouCompleteMe'           " code-completion engine
+Plugin 'Yggdroot/indentLine'              " display the indention levels with thin vertical lines
 Plugin 'bling/vim-airline'                " status/tabline
 Plugin 'christoomey/vim-tmux-navigator'   " seamless navigation between tmux panes and vim splits
 Plugin 'godlygeek/tabular'                " Aligning text
@@ -28,13 +31,13 @@ Plugin 'tpope/vim-eunuch'                 " UNIX helpers
 Plugin 'tpope/vim-fugitive'               " git wrapper
 Plugin 'tpope/vim-projectionist'          " project configuration
 Plugin 'tpope/vim-rails'                  " Ruby on Rails power tools
+Plugin 'tpope/vim-rake'                   " Ruby project power tools
 Plugin 'tpope/vim-repeat'                 " enable repeating supported plugin maps with .
 Plugin 'tpope/vim-rsi'                    " readline style insertion
 Plugin 'tpope/vim-surround'               " quoting/parenthesizing made simple
 Plugin 'tpope/vim-unimpaired'             " pairs of handy bracket mappings
 Plugin 'tpope/vim-vinegar'                " netrw improvements
-Plugin 'Valloric/YouCompleteMe'           " code-completion engine
-Plugin 'Yggdroot/indentLine'              " display the indention levels with thin vertical lines
+Plugin 'vim-ruby/vim-ruby'                " the latest version of ruby runtime
 
 " Sensible defaults
 Plugin 'tpope/vim-sensible' " needs to be last

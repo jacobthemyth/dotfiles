@@ -2,7 +2,7 @@ source $HOME/.profile
 
 ZSH_CUSTOM=$HOME/.zsh
 ZSH=$HOME/.oh-my-zsh
-ZSH_THEME="avit"
+ZSH_THEME="wedisagree"
 
 # Turn off control flow
 stty -ixon -ixoff
@@ -10,6 +10,9 @@ stty -ixon -ixoff
 # Vim
 export VISUAL=vim
 export EDITOR=$VISUAL
+
+# Use emacs bindings in spite of EDITOR/VISUAL
+bindkey -e
 
 # Comment out following line if you don't want red dots to be displayed
 # while waiting for completion
@@ -25,7 +28,7 @@ setopt MENU_COMPLETE
 zstyle ":completion:*:descriptions" format "%B%d%b"
 
 ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets root)
-plugins=(tm tmux vi-mode zsh-syntax-highlighting)
+plugins=(git tm tmux zsh-syntax-highlighting)
 source $ZSH/oh-my-zsh.sh
 
 if which rbenv > /dev/null; then eval "$(rbenv init -)"; fi
@@ -54,34 +57,5 @@ setopt extendedglob
 # Disable globbing for commands that need special characters
 alias rake="noglob rake"
 alias git="noglob git"
-
-# vi mode
-bindkey -v
-
-# backspace ,^h, ^u working even after returning from command mode
-bindkey '^?' backward-delete-char
-bindkey '^h' backward-delete-char
-bindkey '^u' backward-kill-line
-
-# ctrl-w removed word backwards
-bindkey '^w' backward-kill-word
-
-# ctrl-r starts searching history backward
-bindkey '^R' history-incremental-search-backward
-
-bindkey '^[[A' up-line-or-search
-bindkey '^[[B' down-line-or-search
-
-bindkey "^A" beginning-of-line
-bindkey "^E" end-of-line
-
-mkcd () {
-    mkdir -p "$@" && cd "$@"
-}
-
-growl() {
-  terminal-notifier -activate com.googlecode.iterm2 -title "Beep Boop Beep Boop" -message "$@"
-  say -v "Ting-Ting" -r 275 "Beep Boop Beep Boop"
-}
 
 [[ -f ~/.aliases ]] && source ~/.aliases

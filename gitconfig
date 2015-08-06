@@ -50,6 +50,7 @@
   ds = diff --stat=160,120
   dh1 = diff HEAD~1
   save = "!f() { git add -A && git commit -m \"`date`\"; }; f"
+	ctags = !.git/hooks/ctags
 [merge]
 	tool = Kaleidoscope
 [format]

@@ -37,9 +37,17 @@ tm() {
           fi
         done
 
-        tmux attach -t $attach:$window
+        if [ -z "$TMUX" ]; then
+          tmux attach -t $attach:$window
+        else
+          tmux switch-client -t $attach:$window
+        fi
       else
-        tmux attach -t $attach
+        if [ -z "$TMUX" ]; then
+          tmux attach -t $attach
+        else
+          tmux switch-client -t $attach
+        fi
       fi
     else
       if [ $# -gt 1 ]; then

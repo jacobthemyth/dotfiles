@@ -105,6 +105,7 @@ nnoremap <silent> <leader>gq :g/^/norm gqq<CR> " format all paragraphs
 nnoremap <silent> <leader>gj :%norm vipJ<CR> " unformat all paragraphs
 
 nnoremap <silent> <leader>m :!open -a Marked\ 2.app "%"<cr> " preview Markdown
+nnoremap <silent> <leader>e :Rexplore<cr>
 " }}}
 
 " Plugin settings {{{
@@ -120,7 +121,7 @@ let g:airline#extensions#tabline#right_sep = ' '
 let g:airline#extensions#tabline#right_alt_sep = '|'
 
 " indentLine
-let g:indentLine_char = '︙'
+let g:indentLine_char = '¦'
 
 " Goyo
 function! s:goyo_enter()
