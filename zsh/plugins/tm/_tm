@@ -20,27 +20,6 @@ _tm_complete() {
       _arguments "2:Windows:($_windows)"
     ;;
   esac
-
-  # local nocasematchWasOff=0
-  # setopt nocasematch >/dev/null || nocasematchWasOff=1
-  # (( nocasematchWasOff )) && setopt -s nocasematch
-
-  # local w matches=()
-
-  # if [[ $token == "" ]]; then
-  #   matches=($words)
-  # else
-  #   for w in $words; do
-  #     rx=$(ruby -e "print '$token'.gsub(/\s+/,'').split('').join('.*')")
-  #     if [[ "$w" =~ $rx ]]; then
-  #       matches+=($w)
-  #     fi
-  #   done
-  # fi
-
-  # (( nocasematchWasOff )) && setopt -u nocasematch
-
-  # COMPREPLY=("${matches[@]}")
 }
 
 _tm_complete "$@"

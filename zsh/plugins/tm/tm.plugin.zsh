@@ -9,7 +9,7 @@
 # window in the session, or to name the first window in a new session.
 tm() {
   local attach window
-  if [ -n $1 ]; then
+  if [[ -n $1 ]]; then
     attach=""
 
     tmux has-session -t $1 > /dev/null
@@ -60,6 +60,6 @@ tm() {
       fi
     fi
   else
-    tmux new
+    tmux new-session -As `basename $PWD`
   fi
 }

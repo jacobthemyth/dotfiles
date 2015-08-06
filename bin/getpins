@@ -1,7 +1,0 @@
-#!/bin/bash
-
-set -e
-
-xml=$(curl -s "https://api.pinboard.in/v1/posts/all?auth_token=`cat $HOME/.pinboard-token`&tag=$1")
-
-echo $xml | ruby -e "require('xmlsimple'); hash = XmlSimple.xml_in(STDIN); hash['post'].each {|p| puts p['href'] }"
