@@ -1,5 +1,3 @@
-# Combination of avit and wedisagree
-
 # The prompt
 PROMPT='$(_user_host)%{$fg[grey]%}[%c] %{$reset_color%}'
 
@@ -21,9 +19,9 @@ function _user_host() {
 
 ZSH_THEME_GIT_PROMPT_PREFIX="%{$fg[green]%}"
 ZSH_THEME_GIT_PROMPT_SUFFIX="%{$reset_color%}"
-ZSH_THEME_GIT_PROMPT_DIRTY=" %{$fg[red]%}✗%{$reset_color%}"
-ZSH_THEME_GIT_PROMPT_UNTRACKED="%{$fg[grey]%}◒ "
-ZSH_THEME_GIT_PROMPT_CLEAN=" %{$fg[green]%}✔%{$reset_color%}"
+ZSH_THEME_GIT_PROMPT_DIRTY=" %{$fg[red]%}✗ %{$reset_color%}"
+ZSH_THEME_GIT_PROMPT_UNTRACKED="%{$fg[grey]%}◒  "
+ZSH_THEME_GIT_PROMPT_CLEAN=" %{$fg[green]%}✔ %{$reset_color%}"
 ZSH_THEME_GIT_PROMPT_ADDED="%{$fg[cyan]%}✚ "
 ZSH_THEME_GIT_PROMPT_MODIFIED="%{$fg[yellow]%}⚑ "
 ZSH_THEME_GIT_PROMPT_DELETED="%{$fg[red]%}✖ "
