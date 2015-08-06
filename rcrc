@@ -1,1 +1,1 @@
-DOTFILES_DIRS=".dotfiles .dotfiles-local"
+DOTFILES_DIRS=".dotfiles Dropbox/.dotfiles-local"
