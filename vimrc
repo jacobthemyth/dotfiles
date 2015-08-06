@@ -105,7 +105,7 @@ nnoremap <silent> <leader>gq :g/^/norm gqq<CR> " format all paragraphs
 nnoremap <silent> <leader>gj :%norm vipJ<CR> " unformat all paragraphs
 
 nnoremap <silent> <leader>m :!open -a Marked\ 2.app "%"<cr> " preview Markdown
-nnoremap <silent> <leader>e :Rexplore<cr>
+nnoremap <silent> <leader>e :Explore<cr>
 " }}}
 
 " Plugin settings {{{
