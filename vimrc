@@ -81,6 +81,9 @@ xnoremap & :&&<CR>
 
 " Expand %% to current directory
 cnoremap %% <C-R>=fnameescape(expand('%:h')).'/'<cr>
+
+" automatically rebalance windows on vim resize
+autocmd VimResized * wincmd =
 " }}}
 
 " Keyboard bindings {{{
@@ -106,6 +109,10 @@ nnoremap <silent> <leader>gj :%norm vipJ<CR> " unformat all paragraphs
 
 nnoremap <silent> <leader>m :!open -a Marked\ 2.app "%"<cr> " preview Markdown
 nnoremap <silent> <leader>e :Explore<cr>
+
+" zoom a vim pane, <C-w>= to re-balance
+nnoremap <leader>- :wincmd _<cr>:wincmd \|<cr>
+nnoremap <leader>= :wincmd =<cr>
 " }}}
 
 " Plugin settings {{{
@@ -210,10 +217,6 @@ augroup END
 " GUI {{{
 " Needs to be last, to override CLI settings
 if has("gui_running")
-  if has("autocmd")
-    " Automatically resize splits when resizing MacVim window
-    autocmd VimResized * wincmd =
-  endif
 
   set guifont=Cousine:h16
   set guioptions-=r

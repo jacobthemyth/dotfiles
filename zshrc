@@ -4,6 +4,17 @@ ZSH_CUSTOM=$HOME/.zsh
 ZSH=$HOME/.oh-my-zsh
 ZSH_THEME="jacobthemyth"
 
+# COMPLETION SETTINGS
+# add custom completion scripts
+fpath=($ZSH_CUSTOM/completions $fpath)
+
+# compsys initialization
+autoload -U compinit
+compinit
+
+# Show description in completion menu
+zstyle ":completion:*:descriptions" format "%B%d%b"
+
 # Turn off control flow
 stty -ixon -ixoff
 
@@ -23,9 +34,6 @@ DISABLE_AUTO_TITLE=true
 
 # Comment out following line if you want greedy autocomplete
 setopt MENU_COMPLETE
-
-# Show description in completion menu
-zstyle ":completion:*:descriptions" format "%B%d%b"
 
 ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets root)
 plugins=(git tm tmux zsh-syntax-highlighting)

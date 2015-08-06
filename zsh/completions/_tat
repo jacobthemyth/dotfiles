@@ -1,0 +1,19 @@
+#compdef tat
+#autoload
+
+_tat_complete() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+
+  _arguments \
+    '1: :->session'
+
+  case $state in
+    session)
+      _sessions=$(tmux -q list-sessions 2> /dev/null | cut -f 1 -d ':' | tr "\n" "  ")
+      _arguments "1:Sessions:($_sessions)"
+    ;;
+  esac
+}
+
+_tat_complete "$@"
