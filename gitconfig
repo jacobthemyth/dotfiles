@@ -29,7 +29,7 @@
 	quotepath = false
 	trustctime = false
 	pager = less -FRSX
-	editor = nano
+	editor = vim
 [alias]
   st = status
   ci = commit
@@ -83,3 +83,5 @@
 	clean = git lfs clean %f
 	smudge = git lfs smudge %f
 	required = true
+[rebase]
+	autosquash = true
