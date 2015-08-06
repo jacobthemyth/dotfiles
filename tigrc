@@ -1,2 +1,0 @@
-bind diff T !git difftool
-bind status T !git difftool
