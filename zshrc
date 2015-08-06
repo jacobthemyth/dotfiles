@@ -2,7 +2,7 @@ source $HOME/.profile
 
 ZSH_CUSTOM=$HOME/.zsh
 ZSH=$HOME/.oh-my-zsh
-ZSH_THEME="wedisagree"
+ZSH_THEME="jacobthemyth"
 
 # Turn off control flow
 stty -ixon -ixoff
