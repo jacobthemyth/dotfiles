@@ -29,7 +29,6 @@ colorscheme pencil
 set number            " Show line numbers
 set colorcolumn=81
 set showmatch " show matching brackets
-set cmdheight=2
 
 " Open new split panes to right and bottom
 set splitbelow
