@@ -90,7 +90,7 @@ let mapleader = "\<Space>"
 
 nnoremap 0 ^
 
-nnoremap <leader>h :nohlsearch<CR>
+nnoremap <leader>r :nohlsearch<CR>:redraw!<CR>
 nnoremap <leader><leader> <c-^>
 nnoremap <Leader>o :CtrlP<CR>
 nnoremap <Leader>w :w<CR>
@@ -107,11 +107,51 @@ nnoremap <silent> <leader>gq :g/^/norm gqq<CR> " format all paragraphs
 nnoremap <silent> <leader>gj :%norm vipJ<CR> " unformat all paragraphs
 
 nnoremap <silent> <leader>m :!open -a Marked\ 2.app "%"<cr> " preview Markdown
-nnoremap <silent> <leader>e :Explore<cr>
 
 " zoom a vim pane, <C-w>= to re-balance
 nnoremap <leader>- :wincmd _<cr>:wincmd \|<cr>
 nnoremap <leader>= :wincmd =<cr>
+
+" Make VimFiler work more better
+nnoremap <silent> - :VimFilerBufferDir<cr>
+nnoremap <silent> <leader>d :VimFilerExplorer<cr>
+
+let g:vimfiler_no_default_key_mappings = 1
+autocmd FileType vimfiler call SetupVimfiler()
+function! SetupVimfiler()
+  " Keep space leader, use tab for marking
+  vmap <buffer> <Tab> <Plug>(vimfiler_toggle_mark_selected_lines)
+  nmap <buffer> <Tab> <Plug>(vimfiler_toggle_mark_current_line)
+
+  " Keep <C-l> for nav, use <leader>r to redraw
+  nmap <buffer> <leader>r :nohlsearch<CR><Plug>(vimfiler_redraw_screen)
+
+  " Use netrw/vinegar bindings
+  nmap <buffer> <F1> <Plug>(vimfiler_help)
+  nmap <buffer> ! <Plug>(vimfiler_mark_current_line)<Plug>(vimfiler_execute_shell_command)
+  nmap <buffer> R <Plug>(vimfiler_mark_current_line)<Plug>(vimfiler_move_file)
+  nmap <buffer> D <Plug>(vimfiler_mark_current_line)<Plug>(vimfiler_delete_file)
+  nmap <buffer> <del> <Plug>(vimfiler_mark_current_line)<Plug>(vimfiler_delete_file)
+  nmap <buffer> d <Plug>(vimfiler_make_directory)
+  nmap <buffer> % <Plug>(vimfiler_new_file)
+  nmap <buffer> - <Plug>(vimfiler_switch_to_parent_directory)
+  nmap <buffer> cl <Plug>(vimfiler_cd_vim_current_dir)
+  nmap <buffer> <cr> <Plug>(vimfiler_cd_or_edit)
+  nmap <buffer> o <Plug>(vimfiler_expand_or_edit)
+
+" TODO
+" gh  Quick hide/unhide of dot-files                       |netrw-gh|
+" t  Enter the file/directory under the cursor in a new tab|netrw-t|
+" u  Change to recently-visited directory                 |netrw-u|
+" U  Change to subsequently-visited directory             |netrw-U|
+" x  View file with an associated program                 |netrw-x|
+" v  Enter the file/directory under the cursor in a new   |netrw-v|
+"    browser window.  A vertical split is used.
+endfunction
+" }}}
+
+" Custom commands {{{
+command! -nargs=+ -complete=file -bar Ag silent! grep! <args>|cwindow|redraw!
 " }}}
 
 " Plugin settings {{{
@@ -168,13 +208,16 @@ autocmd! User GoyoLeave
 autocmd  User GoyoEnter nested call <SID>goyo_enter()
 autocmd  User GoyoLeave nested call <SID>goyo_leave()
 
+" markdown folding
+let g:markdown_fold_style = 'nested'
+
 " Syntastic
 let g:syntastic_check_on_open=1 " check on open as well as save
 
 " The Silver Searcher
 if executable('ag')
   " Use Ag over Grep
-  set grepprg=ag\ --nogroup\ --nocolor
+  set grepprg=ag\ --nogroup\ --nocolor\ --smart-case
 endif
 
 " CtrlP
@@ -192,6 +235,17 @@ let g:ctrlp_custom_ignore = {
   \ }
 
 let g:mustache_abbreviations = 1
+
+" YouCompleteMe
+let g:ycm_collect_identifiers_from_tags_files = 1
+let g:ycm_seed_identifiers_with_syntax = 1
+
+" vimfiler
+let g:vimfiler_as_default_explorer = 1
+call vimfiler#custom#profile('default', 'context', {
+\   'safe' : 0,
+\   'simple' : 1,
+\ })
 " }}}
 
 " Auto Commands {{{
@@ -224,10 +278,11 @@ if has("gui_running")
   set guifont=Cousine:h16
   set background=light
   set guioptions-=r " hide righthand scroll bar
+
+  if has("gui_macvim")
+    macmenu Tools.Make key=<nop>
+  endif
 endif
 
-if has("gui_macvim")
-  macmenu Tools.Make key=<nop>
-endif
 " }}}
 " vim: foldmethod=marker:foldlevel=0
