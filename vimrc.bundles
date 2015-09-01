@@ -6,8 +6,6 @@ call vundle#begin()
 " required!
 Plugin 'gmarik/Vundle.vim'
 
-
-
 Plugin 'Valloric/YouCompleteMe'           " code-completion engine
 Plugin 'Yggdroot/indentLine'              " display the indention levels with thin vertical lines
 Plugin 'bling/vim-airline'                " status/tabline
@@ -17,6 +15,7 @@ Plugin 'junegunn/goyo.vim'                " distraction-free writing
 Plugin 'kana/vim-textobj-user'            " Create your own text objects (required by rubyblock)
 Plugin 'kien/ctrlp.vim'                   " fuzzy finder
 Plugin 'mattn/emmet-vim'                  " web dev workflow toolkit
+Plugin 'nelstrom/vim-markdown-folding'    " foldexpr for markdown headers
 Plugin 'mustache/vim-mustache-handlebars' " mustache and handlebars mode for vim
 Plugin 'nelstrom/vim-qargs'               " load quickfix files into args
 Plugin 'nelstrom/vim-textobj-rubyblock'   " A custom text object for selecting ruby blocks

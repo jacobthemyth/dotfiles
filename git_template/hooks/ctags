@@ -4,6 +4,6 @@ set -e
 if hash /usr/local/bin/ctags 2>/dev/null; then
   PATH="/usr/local/bin:$PATH"
   trap "rm -f .git/tags.$$" EXIT
-  ctags --tag-relative -Rf.git/tags.$$ --exclude=.git --languages=-javascript,sql
+  ctags --tag-relative -Rf.git/tags.$$ --exclude=.git --fields=+l
   mv .git/tags.$$ .git/tags
 fi
