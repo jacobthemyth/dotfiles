@@ -1,0 +1,13 @@
+#! /bin/bash
+TMUX=
+SESSION="academy"
+if ! (tmux has-session -t "$SESSION" >/dev/null 2>&1); then
+  tmux new-session -s "$SESSION" -n notes -c "$HOME/Dropbox/Information/Academy/" -d
+  tmux send-keys -t "$SESSION" "$EDITOR ." C-m
+
+  tmux select-window -t "$SESSION":1
+
+  tat "$SESSION"
+else
+  tat "$SESSION"
+fi
