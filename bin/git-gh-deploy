@@ -1,7 +1,5 @@
 #!/bin/sh
 
-set -e
-
 if [ -z "$1" ]
 then
   echo "You need to specify which directory you want to deploy to GitHub Pages"
