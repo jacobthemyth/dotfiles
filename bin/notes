@@ -1,10 +1,10 @@
 #! /bin/bash
-SESSION="academy"
+SESSION="notes"
 if ! (tmux has-session -t "$SESSION" >/dev/null 2>&1); then
   TMUX_PREV=$TMUX
   TMUX=
 
-  tmux new-session -s "$SESSION" -n notes -c "$HOME/Dropbox/Information/Academy/" -d
+  tmux new-session -s "$SESSION" -n notes -c "$HOME/Dropbox/Information/" -d
   tmux send-keys -t "$SESSION" "$EDITOR ." C-m
 
   TMUX=$TMUX_PREV

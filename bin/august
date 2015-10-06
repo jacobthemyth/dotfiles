@@ -1,7 +1,10 @@
 #! /bin/bash
-TMUX=
 SESSION="august"
 if ! (tmux has-session -t "$SESSION" >/dev/null 2>&1); then
+
+  TMUX_PREV=$TMUX
+  TMUX=
+
   tmux new-session -s "$SESSION" -n notes -c "$HOME/Code/TIY-GVL-FEE-2015-August/notes/" -d
   tmux send-keys -t "$SESSION" "$EDITOR ." C-m
   tmux new-window -n assignments -t "$SESSION" -c "$HOME/Code/TIY-GVL-FEE-2015-August/assignments/"
@@ -9,6 +12,9 @@ if ! (tmux has-session -t "$SESSION" >/dev/null 2>&1); then
   tmux new-window -n lessons -t "$SESSION" -c "$HOME/Dropbox/Information/Academy/lessons/"
   tmux send-keys -t "$SESSION" "$EDITOR ." C-m
   tmux select-window -t "$SESSION":1
+
+  TMUX=$TMUX_PREV
+
   tat "$SESSION"
 else
   tat "$SESSION"
