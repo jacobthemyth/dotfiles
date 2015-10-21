@@ -1,11 +1,4 @@
 {
-  "globals": {
-    "$": true,
-    "_": true,
-    "React": true,
-    "ReactDOM": true
-  },
-
   "ecmaFeatures": {
     "arrowFunctions": true,
     "binaryLiterals": true,
@@ -55,7 +48,7 @@
     "react/no-did-update-set-state": 1,
     "react/no-direct-mutation-state": 1,
     "react/no-unknown-property": 1,
-    "react/prop-types": 1,
+    "react/prop-types": [ 1, { ignore: ['params'] } ],
     "react/react-in-jsx-scope": 1,
     "react/self-closing-comp": 1,
     "react/sort-comp": 1,
