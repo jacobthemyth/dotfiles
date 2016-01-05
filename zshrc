@@ -39,6 +39,8 @@ ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets root)
 plugins=(git tm tmux zsh-syntax-highlighting)
 source $ZSH/oh-my-zsh.sh
 
+source $(brew --prefix nvm)/nvm.sh
+
 if which rbenv > /dev/null; then eval "$(rbenv init -)"; fi
 if which homework > /dev/null; then eval "$(homework setup -)"; fi
 

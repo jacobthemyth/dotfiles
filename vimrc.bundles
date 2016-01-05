@@ -6,7 +6,7 @@ call vundle#begin()
 " required!
 Plugin 'gmarik/Vundle.vim'
 
-Plugin 'Valloric/YouCompleteMe'           " code-completion engine
+Plugin 'Valloric/YouCompleteMe'           " A code-completion engine
 Plugin 'Yggdroot/indentLine'              " display the indention levels with thin vertical lines
 Plugin 'bling/vim-airline'                " status/tabline
 Plugin 'christoomey/vim-tmux-navigator'   " seamless navigation between tmux panes and vim splits
@@ -14,12 +14,15 @@ Plugin 'godlygeek/tabular'                " Aligning text
 Plugin 'junegunn/goyo.vim'                " distraction-free writing
 Plugin 'kana/vim-textobj-user'            " Create your own text objects (required by rubyblock)
 Plugin 'kien/ctrlp.vim'                   " fuzzy finder
+Plugin 'lambdatoast/elm.vim'
 Plugin 'mattn/emmet-vim'                  " web dev workflow toolkit
 Plugin 'nelstrom/vim-markdown-folding'    " foldexpr for markdown headers
 Plugin 'mustache/vim-mustache-handlebars' " mustache and handlebars mode for vim
+Plugin 'mxw/vim-jsx'
 Plugin 'nelstrom/vim-qargs'               " load quickfix files into args
 Plugin 'nelstrom/vim-textobj-rubyblock'   " A custom text object for selecting ruby blocks
 Plugin 'nelstrom/vim-visual-star-search'  " start a * or # search from a visual block
+Plugin 'pangloss/vim-javascript'          " Vastly improved JS syntax
 Plugin 'reedes/vim-colors-pencil'         " Light (& dark) color scheme inspired by iA Writer
 Plugin 'scrooloose/syntastic'             " syntax checking
 Plugin 'tpope/vim-bundler'                " Lightweight support for Ruby's Bundler

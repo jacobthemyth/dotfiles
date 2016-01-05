@@ -10,10 +10,14 @@ endif
 set modelines=1 " Allow modelines (i.e. executable comments)
 set switchbuf+=usetab
 set hidden
-set mouse+=a " Enable mouse use in all modes
-if &term =~ '^screen'
+
+if !has('nvim')
+  set mouse+=a " Enable mouse use in all modes
+
+  if &term =~ '^screen'
     " tmux knows the extended mouse mode
     set ttymouse=xterm2
+  endif
 endif
 
 " Search
@@ -115,6 +119,10 @@ nnoremap <leader>= :wincmd =<cr>
 " grep / silver searcher
 nnoremap K :grep! "\b<C-R><C-W>\b"<CR>:cw<CR>:redraw!<CR>
 nnoremap \ :Ag<SPACE>
+
+nnoremap <leader>el :ElmEvalLine<CR>
+vnoremap <leader>es :<C-u>ElmEvalSelection<CR>
+nnoremap <leader>em :ElmMakeCurrentFile<CR>
 " }}}
 
 " Custom commands {{{
@@ -179,7 +187,12 @@ autocmd  User GoyoLeave nested call <SID>goyo_leave()
 let g:markdown_fold_style = 'nested'
 
 " Syntastic
-let g:syntastic_check_on_open=1 " check on open as well as save
+let syntastic_mode_map = { 'passive_filetypes': ['html'] }
+let g:syntastic_javascript_checkers = ['eslint']
+let g:syntastic_always_populate_loc_list = 1
+let g:syntastic_auto_loc_list = 1
+let g:syntastic_check_on_open = 1
+let g:syntastic_check_on_wq = 0
 
 " The Silver Searcher
 if executable('ag')
@@ -206,6 +219,10 @@ let g:mustache_abbreviations = 1
 " YouCompleteMe
 let g:ycm_collect_identifiers_from_tags_files = 1
 let g:ycm_seed_identifiers_with_syntax = 1
+
+" JSX
+" Allow in .js files
+let g:jsx_ext_required = 0
 " }}}
 
 " Auto Commands {{{
@@ -232,17 +249,4 @@ augroup vimrcEx
 augroup END
 " }}}
 
-" GUI {{{
-" Needs to be last, to override CLI settings
-if has("gui_running")
-  set guifont=Cousine:h16
-  set background=light
-  set guioptions-=r " hide righthand scroll bar
-
-  if has("gui_macvim")
-    macmenu Tools.Make key=<nop>
-  endif
-endif
-
-" }}}
 " vim: foldmethod=marker:foldlevel=0
