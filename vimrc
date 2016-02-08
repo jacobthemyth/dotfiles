@@ -251,4 +251,17 @@ augroup vimrcEx
 augroup END
 " }}}
 
+" GUI {{{
+" Needs to be last to override CLI settings
+if has("gui_running")
+  set guifont=Hack:h16
+  set background=light
+  set guioptions-=r " hide righthand scroll bar
+
+  if has("gui_macvim")
+    macmenu Tools.Make key=<nop>
+  endif
+endif
+" }}}
+
 " vim: foldmethod=marker:foldlevel=0
