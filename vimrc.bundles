@@ -8,6 +8,7 @@ Plugin 'gmarik/Vundle.vim'
 
 Plugin 'Valloric/YouCompleteMe'           " A code-completion engine
 Plugin 'Yggdroot/indentLine'              " display the indention levels with thin vertical lines
+Plugin 'airblade/vim-gitgutter'
 Plugin 'bling/vim-airline'                " status/tabline
 Plugin 'christoomey/vim-tmux-navigator'   " seamless navigation between tmux panes and vim splits
 Plugin 'godlygeek/tabular'                " Aligning text

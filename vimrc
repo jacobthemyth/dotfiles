@@ -103,6 +103,8 @@ nnoremap <Leader>P "*P
 vnoremap <Leader>p "*p
 vnoremap <Leader>P "*P
 
+nnoremap <leader>gg :GitGutterLineHighlightsToggle<cr>
+
 nnoremap <leader>w :Goyo<CR>
 nnoremap <silent> <leader>gq :g/^/norm gqq<CR> " format all paragraphs
 nnoremap <silent> <leader>gj :%norm vipJ<CR> " unformat all paragraphs
