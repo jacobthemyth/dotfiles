@@ -60,7 +60,7 @@ set nowrap
 " Backup and swap files
 set backup
 set backupdir^=~/.vim/_backup//    " where to put backup files.
-set directory^=~/.vim/_temp//      " where to put swap files.
+set directory^=~/.vim/swap//      " where to put swap files.
 
 " Files and directories to hide
 set wildignore+=*.o,*.out,*.obj,.git/*,*.rbc,*.rbo,*.class,*.gem,.DS_Store
@@ -105,6 +105,9 @@ vnoremap <Leader>P "*P
 
 nnoremap <leader>gg :GitGutterLineHighlightsToggle<cr>
 
+nnoremap <leader>e :VimFilerExplorer<cr>
+nnoremap <leader>f :VimFiler<cr>
+
 nnoremap <leader>w :Goyo<CR>
 nnoremap <silent> <leader>gq :g/^/norm gqq<CR> " format all paragraphs
 nnoremap <silent> <leader>gj :%norm vipJ<CR> " unformat all paragraphs
@@ -121,10 +124,6 @@ nnoremap <leader>= :wincmd =<cr>
 " grep / silver searcher
 nnoremap K :grep! "\b<C-R><C-W>\b"<CR>:cw<CR>:redraw!<CR>
 nnoremap \ :Ag<SPACE>
-
-nnoremap <leader>el :ElmEvalLine<CR>
-vnoremap <leader>es :<C-u>ElmEvalSelection<CR>
-nnoremap <leader>em :ElmMakeCurrentFile<CR>
 " }}}
 
 " Custom commands {{{
@@ -132,6 +131,44 @@ command! -nargs=+ -complete=file -bar Ag silent! grep! <args>|cwindow|redraw!
 " }}}
 
 " Plugin settings {{{
+let g:vim_json_syntax_conceal = 0
+
+" Make VimFiler work more better
+nnoremap <silent> - :VimFilerBufferDir<cr>
+
+let g:vimfiler_as_default_explorer = 1
+let g:vimfiler_no_default_key_mappings = 1
+call vimfiler#custom#profile('default', 'context', {
+\   'safe' : 0,
+\   'simple' : 1,
+\ })
+autocmd FileType vimfiler call SetupVimfiler()
+function! SetupVimfiler()
+  " Keep space leader, use tab for marking
+  vmap <buffer> <Tab> <Plug>(vimfiler_toggle_mark_selected_lines)
+  nmap <buffer> <Tab> <Plug>(vimfiler_toggle_mark_current_line)
+
+  " Keep <C-l> for nav, use <leader>r to redraw
+  nmap <buffer> <leader>r :nohlsearch<CR><Plug>(vimfiler_redraw_screen)
+
+  " Use netrw/vinegar bindings
+  nmap <buffer> <F1> <Plug>(vimfiler_help)
+  nmap <buffer> ! <Plug>(vimfiler_mark_current_line)<Plug>(vimfiler_execute_shell_command)
+  nmap <buffer> R <Plug>(vimfiler_mark_current_line)<Plug>(vimfiler_rename_file)
+  nmap <buffer> D <Plug>(vimfiler_mark_current_line)<Plug>(vimfiler_delete_file)
+  nmap <buffer> <del> <Plug>(vimfiler_mark_current_line)<Plug>(vimfiler_delete_file)
+  nmap <buffer> d <Plug>(vimfiler_make_directory)
+  nmap <buffer> % <Plug>(vimfiler_new_file)
+  nmap <buffer> - <Plug>(vimfiler_switch_to_parent_directory)
+  nmap <buffer> cl <Plug>(vimfiler_cd_vim_current_dir)
+  nmap <buffer> <cr> <Plug>(vimfiler_cd_or_edit)
+  nmap <buffer> o <Plug>(vimfiler_expand_or_edit)
+  nmap <buffer> gh <Plug>(vimfiler_toggle_visible_dot_files)
+  nmap <buffer> x <Plug>(vimfiler_execute_system_associated)
+  nmap <buffer> . <Plug>(vimfiler_toggle_visible_dot_files)
+  nmap <buffer> v <Plug>(vimfiler_split_edit_file)<C-W>=<CR>
+endfunction
+
 " Airline
 let g:airline_theme = 'pencil'
 let g:airline_left_sep = ' '
@@ -147,9 +184,6 @@ let g:airline#extensions#tabline#show_tab_type = 0
 let g:airline#extensions#tabline#show_close_button = 0
 
 let g:airline_section_y = ""       " remove fileencoding[fileformat]
-
-" indentLine
-let g:indentLine_char = '¦'
 
 " Goyo
 function! s:goyo_enter()
@@ -192,9 +226,9 @@ let g:markdown_fold_style = 'nested'
 let syntastic_mode_map = { 'passive_filetypes': ['html'] }
 let g:syntastic_javascript_checkers = ['eslint']
 let g:syntastic_always_populate_loc_list = 1
-let g:syntastic_auto_loc_list = 1
 let g:syntastic_check_on_open = 1
 let g:syntastic_check_on_wq = 0
+let g:syntastic_json_checkers = ['jsonlint']
 
 " The Silver Searcher
 if executable('ag')
@@ -241,6 +275,7 @@ augroup vimrcEx
 
   " Markdown
   au BufRead,BufNewFile *.md set filetype=markdown
+  autocmd FileType markdown setlocal textwidth=80
   autocmd FileType markdown setlocal wrap
   autocmd FileType markdown setlocal linebreak
   autocmd FileType markdown setlocal nolist
@@ -264,4 +299,12 @@ if has("gui_running")
 endif
 " }}}
 
+" Mac {{{
+if has("unix")
+  let s:uname = substitute(system("uname -s"), '\n', '', '')
+  if s:uname == "Darwin"
+    let g:netrw_browsex_viewer= "open"
+  endif
+endif
+" }}}
 " vim: foldmethod=marker:foldlevel=0

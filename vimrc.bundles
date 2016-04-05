@@ -7,7 +7,6 @@ call vundle#begin()
 Plugin 'gmarik/Vundle.vim'
 
 Plugin 'Valloric/YouCompleteMe'           " A code-completion engine
-Plugin 'Yggdroot/indentLine'              " display the indention levels with thin vertical lines
 Plugin 'airblade/vim-gitgutter'
 Plugin 'bling/vim-airline'                " status/tabline
 Plugin 'christoomey/vim-tmux-navigator'   " seamless navigation between tmux panes and vim splits
@@ -15,7 +14,6 @@ Plugin 'godlygeek/tabular'                " Aligning text
 Plugin 'junegunn/goyo.vim'                " distraction-free writing
 Plugin 'kana/vim-textobj-user'            " Create your own text objects (required by rubyblock)
 Plugin 'kien/ctrlp.vim'                   " fuzzy finder
-Plugin 'lambdatoast/elm.vim'
 Plugin 'mattn/emmet-vim'                  " web dev workflow toolkit
 Plugin 'nelstrom/vim-markdown-folding'    " foldexpr for markdown headers
 Plugin 'mustache/vim-mustache-handlebars' " mustache and handlebars mode for vim
@@ -26,6 +24,8 @@ Plugin 'nelstrom/vim-visual-star-search'  " start a * or # search from a visual 
 Plugin 'pangloss/vim-javascript'          " Vastly improved JS syntax
 Plugin 'reedes/vim-colors-pencil'         " Light (& dark) color scheme inspired by iA Writer
 Plugin 'scrooloose/syntastic'             " syntax checking
+Plugin 'Shougo/unite.vim'
+Plugin 'Shougo/vimfiler.vim'
 Plugin 'tpope/vim-bundler'                " Lightweight support for Ruby's Bundler
 Plugin 'tpope/vim-commentary'             " comment mappings
 Plugin 'tpope/vim-dispatch'               " asynchronous build and test dispatcher
@@ -38,8 +38,6 @@ Plugin 'tpope/vim-rake'                   " Ruby project power tools
 Plugin 'tpope/vim-repeat'                 " enable repeating supported plugin maps with .
 Plugin 'tpope/vim-rsi'                    " readline style insertion
 Plugin 'tpope/vim-surround'               " quoting/parenthesizing made simple
-Plugin 'tpope/vim-unimpaired'             " pairs of handy bracket mappings
-Plugin 'tpope/vim-vinegar'                " netrw improvements
 Plugin 'vim-ruby/vim-ruby'                " the latest version of ruby runtime
 
 " Sensible defaults
