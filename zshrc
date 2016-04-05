@@ -42,7 +42,6 @@ source $ZSH/oh-my-zsh.sh
 source $(brew --prefix nvm)/nvm.sh
 
 if which rbenv > /dev/null; then eval "$(rbenv init -)"; fi
-if which homework > /dev/null; then eval "$(homework setup -)"; fi
 
 # makes color constants available
 autoload -U colors
