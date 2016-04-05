@@ -84,3 +84,5 @@
   autosquash = true
 [commit]
   template = ~/.gitmessage
+[credential]
+	helper = osxkeychain
