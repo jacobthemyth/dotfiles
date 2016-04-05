@@ -1,1 +1,2 @@
+#!/bin/bash
 DOTFILES_DIRS=".dotfiles Dropbox/.dotfiles-local"
