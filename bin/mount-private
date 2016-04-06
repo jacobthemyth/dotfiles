@@ -2,6 +2,7 @@
 
 set -e
 
+# Set the volume name using `sudo diskutil rename "NO NAME" "SECRETS"`
 VOLUME_NAME="SECRETS"
 veracrypt='/Applications/Veracrypt.app/Contents/MacOS/VeraCrypt'
 if hash $veracrypt 2>/dev/null; then
