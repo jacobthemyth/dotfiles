@@ -1,0 +1,78 @@
+#!/bin/sh
+
+brew bundle --file=- <<EOF
+tap "caskroom/fonts"
+brew "goles/battery/battery"
+brew "flow"
+brew "fzf"
+brew "ghc"
+brew "gist"
+brew "mackup"
+brew "phantomjs"
+brew "pv"
+brew "ranger"
+brew "rmtrash"
+brew "tig"
+brew "tmate"
+brew "tree"
+brew "watchman"
+brew "wget"
+brew "youtube-dl"
+cask "font-hack"
+cask "dockertoolbox"
+EOF
+
+default_docker_machine() {
+  docker-machine ls | grep -Fq "default"
+}
+
+if ! default_docker_machine; then
+  docker-machine create --driver virtualbox default
+fi
+
+default_docker_machine_running() {
+  default_docker_machine | grep -Fq "Running"
+}
+
+if ! default_docker_machine_running; then
+  docker-machine start default
+fi
+
+fancy_echo "Cleaning up old Homebrew formulae ..."
+brew cleanup
+brew cask cleanup
+
+fancy_echo "Loading thoughtbot/dotfiles..."
+mkdir -p "$HOME/Code/thoughtbot"
+if [ ! -d "$HOME/Code/thoughtbot/dotfiles" ]; then
+  git clone https://github.com/thoughtbot/dotfiles.git "$HOME/Code/thoughtbot/dotfiles"
+else
+  cd "$HOME/Code/thoughtbot/dotfiles" && git pull
+fi
+
+echo "Loading jacobthemyth/dotfiles"
+mkdir -p "$HOME/Code/jacobthemyth"
+if [ ! -d "$HOME/Code/jacobthemyth/dotfiles" ]; then
+  git clone https://github.com/jacobthemyth/dotfiles.git "$HOME/Code/jacobthemyth/dotfiles"
+else
+  cd "$HOME/Code/jacobthemyth/dotfiles" && git pull
+fi
+
+if [ ! -e /Library/Frameworks/MacFUSE.framework ]; then
+  fancy_echo "Installing MacFUSE..."
+  open $HOME/Code/jacobthemyth/dotfiles/assets/install-osxfuse.pkg
+  read -n1 -rsp 'Press any key to continue or Ctrl+C to exit...\n'
+fi
+
+if [ ! -e /Applications/VeraCrypt.app ]; then
+  fancy_echo "Installing VeraCrypt..."
+  open $HOME/Code/jacobthemyth/dotfiles/assets/install-veracrypt.pkg
+  read -n1 -rsp 'Press any key to continue or Ctrl+C to exit...\n'
+fi
+
+fancy_echo "Updating dotfiles ..."
+if [ -r "$HOME/.rcrc" ]; then
+  rcup
+else
+  env RCRC="$HOME/Code/jacobthemyth/dotfiles/rcrc" rcup
+fi

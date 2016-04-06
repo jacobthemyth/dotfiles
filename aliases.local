@@ -6,4 +6,6 @@ alias today="date +%Y-%m-%d"
 
 # Applications
 alias marked="open -a Marked\ 2.app"
-alias veracrypt='/Applications/Veracrypt.app/Contents/MacOS/Veracrypt --text'
+if [[ "$OSTYPE" =~ ^darwin ]]; then
+  alias veracrypt='/Applications/Veracrypt.app/Contents/MacOS/VeraCrypt --text'
+fi

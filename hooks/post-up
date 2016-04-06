@@ -1,12 +1,4 @@
 #!/bin/sh
-if [ ! -e /Library/Frameworks/MacFUSE.framework ]; then
-  open $PWD/../assets/install-osxfuse.pkg
-fi
-
-if [ ! -e /Applications/VeraCrypt.app ]; then
-  open $PWD/../assets/install-veracrypt.pkg
-fi
-
 RBENV_BUNDLER_DIR=$HOME/.rbenv/plugins/rbenv-bundler
 if [ -d $RBENV_BUNDLER_DIR ]; then
   cd $RBENV_BUNDLER_DIR && git pull

@@ -1,0 +1,5 @@
+#! /bin/bash
+
+if hash veracrypt 2>/dev/null; then
+  veracrypt -t -k "" --protect-hidden=no $PWD/../private.vc $HOME/.dotfiles-private/
+fi
