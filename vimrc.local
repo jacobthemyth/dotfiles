@@ -50,38 +50,6 @@ nnoremap <leader>= :wincmd =<cr>
 " Plugin settings {{{
 let g:vim_json_syntax_conceal = 0
 
-" Make VimFiler work more better
-nnoremap <silent> - :VimFilerBufferDir<cr>
-let g:vimfiler_as_default_explorer = 1
-let g:vimfiler_no_default_key_mappings = 1
-call vimfiler#custom#profile('default', 'context', {
-\   'safe' : 0,
-\   'simple' : 1,
-\ })
-autocmd FileType vimfiler call SetupVimfiler()
-function! SetupVimfiler()
-  " Keep space leader, use tab for marking
-  vmap <buffer> <Tab> <Plug>(vimfiler_toggle_mark_selected_lines)
-  nmap <buffer> <Tab> <Plug>(vimfiler_toggle_mark_current_line)
-
-  " Use netrw/vinegar bindings
-  nmap <buffer> <F1> <Plug>(vimfiler_help)
-  nmap <buffer> ! <Plug>(vimfiler_mark_current_line)<Plug>(vimfiler_execute_shell_command)
-  nmap <buffer> R <Plug>(vimfiler_mark_current_line)<Plug>(vimfiler_rename_file)
-  nmap <buffer> D <Plug>(vimfiler_mark_current_line)<Plug>(vimfiler_delete_file)
-  nmap <buffer> <del> <Plug>(vimfiler_mark_current_line)<Plug>(vimfiler_delete_file)
-  nmap <buffer> d <Plug>(vimfiler_make_directory)
-  nmap <buffer> % <Plug>(vimfiler_new_file)
-  nmap <buffer> - <Plug>(vimfiler_switch_to_parent_directory)
-  nmap <buffer> cl <Plug>(vimfiler_cd_vim_current_dir)
-  nmap <buffer> <cr> <Plug>(vimfiler_cd_or_edit)
-  nmap <buffer> o <Plug>(vimfiler_expand_or_edit)
-  nmap <buffer> gh <Plug>(vimfiler_toggle_visible_dot_files)
-  nmap <buffer> x <Plug>(vimfiler_execute_system_associated)
-  nmap <buffer> . <Plug>(vimfiler_toggle_visible_dot_files)
-  nmap <buffer> v <Plug>(vimfiler_split_edit_file)<C-W>=<CR>
-endfunction
-
 " Airline
 let g:airline_theme = 'solarized'
 let g:airline_left_sep = ' '
