@@ -8,7 +8,7 @@ VOLUME_PATH="$(dirname $0)/../private.vc"
 VERACRYPT='/Applications/Veracrypt.app/Contents/MacOS/VeraCrypt'
 MOUNT_POINT="$HOME/.dotfiles-private/"
 
-if hash $veracrypt 2>/dev/null; then
+if hash $VERACRYPT 2>/dev/null; then
   $VERACRYPT -t -k "" --protect-hidden=no $VOLUME_PATH $MOUNT_POINT
   DEVICE_ID=`/usr/libexec/PlistBuddy -c "Print AllDisksAndPartitions:0:DeviceIdentifier" /dev/stdin <<< $(diskutil list -plist $VOLUME_LABEL)`
   diskutil unmount "$DEVICE_ID"
