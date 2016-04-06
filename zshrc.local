@@ -1,2 +1,6 @@
 # Show description in completion menu
 zstyle ":completion:*:descriptions" format "%B%d%b"
+
+[ -f $HOME/.config/digitalocean ] && source $HOME/.config/digitalocean
+
+export PATH="$PATH:$(brew --prefix coreutils)/libexec/gnubin"
