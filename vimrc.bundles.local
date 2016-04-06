@@ -9,6 +9,7 @@ Plug 'mustache/vim-mustache-handlebars' " mustache and handlebars mode for vim
 Plug 'pangloss/vim-javascript'          " Vastly improved JS syntax
 Plug 'scrooloose/syntastic'             " syntax checking
 Plug 'tpope/vim-rsi'                    " readline style insertion
+Plug 'tpope/vim-vinegar'                " netrw enhancements
 Plug 'vim-airline/vim-airline'          " status/tabline
 Plug 'vim-airline/vim-airline-themes'
 
