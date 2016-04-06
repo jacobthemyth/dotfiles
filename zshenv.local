@@ -1,1 +1,1 @@
-source $HOME/.config/digitalocean
+[ -f $HOME/.config/digitalocean ] && source $HOME/.config/digitalocean

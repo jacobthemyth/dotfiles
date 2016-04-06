@@ -1,0 +1,13 @@
+#! /bin/bash
+
+set -e
+
+VOLUME_NAME="SECRETS"
+veracrypt='/Applications/Veracrypt.app/Contents/MacOS/VeraCrypt'
+if hash $veracrypt 2>/dev/null; then
+  $veracrypt -t -k "" --protect-hidden=no "$(dirname $0)/../private.vc" $HOME/.dotfiles-private/
+  DEVICE_ID=`/usr/libexec/PlistBuddy -c "Print AllDisksAndPartitions:0:DeviceIdentifier" /dev/stdin <<< $(diskutil list -plist $VOLUME_NAME)`
+  diskutil unmount "$DEVICE_ID"
+  mkdir -p "$HOME/.dotfiles-private"
+  sudo mount -r -t msdos -o "-u=$UID,-m=700" "/dev/$DEVICE_ID" "$HOME/.dotfiles-private"
+fi
