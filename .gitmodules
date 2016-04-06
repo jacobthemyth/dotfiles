@@ -1,3 +1,12 @@
 [submodule "zsh/configs/zsh-history-substring-search"]
 	path = zsh/configs/zsh-history-substring-search
 	url = https://github.com/zsh-users/zsh-history-substring-search.git
+[submodule "rbenv/plugins/rbenv-bundler"]
+	path = rbenv/plugins/rbenv-bundler
+	url = https://github.com/carsomyr/rbenv-bundler.git
+[submodule "rbenv/plugins/rbenv-ctags"]
+	path = rbenv/plugins/rbenv-ctags
+	url = https://github.com/tpope/rbenv-ctags.git
+[submodule "rbenv/plugins/rbenv-default-gems"]
+	path = rbenv/plugins/rbenv-default-gems
+	url = https://github.com/rbenv/rbenv-default-gems.git
