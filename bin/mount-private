@@ -2,7 +2,7 @@
 
 set -e
 
-# Set the volume name using `sudo diskutil rename "NO NAME" "SECRETS"`
+# Set the volume label using `sudo diskutil rename <CURRENT LABEL> <NEW LABEL>`
 VOLUME_LABEL="SECRETS"
 VOLUME_PATH="$(dirname $0)/../private.vc"
 VERACRYPT='/Applications/Veracrypt.app/Contents/MacOS/VeraCrypt'
