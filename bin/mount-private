@@ -3,12 +3,15 @@
 set -e
 
 # Set the volume name using `sudo diskutil rename "NO NAME" "SECRETS"`
-VOLUME_NAME="SECRETS"
-veracrypt='/Applications/Veracrypt.app/Contents/MacOS/VeraCrypt'
+VOLUME_LABEL="SECRETS"
+VOLUME_PATH="$(dirname $0)/../private.vc"
+VERACRYPT='/Applications/Veracrypt.app/Contents/MacOS/VeraCrypt'
+MOUNT_POINT="$HOME/.dotfiles-private/"
+
 if hash $veracrypt 2>/dev/null; then
-  $veracrypt -t -k "" --protect-hidden=no "$(dirname $0)/../private.vc" $HOME/.dotfiles-private/
-  DEVICE_ID=`/usr/libexec/PlistBuddy -c "Print AllDisksAndPartitions:0:DeviceIdentifier" /dev/stdin <<< $(diskutil list -plist $VOLUME_NAME)`
+  $VERACRYPT -t -k "" --protect-hidden=no $VOLUME_PATH $MOUNT_POINT
+  DEVICE_ID=`/usr/libexec/PlistBuddy -c "Print AllDisksAndPartitions:0:DeviceIdentifier" /dev/stdin <<< $(diskutil list -plist $VOLUME_LABEL)`
   diskutil unmount "$DEVICE_ID"
-  mkdir -p "$HOME/.dotfiles-private"
-  sudo mount -r -t msdos -o "-u=$UID,-m=700" "/dev/$DEVICE_ID" "$HOME/.dotfiles-private"
+  mkdir -p $MOUNT_POINT
+  sudo mount -r -t msdos -o "-u=$UID,-m=700" "/dev/$DEVICE_ID" $MOUNT_POINT
 fi
