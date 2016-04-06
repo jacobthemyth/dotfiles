@@ -2,3 +2,4 @@
 EXCLUDES="README.md LICENSE assets git_template private.vc"
 SYMLINK_DIRS="rbenv/plugins"
 DOTFILES_DIRS="$HOME/Code/jacobthemyth/dotfiles $HOME/.dotfiles-private $HOME/Code/thoughtbot/dotfiles"
+UNDOTTED="Library"

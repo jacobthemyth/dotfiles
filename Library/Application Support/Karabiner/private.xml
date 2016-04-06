@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<root>
+	<item>
+		<name>F19 to Hyper</name>
+    <appendix>F19 to Hyper (ctrl+shift+alt)</appendix>
+		<identifier>space_cadet.f192hyper</identifier>
+		<autogen>
+      --KeyToKey--
+      KeyCode::F19,
+      KeyCode::SHIFT_L,
+      ModifierFlag::CONTROL_L | ModifierFlag::OPTION_L
+    </autogen>	
+  </item>
+</root>
