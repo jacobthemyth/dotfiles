@@ -6,3 +6,24 @@ fi
 if [ ! -e /Applications/VeraCrypt.app ]; then
   open $PWD/../assets/install-veracrypt.pkg
 fi
+
+RBENV_BUNDLER_DIR=$HOME/.rbenv/plugins/rbenv-bundler
+if [ -d $RBENV_BUNDLER_DIR ]; then
+  cd $RBENV_BUNDLER_DIR && git pull
+else
+  git clone https://github.com/carsomyr/rbenv-bundler.git $RBENV_BUNDLER_DIR
+fi
+
+RBENV_CTAGS_DIR=$HOME/.rbenv/plugins/rbenv-ctags
+if [ -d $RBENV_CTAGS_DIR ]; then
+  cd $RBENV_CTAGS_DIR && git pull
+else
+  git clone https://github.com/tpope/rbenv-ctags $RBENV_CTAGS_DIR
+fi
+
+RBENV_DEFAULT_GEMS_DIR=$HOME/.rbenv/plugins/rbenv-default-gems
+if [ -d $RBENV_DEFAULT_GEMS_DIR ]; then
+  cd $RBENV_DEFAULT_GEMS_DIR && git pull
+else
+  git clone https://github.com/rbenv/rbenv-default-gems.git $RBENV_DEFAULT_GEMS_DIR
+fi

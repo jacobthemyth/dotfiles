@@ -1,3 +1,3 @@
 #!/bin/bash
-EXCLUDES="README.md LICENSE assets git_template"
+EXCLUDES="README.md LICENSE assets git_template rbenv/plugins"
 DOTFILES_DIRS="$HOME/Code/jacobthemyth/dotfiles $HOME/Code/thoughtbot/dotfiles"
