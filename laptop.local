@@ -2,23 +2,28 @@
 
 brew bundle --file=- <<EOF
 tap "caskroom/fonts"
+cask "font-hack"
+
 brew "goles/battery/battery"
+brew "coreutils"
 brew "flow"
 brew "fzf"
 brew "ghc"
 brew "gist"
+brew "lynx"
 brew "mackup"
 brew "phantomjs"
 brew "pv"
 brew "ranger"
 brew "rmtrash"
+brew "ssh-copy-id"
 brew "tig"
 brew "tmate"
 brew "tree"
 brew "watchman"
 brew "wget"
 brew "youtube-dl"
-cask "font-hack"
+
 cask "dockertoolbox"
 EOF
 
