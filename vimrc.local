@@ -2,6 +2,13 @@
 " Adds to thoughtbot/dotfiles/vimrc and vim-sensible
 " Core Settings {{{
 let mapleader = "\<Space>"
+
+" Search
+set hlsearch    " highlight matches
+set ignorecase  " searches are case insensitive...
+set smartcase   " ... unless they contain at least one capital letter
+set infercase   " Use the correct case when autocompleting
+
 set modelines=1 " Allow modelines (i.e. executable comments)
 set background=dark
 colorscheme solarized
