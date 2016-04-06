@@ -1,0 +1,123 @@
+" Jacob Smith's .vimrc
+" Adds to thoughtbot/dotfiles/vimrc and vim-sensible
+" Core Settings {{{
+let mapleader = "\<Space>"
+set modelines=1 " Allow modelines (i.e. executable comments)
+set background=dark
+colorscheme solarized
+set softtabstop=2 " 2 space tab
+
+" Persistent undo
+let undodir = expand('~/.vim/undo')
+if !isdirectory(undodir)
+  call mkdir(undodir)
+endif
+set undodir=~/.vim/undo
+set undofile
+" }}}
+
+" Tweaks {{{
+" fix & command to preserve flags
+nnoremap & :&&<CR>
+xnoremap & :&&<CR>
+
+" Expand %% to current directory
+cnoremap %% <C-R>=fnameescape(expand('%:h')).'/'<cr>
+
+" automatically rebalance windows on vim resize
+autocmd VimResized * wincmd =
+" }}}
+
+" Keyboard bindings {{{
+vnoremap <Leader>y "*y
+vnoremap <Leader>d "*d
+vnoremap <Leader>p "*p
+
+nnoremap <Leader>y "*y
+nnoremap <Leader>p "*p
+nnoremap <Leader>P "*P
+
+nnoremap <leader>gg :GitGutterLineHighlightsToggle<cr>
+
+nnoremap <silent> <leader>gq :g/^/norm gqq<CR> " format all paragraphs
+nnoremap <silent> <leader>gj :%norm vipJ<CR> " unformat all paragraphs
+
+" zoom a vim pane, <C-w>= to re-balance
+nnoremap <leader>- :wincmd _<cr>:wincmd \|<cr>
+nnoremap <leader>= :wincmd =<cr>
+" }}}
+
+" Plugin settings {{{
+let g:vim_json_syntax_conceal = 0
+
+" Make VimFiler work more better
+nnoremap <silent> - :VimFilerBufferDir<cr>
+let g:vimfiler_as_default_explorer = 1
+let g:vimfiler_no_default_key_mappings = 1
+call vimfiler#custom#profile('default', 'context', {
+\   'safe' : 0,
+\   'simple' : 1,
+\ })
+autocmd FileType vimfiler call SetupVimfiler()
+function! SetupVimfiler()
+  " Keep space leader, use tab for marking
+  vmap <buffer> <Tab> <Plug>(vimfiler_toggle_mark_selected_lines)
+  nmap <buffer> <Tab> <Plug>(vimfiler_toggle_mark_current_line)
+
+  " Use netrw/vinegar bindings
+  nmap <buffer> <F1> <Plug>(vimfiler_help)
+  nmap <buffer> ! <Plug>(vimfiler_mark_current_line)<Plug>(vimfiler_execute_shell_command)
+  nmap <buffer> R <Plug>(vimfiler_mark_current_line)<Plug>(vimfiler_rename_file)
+  nmap <buffer> D <Plug>(vimfiler_mark_current_line)<Plug>(vimfiler_delete_file)
+  nmap <buffer> <del> <Plug>(vimfiler_mark_current_line)<Plug>(vimfiler_delete_file)
+  nmap <buffer> d <Plug>(vimfiler_make_directory)
+  nmap <buffer> % <Plug>(vimfiler_new_file)
+  nmap <buffer> - <Plug>(vimfiler_switch_to_parent_directory)
+  nmap <buffer> cl <Plug>(vimfiler_cd_vim_current_dir)
+  nmap <buffer> <cr> <Plug>(vimfiler_cd_or_edit)
+  nmap <buffer> o <Plug>(vimfiler_expand_or_edit)
+  nmap <buffer> gh <Plug>(vimfiler_toggle_visible_dot_files)
+  nmap <buffer> x <Plug>(vimfiler_execute_system_associated)
+  nmap <buffer> . <Plug>(vimfiler_toggle_visible_dot_files)
+  nmap <buffer> v <Plug>(vimfiler_split_edit_file)<C-W>=<CR>
+endfunction
+
+" Airline
+let g:airline_theme = 'solarized'
+let g:airline_left_sep = ' '
+let g:airline_right_sep = ' '
+let g:airline#extensions#tabline#enabled = 1
+let g:airline#extensions#tabline#tab_min_count = 2
+let g:airline#extensions#tabline#show_buffers = 0
+let g:airline#extensions#tabline#left_sep = ' '
+let g:airline#extensions#tabline#left_alt_sep = '|'
+let g:airline#extensions#tabline#right_sep = ' '
+let g:airline#extensions#tabline#right_alt_sep = '|'
+let g:airline#extensions#tabline#show_tab_type = 0
+let g:airline#extensions#tabline#show_close_button = 0
+
+let g:airline_section_y = ""       " remove fileencoding[fileformat]
+
+" markdown folding
+let g:markdown_fold_style = 'nested'
+
+" Syntastic
+let syntastic_mode_map = { 'passive_filetypes': ['html'] }
+let g:syntastic_javascript_checkers = ['eslint']
+let g:syntastic_always_populate_loc_list = 1
+let g:syntastic_json_checkers = ['jsonlint']
+
+" The Silver Searcher
+if executable('ag')
+  " Use Ag over Grep
+  set grepprg=ag\ --nogroup\ --nocolor\ --smart-case
+endif
+
+" Ignore non project files
+let g:ctrlp_custom_ignore = {
+  \ 'dir':  '\v[\/](\.git|\.template|node_modules|development|release)$',
+  \ }
+
+let g:mustache_abbreviations = 1
+" }}}
+" vim: foldmethod=marker:foldlevel=0

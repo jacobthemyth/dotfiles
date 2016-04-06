@@ -1,17 +1,8 @@
 #!/bin/sh
+if [ ! -e /Library/Frameworks/MacFUSE.framework ]; then
+  open $PWD/../assets/install-osxfuse.pkg
+fi
 
-main () {
-  init_vundle
-  [[ -f ~/.terminal/xterm-256color-italic.terminfo ]] && tic ~/.terminal/xterm-256color-italic.terminfo
-  [[ -f ~/.terminal/screen-256color-italic.terminfo ]] && tic ~/.terminal/screen-256color-italic.terminfo
-}
-
-init_vundle () {
-  if [ ! -e $HOME/.vim/bundle/Vundle.vim ]; then
-    echo "Cloning Vundle.vim"
-    git clone https://github.com/gmarik/Vundle.vim.git $HOME/.vim/bundle/Vundle.vim
-  fi
-  vim +PluginClean +PluginInstall +qall
-}
-
-main
+if [ ! -e /Applications/VeraCrypt.app ]; then
+  open $PWD/../assets/install-veracrypt.pkg
+fi
