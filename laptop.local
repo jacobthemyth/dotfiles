@@ -109,9 +109,9 @@ if [ ! -e /Applications/VeraCrypt.app ]; then
   read -n1 -rsp 'Press any key to continue or Ctrl+C to exit...\n'
 fi
 
-fancy_echo "Updating dotfiles ..."
+fancy_echo "Run the following to update dotfiles:"
 if [ -r "$HOME/.rcrc" ]; then
-  rcup
+  fancy_echo "rcup"
 else
-  env RCRC="$HOME/Code/jacobthemyth/dotfiles/rcrc" rcup
+  fancy_echo "env RCRC=\"$HOME/Code/jacobthemyth/dotfiles/rcrc\" rcup"
 fi
