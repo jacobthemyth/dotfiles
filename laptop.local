@@ -93,6 +93,9 @@ else
   cd "$HOME/Code/jacobthemyth/dotfiles" && git pull
 fi
 
+# Allow non zero returns from now on
+trap - EXIT
+
 if [ ! -e /Library/Frameworks/MacFUSE.framework ]; then
   fancy_echo "Installing MacFUSE..."
   open $HOME/Code/jacobthemyth/dotfiles/assets/install-osxfuse.pkg
