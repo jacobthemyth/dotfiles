@@ -6,3 +6,6 @@ number_of_cores=$(sysctl -n hw.ncpu)
 cd `dirname $0`/..
 git pull --recurse-submodules --jobs=$((number_of_cores - 1))
 git submodule update --recursive
+
+mkdir -p ~/Library/Application\ Support/Karabiner
+mkdir -p ~/Library/Preferences
