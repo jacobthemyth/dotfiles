@@ -99,13 +99,13 @@ set +e
 
 if [ ! -e /Library/Frameworks/MacFUSE.framework ]; then
   fancy_echo "Installing MacFUSE..."
-  open $HOME/Code/jacobthemyth/dotfiles/assets/install-osxfuse.pkg
+  open $HOME/Code/jacobthemyth/dotfiles/config/dotfiles/install-osxfuse.pkg
   read -n1 -rsp 'Press any key to continue or Ctrl+C to exit...\n'
 fi
 
 if [ ! -e /Applications/VeraCrypt.app ]; then
   fancy_echo "Installing VeraCrypt..."
-  open $HOME/Code/jacobthemyth/dotfiles/assets/install-veracrypt.pkg
+  open $HOME/Code/jacobthemyth/dotfiles/config/dotfiles/install-veracrypt.pkg
   read -n1 -rsp 'Press any key to continue or Ctrl+C to exit...\n'
 fi
 
