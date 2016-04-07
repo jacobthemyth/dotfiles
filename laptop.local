@@ -4,7 +4,9 @@ brew bundle --file=- <<EOF
 tap "caskroom/fonts"
 cask "font-hack"
 
-brew "goles/battery/battery"
+tap "Goles/battery"
+brew "battery"
+
 brew "coreutils"
 brew "flow"
 brew "fzf"
