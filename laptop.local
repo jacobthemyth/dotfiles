@@ -94,7 +94,8 @@ else
 fi
 
 # Allow non zero returns from now on
-trap - EXIT
+trap '' EXIT
+set +e
 
 if [ ! -e /Library/Frameworks/MacFUSE.framework ]; then
   fancy_echo "Installing MacFUSE..."
