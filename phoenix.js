@@ -1,5 +1,12 @@
 'use strict';
 
+/* Preferences */
+
+Phoenix.set({
+    'daemon': true,
+    'openAtLogin': true
+});
+
 var keys = [];
 var meta = [ 'ctrl', 'alt', 'shift' ];
 var hyper = [ 'ctrl', 'alt', 'shift', 'cmd' ];
