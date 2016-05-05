@@ -1,5 +1,5 @@
 #!/bin/bash
 EXCLUDES="README.md LICENSE git_template private.vc"
-SYMLINK_DIRS="rbenv/plugins"
+SYMLINK_DIRS="rbenv/plugins tmux/plugins/tpm"
 DOTFILES_DIRS="$HOME/Code/jacobthemyth/dotfiles $HOME/.dotfiles-private $HOME/Code/thoughtbot/dotfiles"
 UNDOTTED="Library"
