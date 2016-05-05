@@ -7,3 +7,6 @@ export PATH="$PATH:$(brew --prefix coreutils)/libexec/gnubin"
 
 export PATH="$HOME/.bin:$PATH"
 eval "$(rbenv init - --no-rehash)"
+
+setopt auto_cd
+cdpath=($HOME $HOME/Code $HOME/Code/jacobthemyth)
