@@ -17,10 +17,6 @@ set softtabstop=2
 set tabstop=2
 set expandtab
 
-" Auto indent pasted text
-nnoremap p p=`]<C-o>
-nnoremap P P=`]<C-o>
-
 " Folds
 set foldmethod=indent   "fold based on indent
 set foldnestmax=3       "deepest fold is 3 levels
@@ -97,9 +93,6 @@ let g:airline#extensions#tabline#show_tab_type = 0
 let g:airline#extensions#tabline#show_close_button = 0
 
 let g:airline_section_y = ""       " remove fileencoding[fileformat]
-
-" markdown folding
-let g:markdown_fold_style = 'nested'
 
 " Syntastic
 let syntastic_mode_map = { 'passive_filetypes': ['html'] }
