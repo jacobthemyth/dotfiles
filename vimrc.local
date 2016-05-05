@@ -120,4 +120,42 @@ let g:ctrlp_custom_ignore = {
 
 let g:mustache_abbreviations = 1
 " }}}
+
+" Prose {{{
+
+" Goyo
+function! s:goyo_enter()
+  set noshowmode
+  set noshowcmd
+  set virtualedit=
+  noremap  <buffer> <silent> k gk
+  noremap  <buffer> <silent> j gj
+  noremap  <buffer> <silent> <Home> g<Home>
+  noremap  <buffer> <silent> <End>  g<End>
+  inoremap <buffer> <silent> <Up>   <C-o>gk
+  inoremap <buffer> <silent> <Down> <C-o>gj
+  inoremap <buffer> <silent> <Home> <C-o>g<Home>
+  inoremap <buffer> <silent> <End>  <C-o>g<End>
+endfunction
+
+function! s:goyo_leave()
+  set showmode
+  set showcmd
+  set virtualedit=all
+  silent! nunmap <buffer> k
+  silent! nunmap <buffer> j
+  silent! nunmap <buffer> <Home>
+  silent! nunmap <buffer> <End>
+  silent! iunmap <buffer> <Up>
+  silent! iunmap <buffer> <Down>
+  silent! iunmap <buffer> <Home>
+  silent! iunmap <buffer> <End>
+endfunction
+
+autocmd! User GoyoEnter
+autocmd! User GoyoLeave
+autocmd  User GoyoEnter nested call <SID>goyo_enter()
+autocmd  User GoyoLeave nested call <SID>goyo_leave()
+" }}}
+
 " vim: foldmethod=marker:foldlevel=0

@@ -2,6 +2,7 @@ Plug 'airblade/vim-gitgutter'           " show line modifications in gutter
 Plug 'altercation/vim-colors-solarized'
 Plug 'christoomey/vim-tmux-navigator'   " seamless navigation between tmux panes and vim splits
 Plug 'godlygeek/tabular'                " Aligning text
+Plug 'junegunn/goyo.vim'                " Distration-free writing
 Plug 'kien/ctrlp.vim'                   " fuzzy finder
 Plug 'mattn/emmet-vim'                  " web dev workflow toolkit
 Plug 'nelstrom/vim-markdown-folding'    " foldexpr for markdown headers
@@ -10,9 +11,9 @@ Plug 'pangloss/vim-javascript'          " Vastly improved JS syntax
 Plug 'scrooloose/syntastic'             " syntax checking
 Plug 'tpope/vim-rsi'                    " readline style insertion
 Plug 'tpope/vim-vinegar'                " netrw enhancements
+Plug 'valloric/YouCompleteMe'
 Plug 'vim-airline/vim-airline'          " status/tabline
 Plug 'vim-airline/vim-airline-themes'
-
 
 " Sensible defaults
 Plug 'tpope/vim-sensible' " needs to be last
