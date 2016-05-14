@@ -33,6 +33,15 @@ set background=dark
 colorscheme solarized
 set softtabstop=2 " 2 space tab
 
+" Split sizing
+set winwidth=84
+" We have to have a winheight bigger than we want to set winminheight. But if
+" we set winheight to be huge before winminheight, the winminheight set will
+" fail.
+set winheight=5
+set winminheight=5
+set winheight=999
+
 " Persistent undo
 let undodir = expand('~/.vim/undo')
 if !isdirectory(undodir)
