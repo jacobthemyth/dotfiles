@@ -1,3 +1,5 @@
+[alias]
+  dc = diff --cached
 [core]
   trustctime = false
   pager = less -FRSX
@@ -26,9 +28,7 @@
 [credential]
   helper = osxkeychain
 [diff]
-  tool = Kaleidoscope
-[difftool "Kaleidoscope"]
-  cmd = ksdiff --partial-changeset --relative-path \"$MERGED\" -- \"$LOCAL\" \"$REMOTE\"
+  tool = vimdiff
 [difftool]
   prompt = false
 [format]
@@ -40,10 +40,9 @@
 [log]
   abbrevCommit = true
 [merge]
-  tool = Kaleidoscope
-[mergetool "Kaleidoscope"]
-  cmd = ksdiff --merge --output \"$MERGED\" --base \"$BASE\" -- \"$LOCAL\" --snapshot \"$REMOTE\" --snapshot
-  trustExitCode = true
+  tool = vimdiff
+[mergetool "vimdiff"]
+  cmd = vimdiff -f $LOCAL $MERGED $REMOTE
 [mergetool]
   prompt = false
 [push]
