@@ -1,0 +1,8 @@
+#! /bin/bash
+
+mkdir -p "$HOME/Library/Application Support/Karabiner"
+private_path="$HOME/Library/Application Support/Karabiner/private.xml"
+if [[ -e "$private_path" ]]; then
+  rm "$private_path"
+fi
+ln -s "$HOME/.Karabiner.xml" "$private_path"

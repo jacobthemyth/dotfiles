@@ -7,10 +7,3 @@ cd `dirname $0`/..
 git submodule init
 git pull --recurse-submodules --jobs=$((number_of_cores - 1))
 git submodule update --recursive
-
-mkdir -p "$HOME/Library/Application Support/Karabiner"
-private_path="$HOME/Library/Application Support/Karabiner/private.xml"
-if [[ ! -L "$private_path" ]]; then
-  rm "$private_path"
-  ln -s "$HOME/Karabiner.xml" "$private_path"
-fi
