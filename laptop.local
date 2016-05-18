@@ -61,8 +61,8 @@ cask "steam"
 cask "taskpaper"
 EOF
 
-ln -s /usr/local/bin/mvim /usr/local/bin/vim
-ln -s /usr/local/bin/mvimdiff /usr/local/bin/vimdiff
+[[ ! -e /usr/local/bin/vim ]] && ln -s /usr/local/bin/mvim /usr/local/bin/vim
+[[ ! -e /usr/local/bin/vimdiff ]] && ln -s /usr/local/bin/mvimdiff /usr/local/bin/vimdiff
 
 default_docker_machine() {
   docker-machine ls | grep -Fq "default"
