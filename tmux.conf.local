@@ -34,7 +34,6 @@ bind-key -t vi-copy Enter copy-pipe "reattach-to-user-namespace pbcopy"
 # }}}
 
 # {{{ Status
-set -g status-utf8 on
 set -g status-position "top"
 set -g status-right-length "100"
 set -g status-left-length "100"
