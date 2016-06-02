@@ -1,3 +1,5 @@
+unsetopt cdablevars
+
 # Show description in completion menu
 zstyle ":completion:*:descriptions" format "%B%d%b"
 
