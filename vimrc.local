@@ -130,9 +130,6 @@ highlight link SyntasticStyleWarningSign SignColumn
 autocmd FileType rust let b:dispatch = 'cargo build'
 autocmd FileType rust nnoremap <buffer> <leader>r :!cargo run<CR>
 
-" YouCompleteMe
-let g:ycm_rust_src_path = '/usr/local/rust/rustc-1.8.0/src'
-
 " The Silver Searcher
 if executable('ag')
   " Use Ag over Grep

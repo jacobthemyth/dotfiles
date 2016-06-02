@@ -18,7 +18,6 @@ Plug 'skammer/vim-css-color'            " Highlight colors in css files
 Plug 'tpope/vim-dispatch'               " dispatch.vim: asynchronous build and test dispatcher
 Plug 'tpope/vim-rsi'                    " readline style insertion
 Plug 'tpope/vim-vinegar'                " netrw enhancements
-Plug 'valloric/YouCompleteMe'
 Plug 'vim-airline/vim-airline'          " status/tabline
 Plug 'vim-airline/vim-airline-themes'
 
