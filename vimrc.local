@@ -82,9 +82,16 @@ nnoremap <leader>- :wincmd _<cr>:wincmd \|<cr>
 nnoremap <leader>= :wincmd =<cr>
 
 nnoremap <leader><C-L> :nohlsearch<CR>:redraw!<CR>
+
+nnoremap <leader>d :Dispatch<CR>
 " }}}
 
 " Plugin settings {{{
+
+" Ignore gitignore files in netrw via vim-vinegar
+let &wildignore = join(map(split(substitute(
+  \ netrw_gitignore#Hide(), '\\.', '.', 'g'), ','), "v:val.','.v:val.'/'"), ',')
+
 let g:vim_json_syntax_conceal = 0
 
 " Airline
@@ -108,6 +115,23 @@ let syntastic_mode_map = { 'passive_filetypes': ['html'] }
 let g:syntastic_javascript_checkers = ['eslint']
 let g:syntastic_always_populate_loc_list = 1
 let g:syntastic_json_checkers = ['jsonlint']
+
+let g:syntastic_error_symbol = '❌'
+let g:syntastic_style_error_symbol = '⁉️'
+let g:syntastic_warning_symbol = '⚠️'
+let g:syntastic_style_warning_symbol = '💩'
+
+highlight link SyntasticErrorSign SignColumn
+highlight link SyntasticWarningSign SignColumn
+highlight link SyntasticStyleErrorSign SignColumn
+highlight link SyntasticStyleWarningSign SignColumn
+
+" Rust
+autocmd FileType rust let b:dispatch = 'cargo build'
+autocmd FileType rust nnoremap <buffer> <leader>r :!cargo run<CR>
+
+" YouCompleteMe
+let g:ycm_rust_src_path = '/usr/local/rust/rustc-1.8.0/src'
 
 " The Silver Searcher
 if executable('ag')
