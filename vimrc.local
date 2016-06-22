@@ -34,7 +34,7 @@ set infercase   " Use the correct case when autocompleting
 set modelines=1 " Allow modelines (i.e. executable comments)
 set background=dark
 colorscheme solarized
-set softtabstop=2 " 2 space tab
+set cursorline
 
 " Split sizing
 set winwidth=84
