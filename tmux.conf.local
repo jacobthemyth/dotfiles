@@ -7,6 +7,11 @@ bind C-Space send-prefix -2
 bind \ split-window -h -c "#{pane_current_path}"
 bind - split-window -v -c "#{pane_current_path}"
 bind c new-window -c "#{pane_current_path}"
+
+bind t new-window "reattach-to-user-namespace tig status"
+bind r split-window -h 'reattach-to-user-namespace ranger'
+bind m split-window -h 'reattach-to-user-namespace mutt'
+bind C-r source-file ~/.tmux.conf \; display "Reloaded ~/.tmux.conf"
 # }}}
 
 # {{{ General settings
@@ -47,14 +52,15 @@ set -g status-right "#[fg=white]#(date '+%a, %b %d - %I:%M')#[default] #h #(batt
 
 # {{{ Vim integration
 
-# Smart pane switching with awareness of vim splits
+# Smart pane switching with awareness of Vim splits.
 # See: https://github.com/christoomey/vim-tmux-navigator
-is_vim='echo "#{pane_current_command}" | grep -iqE "(^|\/)g?(view|n?vim?x?)(diff)?$"'
-bind -n C-h if-shell "$is_vim" "send-keys C-h" "select-pane -L"
-bind -n C-j if-shell "$is_vim" "send-keys C-j" "select-pane -D"
-bind -n C-k if-shell "$is_vim" "send-keys C-k" "select-pane -U"
-bind -n C-l if-shell "$is_vim" "send-keys C-l" "select-pane -R"
-bind -n C-\ if-shell "$is_vim" "send-keys C-\\" "select-pane -l"
+is_vim="ps -o state= -o comm= -t '#{pane_tty}' \
+    | grep -iqE '^[^TXZ ]+ +(\\S+\\/)?g?(view|n?vim?x?)(diff)?$'"
+bind-key -n C-h if-shell "$is_vim" "send-keys C-h"  "select-pane -L"
+bind-key -n C-j if-shell "$is_vim" "send-keys C-j"  "select-pane -D"
+bind-key -n C-k if-shell "$is_vim" "send-keys C-k"  "select-pane -U"
+bind-key -n C-l if-shell "$is_vim" "send-keys C-l"  "select-pane -R"
+bind-key -n C-\ if-shell "$is_vim" "send-keys C-\\" "select-pane -l"
 
 # Restore clear screen keybind mapped over by tmux-navigator
 bind C-l send-keys 'C-l'
