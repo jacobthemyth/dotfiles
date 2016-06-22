@@ -8,8 +8,8 @@ Phoenix.set({
 });
 
 var keys = [];
-var meta = [ 'ctrl', 'alt', 'shift' ];
-var hyper = [ 'ctrl', 'alt', 'shift', 'cmd' ];
+var ctrlAltShift = [ 'ctrl', 'alt', 'shift' ];
+var ctrlAltCmdShift = [ 'ctrl', 'alt', 'shift', 'cmd' ];
 var margin = 0;
 var increment = 0.1;
 
@@ -146,7 +146,7 @@ Window.prototype.increaseWidth = function () {
 }
 
 Window.prototype.decreaseWidth = function () {
-  this.resize({ x: increment });
+  this.resize({ x: -increment });
 }
 
 Window.prototype.increaseHeight = function () {
@@ -154,44 +154,44 @@ Window.prototype.increaseHeight = function () {
 }
 
 Window.prototype.decreaseHeight = function () {
-  this.resize({ y: increment });
+  this.resize({ y: -increment });
 }
 
 /* Position Bindings */
 
-keys.push(Phoenix.bind('q', hyper, function () {
+keys.push(Phoenix.bind('q', ctrlAltShift, function () {
     Window.focusedWindow() && Window.focusedWindow().to(Position.topLeft);
 }));
 
-keys.push(Phoenix.bind('w', hyper, function () {
+keys.push(Phoenix.bind('w', ctrlAltShift, function () {
     Window.focusedWindow() && Window.focusedWindow().to(Position.topRight);
 }));
 
-keys.push(Phoenix.bind('a', hyper, function () {
+keys.push(Phoenix.bind('a', ctrlAltShift, function () {
     Window.focusedWindow() && Window.focusedWindow().to(Position.bottomLeft);
 }));
 
-keys.push(Phoenix.bind('s', hyper, function () {
+keys.push(Phoenix.bind('s', ctrlAltShift, function () {
     Window.focusedWindow() && Window.focusedWindow().to(Position.bottomRight);
 }));
 
-keys.push(Phoenix.bind('0', hyper, function () {
+keys.push(Phoenix.bind('0', ctrlAltShift, function () {
     Window.focusedWindow() && Window.focusedWindow().to(Position.central);
 }));
 
 /* Grid Bindings */
 
-keys.push(Phoenix.bind('[', meta, function () {
+keys.push(Phoenix.bind('[', ctrlAltShift, function () {
   Window.focusedWindow() &&
     Window.focusedWindow().grid(Frame.half.width, Frame.height);
 }));
 
-keys.push(Phoenix.bind(']', meta, function () {
+keys.push(Phoenix.bind(']', ctrlAltShift, function () {
   Window.focusedWindow() &&
     Window.focusedWindow().grid(Frame.half.width, Frame.height, 'topRight');
 }));
 
-keys.push(Phoenix.bind('m', meta, function () {
+keys.push(Phoenix.bind('m', ctrlAltShift, function () {
   Window.focusedWindow() &&
     Window.focusedWindow().grid(Frame.width, Frame.height);
 }));
@@ -199,22 +199,22 @@ keys.push(Phoenix.bind('m', meta, function () {
 /* Resize Bindings */
 
 // < decrease current window width
-keys.push(Phoenix.bind(',', meta, function () {
+keys.push(Phoenix.bind(',', ctrlAltShift, function () {
     Window.focusedWindow() && Window.focusedWindow().decreaseWidth();
 }));
 
 // > increase current window width
-keys.push(Phoenix.bind('.', meta, function () {
+keys.push(Phoenix.bind('.', ctrlAltShift, function () {
     Window.focusedWindow() && Window.focusedWindow().increaseWidth();
 }));
 
 // - decrease current window height
-keys.push(Phoenix.bind('-', meta, function () {
+keys.push(Phoenix.bind('-', ctrlAltShift, function () {
     Window.focusedWindow() && Window.focusedWindow().decreaseHeight();
 }));
 
 // + increase current window height
-keys.push(Phoenix.bind('=', meta, function () {
+keys.push(Phoenix.bind('=', ctrlAltShift, function () {
     Window.focusedWindow() && Window.focusedWindow().increaseHeight();
 }));
 
