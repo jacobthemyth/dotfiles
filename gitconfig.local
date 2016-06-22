@@ -28,9 +28,12 @@
 [credential]
   helper = osxkeychain
 [diff]
-  tool = vimdiff
+  tool = Kaleidoscope
+  compactionHeuristic = true
 [difftool]
   prompt = false
+[difftool "Kaleidoscope"]
+  cmd = ksdiff --partial-changeset --relative-path \"$MERGED\" -- \"$LOCAL\" \"$REMOTE\"
 [format]
   pretty =-'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset'
 [grep]
@@ -40,11 +43,12 @@
 [log]
   abbrevCommit = true
 [merge]
-  tool = vimdiff
-[mergetool "vimdiff"]
-  cmd = vimdiff -f $LOCAL $MERGED $REMOTE
+  tool = Kaleidoscope
 [mergetool]
   prompt = false
+[mergetool "Kaleidoscope"]
+  cmd = ksdiff --merge --output \"$MERGED\" --base \"$BASE\" -- \"$LOCAL\" --snapshot \"$REMOTE\" --snapshot
+  trustexitcode = true
 [push]
   default = simple
 [user]
