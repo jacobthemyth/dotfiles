@@ -10,6 +10,6 @@
 [submodule "rbenv/plugins/rbenv-default-gems"]
 	path = rbenv/plugins/rbenv-default-gems
 	url = https://github.com/rbenv/rbenv-default-gems.git
-[submodule "tmux/plugins/tpm"]
-	path = tmux/plugins/tpm
-	url = git@github.com:tmux-plugins/tpm.git
+[submodule "tmux/plugins/tmux-scroll-copy-mode"]
+	path = tmux/plugins/tmux-scroll-copy-mode
+	url = https://github.com/NHDaly/tmux-scroll-copy-mode.git

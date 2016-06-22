@@ -71,14 +71,4 @@ set -s escape-time 0
 
 if-shell "test -f $HOME/.tmux-solarized.conf" "source $HOME/.tmux-solarized.conf"
 
-# List of plugins
-set -g @tpm_plugins '          \
-  tmux-plugins/tmux-sidebar    \
-  tmux-plugins/tpm             \
-  nhdaly/tmux-scroll-copy-mode \
-'
-
-# Initialize TMUX plugin manager (keep this line at the very bottom of tmux.conf)
-run '~/.tmux/plugins/tpm/tpm'
-
 # vim: foldmethod=marker:foldlevel=0
