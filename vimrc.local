@@ -52,6 +52,8 @@ if !isdirectory(undodir)
 endif
 set undodir=~/.vim/undo
 set undofile
+
+let $NVIM_TUI_ENABLE_CURSOR_SHAPE=1
 " }}}
 
 " Tweaks {{{
@@ -64,6 +66,13 @@ cnoremap %% <C-R>=fnameescape(expand('%:h')).'/'<cr>
 
 " automatically rebalance windows on vim resize
 autocmd VimResized * wincmd =
+
+autocmd BufRead,BufNewFile *.variables set filetype=less
+autocmd BufRead,BufNewFile *.overrides set filetype=less
+
+
+" bind \ (backward slash) to grep shortcut
+command -nargs=+ -complete=file -bar Ag silent! grep! <args>|cwindow|redraw!
 " }}}
 
 " Keyboard bindings {{{
@@ -87,15 +96,16 @@ nnoremap <leader>= :wincmd =<cr>
 nnoremap <leader><C-L> :nohlsearch<CR>:redraw!<CR>
 
 nnoremap <leader>d :Dispatch<CR>
+
+nnoremap \ :Ag<SPACE>
 " }}}
 
 " Plugin settings {{{
 
-" Ignore gitignore files in netrw via vim-vinegar
-let &wildignore = join(map(split(substitute(
-  \ netrw_gitignore#Hide(), '\\.', '.', 'g'), ','), "v:val.','.v:val.'/'"), ',')
-
 let g:vim_json_syntax_conceal = 0
+
+" EditorConfig
+let g:EditorConfig_exclude_patterns = ['fugitive://.*']
 
 " Airline
 let g:airline_theme = 'solarized'
@@ -129,16 +139,17 @@ highlight link SyntasticWarningSign SignColumn
 highlight link SyntasticStyleErrorSign SignColumn
 highlight link SyntasticStyleWarningSign SignColumn
 
+" Taskpaper
+autocmd FileType taskpaper set nolist
+
 " Rust
 autocmd FileType rust let b:dispatch = 'cargo build'
 autocmd FileType rust nnoremap <buffer> <leader>r :!cargo run<CR>
 
-" The Silver Searcher
-if executable('ag')
-  " Use Ag over Grep
-  set grepprg=ag\ --nogroup\ --nocolor\ --smart-case
-endif
+" YouCompleteMe
+let g:ycm_rust_src_path = '/usr/local/rust/rustc-1.8.0/src'
 
+" CtrlP
 " Ignore non project files
 let g:ctrlp_custom_ignore = {
   \ 'dir':  '\v[\/](\.git|\.template|node_modules|development|release)$',

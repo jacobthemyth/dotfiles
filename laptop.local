@@ -7,6 +7,9 @@ cask "font-hack"
 tap "Goles/battery"
 brew "battery"
 
+tap "neovim/neovim"
+brew "neovim"
+
 brew "coreutils"
 brew "flow"
 brew "fzf"
@@ -14,7 +17,6 @@ brew "ghc"
 brew "gist"
 brew "hub"
 brew "mackup"
-brew "macvim"
 brew "phantomjs"
 brew "pstree"
 brew "pv"
@@ -60,9 +62,6 @@ cask "spotify"
 cask "steam"
 cask "taskpaper"
 EOF
-
-[[ ! -e /usr/local/bin/vim ]] && ln -s /usr/local/bin/mvim /usr/local/bin/vim
-[[ ! -e /usr/local/bin/vimdiff ]] && ln -s /usr/local/bin/mvimdiff /usr/local/bin/vimdiff
 
 default_docker_machine() {
   docker-machine ls | grep -Fq "default"

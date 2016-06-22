@@ -7,3 +7,6 @@ cd `dirname $0`/..
 git submodule init
 git pull --recurse-submodules --jobs=$((number_of_cores - 1))
 git submodule update --recursive
+
+[[ -L $HOME/.vim/init.vim ]] || ln -s "$HOME/.vimrc" "$HOME/.vim/init.vim"
+[[ -L $HOME/.config/nvim ]] || ln -s "$HOME/.vim" "$HOME/.config/nvim"
