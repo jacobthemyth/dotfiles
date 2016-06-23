@@ -9,3 +9,7 @@ export PATH="$PATH:$(brew --prefix coreutils)/libexec/gnubin"
 
 export PATH="$HOME/.bin:$PATH"
 eval "$(rbenv init - --no-rehash)"
+
+if ! mount | grep --quiet "$HOME/Safe"; then
+  cryfs "$HOME/Dropbox/Apps/CryFS" "$HOME/Safe"
+fi

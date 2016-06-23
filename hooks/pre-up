@@ -1,7 +1,5 @@
 #! /bin/bash
 
-`dirname $0`/../bin/mount-private
-
 number_of_cores=$(sysctl -n hw.ncpu)
 cd `dirname $0`/..
 git submodule init

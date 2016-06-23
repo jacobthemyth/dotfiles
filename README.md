@@ -34,5 +34,4 @@ I can safely run `rcup` multiple times to update.
 What's in it?
 -------------
 
-- Lot's of customizations for Vim & Tmux
-- A [VeraCrypt](https://github.com/veracrypt/VeraCrypt) volume with my keys
+Lot's of customizations for Vim & Tmux

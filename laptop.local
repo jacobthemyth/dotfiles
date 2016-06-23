@@ -53,6 +53,7 @@ cask "karabiner"
 cask "marked"
 cask "monodraw"
 cask "nvalt"
+cask "osxfuse"
 cask "phoenix"
 cask "screenhero"
 cask "seil"
@@ -61,6 +62,10 @@ cask "sketch"
 cask "spotify"
 cask "steam"
 cask "taskpaper"
+
+tap "homebrew/fuse"
+brew "cryfs"
+
 EOF
 
 default_docker_machine() {
@@ -79,11 +84,11 @@ if ! default_docker_machine_running; then
   docker-machine start default
 fi
 
-fancy_echo "Cleaning up old Homebrew formulae ..."
+echo "Cleaning up old Homebrew formulae ..."
 brew cleanup
 brew cask cleanup
 
-fancy_echo "Loading thoughtbot/dotfiles..."
+echo "Loading thoughtbot/dotfiles..."
 mkdir -p "$HOME/Code/thoughtbot"
 if [ ! -d "$HOME/Code/thoughtbot/dotfiles" ]; then
   git clone https://github.com/thoughtbot/dotfiles.git "$HOME/Code/thoughtbot/dotfiles"
@@ -99,25 +104,8 @@ else
   cd "$HOME/Code/jacobthemyth/dotfiles" && git pull
 fi
 
-# Allow non zero returns from now on
-trap '' EXIT
-set +e
-
-if [ ! -e /Library/Frameworks/MacFUSE.framework ]; then
-  fancy_echo "Installing MacFUSE..."
-  open $HOME/Code/jacobthemyth/dotfiles/config/dotfiles/install-osxfuse.pkg
-  read -n1 -rsp 'Press any key to continue or Ctrl+C to exit...\n'
-fi
-
-if [ ! -e /Applications/VeraCrypt.app ]; then
-  fancy_echo "Installing VeraCrypt..."
-  open $HOME/Code/jacobthemyth/dotfiles/config/dotfiles/install-veracrypt.pkg
-  read -n1 -rsp 'Press any key to continue or Ctrl+C to exit...\n'
-fi
-
-fancy_echo "Run the following to update dotfiles:"
 if [ -r "$HOME/.rcrc" ]; then
-  fancy_echo "rcup"
+  rcup
 else
-  fancy_echo "env RCRC=\"$HOME/Code/jacobthemyth/dotfiles/rcrc\" rcup"
+  env RCRC="$HOME/Code/jacobthemyth/dotfiles/rcrc" rcup
 fi
