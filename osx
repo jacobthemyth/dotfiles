@@ -132,11 +132,18 @@ defaults write NSGlobalDomain NSAutomaticDashSubstitutionEnabled -bool false
 #sudo ln -s /path/to/your/image /System/Library/CoreServices/DefaultDesktop.jpg
 
 ###############################################################################
-# SSD-specific tweaks                                                         #
+# Add encryption protection                                                   #
 ###############################################################################
 
 # Disable hibernation (speeds up entering sleep mode)
-# sudo pmset -a hibernatemode 0
+sudo pmset -a hibernatemode 0
+
+# Enable swap encryption
+defaults writes /Library/Preferences/com.apple.virtualMemory UseEncryptedSwap -boolean yes
+
+###############################################################################
+# SSD-specific tweaks                                                         #
+###############################################################################
 
 # # Remove the sleep image file to save disk space
 # sudo rm /private/var/vm/sleepimage
