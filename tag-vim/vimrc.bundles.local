@@ -11,6 +11,7 @@ Plug 'pangloss/vim-javascript'          " Vastly improved JS syntax
 Plug 'rust-lang/rust.vim'
 Plug 'scrooloose/syntastic'             " syntax checking
 Plug 'skwp/greplace.vim'                " Global search and replace for VI
+Plug 'thoughtbot/vim-rspec'             " Run Rspec specs from Vim
 Plug 'tpope/vim-unimpaired'             " pairs of handy bracket mappings
 Plug 'tpope/vim-dispatch'               " dispatch.vim: asynchronous build and test dispatcher
 Plug 'tpope/vim-rsi'                    " readline style insertion
