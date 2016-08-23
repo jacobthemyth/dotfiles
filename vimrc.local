@@ -11,7 +11,7 @@ set autoindent
 set smartindent
 set smarttab
 set breakindent
-let &showbreak = '> '
+let &showbreak = '→ '
 set linebreak
 
 " Folds
