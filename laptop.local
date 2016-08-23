@@ -51,7 +51,6 @@ cask "iterm2"
 cask "marked"
 cask "monodraw"
 cask "nvalt"
-cask "osxfuse"
 cask "phoenix"
 cask "screenhero"
 cask "send-to-kindle"
@@ -59,10 +58,6 @@ cask "sketch"
 cask "spotify"
 cask "steam"
 cask "taskpaper"
-
-tap "homebrew/fuse"
-brew "cryfs"
-
 EOF
 
 default_docker_machine() {
