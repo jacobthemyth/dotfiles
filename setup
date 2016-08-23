@@ -2,6 +2,12 @@
 
 set -e
 
+# Ask for the administrator password upfront
+sudo -v
+
+# Keep-alive: update existing `sudo` time stamp until `setup` has finished
+while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
+
 shell_path="/usr/local/bin/zsh"
 if ! grep "$shell_path" /etc/shells > /dev/null 2>&1 ; then
   echo "Adding '$shell_path' to /etc/shells"
@@ -16,4 +22,4 @@ if [ ! -e "$HOME/.laptop.local" ]; then
   ln -s "$HOME/.dotfiles/tag-osx/laptop.local" "$HOME/.laptop.local"
 fi
 
-curl -s https://raw.githubusercontent.com/thoughtbot/laptop/master/mac | sh 2>&1 | tee "$HOME/laptop.log"
+curl -s https://raw.githubusercontent.com/thoughtbot/laptop/master/mac | sh 2>&1

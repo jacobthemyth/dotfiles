@@ -3,9 +3,9 @@ set -e
 
 hash mas 2>/dev/null || brew install mas
 
-if ! $(mas account >/dev/null); then
+if ! mas account >/dev/null; then
   echo -n "Mac App Store Password:"
-  read -s password
+  read -rs password
   echo
   mas signin "jacob@jacobsmith.io" "$password"
 fi
@@ -91,4 +91,5 @@ brew cask cleanup
 
 RCRC="$HOME/.dotfiles/rcrc" rcup -f
 
-"$HOME/.osx"
+# shellcheck disable=SC1090
+. "$HOME/.osx"
