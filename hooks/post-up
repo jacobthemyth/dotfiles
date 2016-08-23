@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+cd ~/.vim/bundle/YouCompleteMe
+./install.py --tern-completer --racer-completer
