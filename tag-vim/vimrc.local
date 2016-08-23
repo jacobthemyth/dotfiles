@@ -11,5 +11,3 @@ endfunction
 
 call s:SourceConfigFilesIn('rcfiles')
 call s:SourceConfigFilesIn('rcplugins')
-
-" vim: foldmethod=marker:foldlevel=0:foldenable
