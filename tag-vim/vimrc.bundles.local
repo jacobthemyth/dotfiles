@@ -11,6 +11,7 @@ Plug 'pangloss/vim-javascript'          " Vastly improved JS syntax
 Plug 'rust-lang/rust.vim'
 Plug 'scrooloose/syntastic'             " syntax checking
 Plug 'skwp/greplace.vim'                " Global search and replace for VI
+Plug 'stefanoverna/vim-i18n'            " Vim plugin to easily add I18n translations to your Rails project
 Plug 'thoughtbot/vim-rspec'             " Run Rspec specs from Vim
 Plug 'tpope/vim-unimpaired'             " pairs of handy bracket mappings
 Plug 'tpope/vim-dispatch'               " dispatch.vim: asynchronous build and test dispatcher
