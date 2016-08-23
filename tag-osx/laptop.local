@@ -89,6 +89,6 @@ echo "Cleaning up old Homebrew formulae ..."
 brew cleanup
 brew cask cleanup
 
-RCRC="$HOME/.dotfiles/rcrc" rcup
+RCRC="$HOME/.dotfiles/rcrc" rcup -f
 
 "$HOME/.osx"

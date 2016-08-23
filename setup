@@ -12,15 +12,6 @@ if [ ! -d "$HOME/.dotfiles" ]; then
   git clone git@github.com:jacobthemyth/dotfiles.git "$HOME/.dotfiles"
 fi
 
-if [ ! -d "$HOME/.dotfiles-thoughtbot" ]; then
-  git clone git@github.com:thoughtbot/dotfiles.git "$HOME/.dotfiles-thoughtbot"
-fi
-
-# This is to prevent thoughtbot/laptop from creating a new .zshrc
-if [ ! -e "$HOME/.zshrc" ]; then
-  ln -s "$HOME/.dotfiles-thoughtbot/zshrc" "$HOME/.zshrc"
-fi
-
 if [ ! -e "$HOME/.laptop.local" ]; then
   ln -s "$HOME/.dotfiles/tag-osx/laptop.local" "$HOME/.laptop.local"
 fi
