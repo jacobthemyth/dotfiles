@@ -1,5 +1,5 @@
 [submodule "zsh/configs/zsh-history-substring-search"]
-	path = zsh/configs/zsh-history-substring-search
+	path = tag-shell/zsh/configs/zsh-history-substring-search
 	url = https://github.com/zsh-users/zsh-history-substring-search.git
 [submodule "rbenv/plugins/rbenv-bundler"]
 	path = tag-ruby/rbenv/plugins/rbenv-bundler
