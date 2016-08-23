@@ -8,8 +8,8 @@ bind \ split-window -h -c "#{pane_current_path}"
 bind - split-window -v -c "#{pane_current_path}"
 bind c new-window -c "#{pane_current_path}"
 
-bind t new-window "reattach-to-user-namespace tig status"
-bind r split-window -h 'reattach-to-user-namespace ranger'
+bind t new-window "tig"
+bind r split-window -h "ranger"
 bind C-r source-file ~/.tmux.conf \; display "Reloaded ~/.tmux.conf"
 # }}}
 
@@ -29,11 +29,11 @@ set-option -g default-command "which reattach-to-user-namespace > /dev/null && r
 bind-key -t vi-copy v begin-selection
 
 # y copies to system pasteboard
-bind-key -t vi-copy y copy-pipe "reattach-to-user-namespace pbcopy"
+bind-key -t vi-copy y copy-pipe "pbcopy"
 
 # Update default binding of `Enter` to also use copy-pipe
 unbind -t vi-copy Enter
-bind-key -t vi-copy Enter copy-pipe "reattach-to-user-namespace pbcopy"
+bind-key -t vi-copy Enter copy-pipe "pbcopy"
 
 # }}}
 
