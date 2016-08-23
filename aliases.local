@@ -1,8 +1,11 @@
 # Unix
 alias la='ls -lAFh'
 alias ip="dig +short myip.opendns.com @resolver1.opendns.com"
-alias localip="ipconfig getifaddr en0"
+alias localip="ipconfig getifaddr en1"
 alias today="date +%Y-%m-%d"
+
+# ruby
+alias be="bundle exec"
 
 # Applications
 alias marked="open -a Marked\ 2.app"
