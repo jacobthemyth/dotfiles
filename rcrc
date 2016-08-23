@@ -2,3 +2,4 @@
 EXCLUDES="README.md LICENSE"
 SYMLINK_DIRS="rbenv/plugins"
 DOTFILES_DIRS="$HOME/Code/jacobthemyth/dotfiles $HOME/Dropbox/.dotfiles-private $HOME/Code/thoughtbot/dotfiles"
+TAGS="vim"
