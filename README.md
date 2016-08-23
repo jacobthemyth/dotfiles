@@ -27,7 +27,7 @@ Clone onto my laptop:
 
 Install:
 
-    env RCRC=$HOME/jacobthemyth/dotfiles/rcrc rcup
+    env RCRC=$HOME/.dotfiles/rcrc rcup
 
 I can safely run `rcup` multiple times to update.
 
