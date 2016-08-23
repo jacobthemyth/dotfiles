@@ -1,0 +1,28 @@
+#!/bin/sh
+
+set -e
+
+shell_path="/usr/local/bin/zsh"
+if ! grep "$shell_path" /etc/shells > /dev/null 2>&1 ; then
+  echo "Adding '$shell_path' to /etc/shells"
+  sudo sh -c "echo $shell_path >> /etc/shells"
+fi
+
+if [ ! -d "$HOME/.dotfiles" ]; then
+  git clone git@github.com:jacobthemyth/dotfiles.git "$HOME/.dotfiles"
+fi
+
+if [ ! -d "$HOME/.dotfiles-thoughtbot" ]; then
+  git clone git@github.com:thoughtbot/dotfiles.git "$HOME/.dotfiles-thoughtbot"
+fi
+
+# This is to prevent thoughtbot/laptop from creating a new .zshrc
+if [ ! -e "$HOME/.zshrc" ]; then
+  ln -s "$HOME/.dotfiles-thoughtbot/zshrc" "$HOME/.zshrc"
+fi
+
+if [ ! -e "$HOME/.laptop.local" ]; then
+  ln -s "$HOME/.dotfiles/tag-osx/laptop.local" "$HOME/.laptop.local"
+fi
+
+curl -s https://raw.githubusercontent.com/thoughtbot/laptop/master/mac | sh 2>&1 | tee "$HOME/laptop.log"

@@ -1,13 +1,11 @@
-jacobthemyth dotfiles
-===============
+# jacobthemyth dotfiles
 
 I use [thoughtbot/dotfiles](https://github.com/thoughtbot/dotfiles) and
 jacobthemyth/dotfiles together using [the `*.local` convention][dot-local].
 
 [dot-local]: http://robots.thoughtbot.com/manage-team-and-personal-dotfiles-together-with-rcm
 
-Requirements
-------------
+## Requirements
 
 Set zsh as my login shell.
 
@@ -18,8 +16,7 @@ Install [rcm](https://github.com/mike-burns/rcm).
     brew tap thoughtbot/formulae
     brew install rcm
 
-Install
--------
+## Install
 
 Clone onto my laptop:
 
@@ -31,7 +28,20 @@ Install:
 
 I can safely run `rcup` multiple times to update.
 
-What's in it?
--------------
+## Setup a new computer
 
-Lot's of customizations for Vim & Tmux
+[./setup](./setup) is a script to set up an OS X laptop for web development.
+
+It can be run multiple times on the same machine safely. It installs, upgrades,
+or skips packages based on what is already installed on the machine.
+
+It is tightly coupled to
+[thoughtbot/laptop](https://github.com/thoughtbot/laptop),
+[thoughtbot/dotfiles](https://github.com/thoughtbot/dotfiles), and
+[jacobthemyth/dotfiles](https://github.com/jacobthemyth/dotfiles).
+
+### Make It So
+
+```sh
+curl -s https://raw.githubusercontent.com/jacobthemyth/dotfiles/master/setup | sh 2>&1 | tee ~/setup.log
+```
