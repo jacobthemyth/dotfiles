@@ -2,8 +2,6 @@ Plug 'altercation/vim-colors-solarized'
 Plug 'christoomey/vim-tmux-navigator'   " seamless navigation between tmux panes and vim splits
 Plug 'davidoc/taskpaper.vim'
 Plug 'godlygeek/tabular'                " Aligning text
-Plug 'groenewege/vim-less'              " vim syntax for LESS (dynamic CSS)
-Plug 'JulesWang/css.vim'                " Cutting-edge vim css syntax file
 Plug 'junegunn/goyo.vim'                " Distration-free writing
 Plug 'ctrlpvim/ctrlp.vim'               " fuzzy finder
 Plug 'mattn/emmet-vim'                  " web dev workflow toolkit
