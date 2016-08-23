@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+set -e
+
+hash mas 2>/dev/null || brew install mas
+
+if ! $(mas account >/dev/null); then
+  echo -n "Mac App Store Password:"
+  read -s password
+  echo
+  mas signin "jacob@jacobsmith.io" "$password"
+fi
+
+brew bundle --file=- <<EOF
+tap "caskroom/fonts"
+cask "font-hack"
+
+tap "Goles/battery"
+brew "battery"
+
+tap "neovim/neovim"
+brew "neovim"
+
+tap "homebrew/versions"
+brew "qt55"
+
+brew "coreutils"
+brew "flow"
+brew "fzf"
+brew "ghc"
+brew "gist"
+brew "hub"
+brew "phantomjs"
+brew "ranger"
+brew "rmtrash"
+brew "rust"
+brew "ssh-copy-id"
+brew "the_silver_searcher"
+brew "tig"
+brew "tree"
+brew "watchman"
+brew "wget"
+brew "youtube-dl"
+
+cask "1password"
+cask "alfred"
+cask "appcleaner"
+cask "arq"
+cask "astropad"
+cask "dash"
+cask "dockertoolbox"
+cask "dropbox"
+cask "duet"
+cask "fluid"
+cask "flux"
+cask "google-chrome"
+cask "iterm2"
+cask "marked"
+cask "monodraw"
+cask "nvalt"
+cask "phoenix"
+cask "screenhero"
+cask "send-to-kindle"
+cask "sketch"
+cask "spotify"
+cask "steam"
+cask "taskpaper"
+
+mas 'Pages', id: 409201541
+mas 'Keynote', id: 409183694
+mas 'Numbers', id: 409203825
+mas 'Xcode', id: 497799835
+
+mas 'Airmail 2', id: 918858936
+mas 'DaisyDisk', id: 411643860
+mas 'Deckset', id: 847496013
+mas 'Fantastical', id: 435003921
+mas 'Pixelmator', id: 407963104
+mas 'ReadKit', id: 588726889
+mas 'Shush', id: 496437906
+mas 'Transmit', id: 403388562
+mas 'iA Writer', id: 775737590
+mas 'xScope', id: 889428659
+EOF
+
+# qt is keg-only, but webkit-capybara needs the qmake binary
+hash qmake 2>/dev/null || brew link --force qt55
+
+echo "Cleaning up old Homebrew formulae ..."
+brew cleanup
+brew cask cleanup
+
+RCRC="$HOME/.dotfiles/rcrc" rcup
+
+"$HOME/.osx"

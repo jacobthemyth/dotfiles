@@ -1,10 +1,13 @@
 #! /bin/bash
 
-number_of_cores=$(sysctl -n hw.ncpu)
-cd `dirname $0`/..
-git submodule init
-git pull --recurse-submodules --jobs=$((number_of_cores - 1))
-git submodule update --recursive
+echo "Loading latest thoughtbot/dotfiles..."
+if [ ! -d "$HOME/.dotfiles-thoughtbot" ]; then
+  git clone "https://github.com/thoughtbot/dotfiles.git" "$HOME/.dotfiles-thoughtbot"
+else
+  git -C "$HOME/.dotfiles-thoughtbot" pull
+fi
 
-[[ -L $HOME/.vim/init.vim ]] || ln -s "$HOME/.vimrc" "$HOME/.vim/init.vim"
-[[ -L $HOME/.config/nvim ]] || ln -s "$HOME/.vim" "$HOME/.config/nvim"
+number_of_cores=$(sysctl -n hw.ncpu)
+git -C "$HOME/.dotfiles" submodule init
+git -C "$HOME/.dotfiles" pull --recurse-submodules --jobs=$((number_of_cores - 1))
+git -C "$HOME/.dotfiles" submodule update --recursive

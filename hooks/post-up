@@ -2,3 +2,7 @@
 if [ ! -e ~/.vim/bundle/YouCompleteMe/python/ycm/youcompleteme.pyc ]; then
   ~/.vim/bundle/YouCompleteMe/install.py --tern-completer --racer-completer
 fi
+
+# Set up links for nvim
+[[ -L $HOME/.vim/init.vim ]] || ln -s "$HOME/.vimrc" "$HOME/.vim/init.vim"
+[[ -L $HOME/.config/nvim ]] || ln -s "$HOME/.vim" "$HOME/.config/nvim"

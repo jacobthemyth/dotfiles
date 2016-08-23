@@ -1,5 +1,5 @@
 #!/bin/bash
 EXCLUDES="README.md LICENSE"
 SYMLINK_DIRS="rbenv/plugins"
-DOTFILES_DIRS="$HOME/Code/jacobthemyth/dotfiles $HOME/Dropbox/.dotfiles-private $HOME/Code/thoughtbot/dotfiles"
-TAGS="git tmux vim"
+DOTFILES_DIRS="$HOME/.dotfiles $HOME/Dropbox/.dotfiles-private $HOME/Code/thoughtbot/dotfiles"
+TAGS="git osx tmux vim"
