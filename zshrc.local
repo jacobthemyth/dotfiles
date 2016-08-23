@@ -6,6 +6,7 @@ zstyle ":completion:*:descriptions" format "%B%d%b"
 [ -f $HOME/.config/digitalocean ] && source $HOME/.config/digitalocean
 
 export PATH="$PATH:$(brew --prefix coreutils)/libexec/gnubin"
-
 export PATH="$HOME/.bin:$PATH"
+export PATH=".git/safe/../../bin:$PATH"
+
 eval "$(rbenv init - --no-rehash)"
