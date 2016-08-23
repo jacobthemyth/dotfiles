@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
-cd ~/.vim/bundle/YouCompleteMe
-./install.py --tern-completer --racer-completer
+if [ ! -e ~/.vim/bundle/YouCompleteMe/python/ycm/youcompleteme.pyc ]; then
+  ~/.vim/bundle/YouCompleteMe/install.py --tern-completer --racer-completer
+fi
