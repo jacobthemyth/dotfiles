@@ -3,7 +3,7 @@
 [core]
   trustctime = false
   pager = less -FRSX
-  editor = vim -u NONE
+  editor = vim
 [branch]
   autoSetupRebase = always
 [color]
