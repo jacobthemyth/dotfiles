@@ -2,20 +2,14 @@
 " Adds to thoughtbot/dotfiles/vimrc and vim-sensible
 
 " Core Settings {{{
-let mapleader = "\<Space>"
 set showmode                   "Show current mode down the bottom
 set visualbell                  "No sounds
 set autoread                    "Reload files changed outside vim
 
 " Indentation
-
 set autoindent
 set smartindent
 set smarttab
-set shiftwidth=2
-set softtabstop=2
-set tabstop=2
-set expandtab
 set breakindent
 let &showbreak = '> '
 set linebreak
@@ -35,15 +29,6 @@ set modelines=1 " Allow modelines (i.e. executable comments)
 set background=dark
 colorscheme solarized
 set cursorline
-
-" Split sizing
-set winwidth=84
-" We have to have a winheight bigger than we want to set winminheight. But if
-" we set winheight to be huge before winminheight, the winminheight set will
-" fail.
-set winheight=5
-set winminheight=5
-set winheight=999
 
 " Persistent undo
 let undodir = expand('~/.vim/undo')
@@ -66,13 +51,6 @@ cnoremap %% <C-R>=fnameescape(expand('%:h')).'/'<cr>
 
 " automatically rebalance windows on vim resize
 autocmd VimResized * wincmd =
-
-autocmd BufRead,BufNewFile *.variables set filetype=less
-autocmd BufRead,BufNewFile *.overrides set filetype=less
-
-
-" bind \ (backward slash) to grep shortcut
-command -nargs=+ -complete=file -bar Ag silent! grep! <args>|cwindow|redraw!
 " }}}
 
 " Keyboard bindings {{{
@@ -83,8 +61,6 @@ vnoremap <Leader>p "*p
 nnoremap <Leader>y "*y
 nnoremap <Leader>p "*p
 nnoremap <Leader>P "*P
-
-nnoremap <leader>gg :GitGutterLineHighlightsToggle<cr>
 
 nnoremap <silent> <leader>gq :g/^/norm gqq<CR> " format all paragraphs
 nnoremap <silent> <leader>gj :%norm vipJ<CR> " unformat all paragraphs
@@ -101,11 +77,7 @@ nnoremap \ :Ag<SPACE>
 " }}}
 
 " Plugin settings {{{
-
 let g:vim_json_syntax_conceal = 0
-
-" EditorConfig
-let g:EditorConfig_exclude_patterns = ['fugitive://.*']
 
 " Airline
 let g:airline_theme = 'solarized'

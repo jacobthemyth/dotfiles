@@ -1,16 +1,12 @@
-Plug 'airblade/vim-gitgutter'           " show line modifications in gutter
 Plug 'altercation/vim-colors-solarized'
 Plug 'christoomey/vim-tmux-navigator'   " seamless navigation between tmux panes and vim splits
-Plug 'editorconfig/editorconfig-vim'    " EditorConfig plugin for Vim http://editorconfig.org
 Plug 'davidoc/taskpaper.vim'
 Plug 'godlygeek/tabular'                " Aligning text
 Plug 'groenewege/vim-less'              " vim syntax for LESS (dynamic CSS)
 Plug 'JulesWang/css.vim'                " Cutting-edge vim css syntax file
 Plug 'junegunn/goyo.vim'                " Distration-free writing
-Plug 'kballard/vim-swift'
 Plug 'ctrlpvim/ctrlp.vim'               " fuzzy finder
 Plug 'mattn/emmet-vim'                  " web dev workflow toolkit
-Plug 'mustache/vim-mustache-handlebars' " mustache and handlebars mode for vim
 Plug 'nelstrom/vim-markdown-folding'    " foldexpr for markdown headers
 Plug 'mustache/vim-mustache-handlebars' " mustache and handlebars mode for vim
 Plug 'pangloss/vim-javascript'          " Vastly improved JS syntax
