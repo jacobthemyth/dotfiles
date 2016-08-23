@@ -10,7 +10,6 @@ bind c new-window -c "#{pane_current_path}"
 
 bind t new-window "reattach-to-user-namespace tig status"
 bind r split-window -h 'reattach-to-user-namespace ranger'
-bind m split-window -h 'reattach-to-user-namespace mutt'
 bind C-r source-file ~/.tmux.conf \; display "Reloaded ~/.tmux.conf"
 # }}}
 
