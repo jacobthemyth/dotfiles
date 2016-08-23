@@ -56,3 +56,5 @@
   email = jacob@jacobsmith.io
 [github]
   user = jacobthemyth
+
+# vim: ft=gitconfig
