@@ -11,5 +11,5 @@
 	path = rbenv/plugins/rbenv-default-gems
 	url = https://github.com/rbenv/rbenv-default-gems.git
 [submodule "tmux/plugins/tmux-scroll-copy-mode"]
-	path = tmux/plugins/tmux-scroll-copy-mode
+	path = tag-tmux/tmux/plugins/tmux-scroll-copy-mode
 	url = https://github.com/NHDaly/tmux-scroll-copy-mode.git
