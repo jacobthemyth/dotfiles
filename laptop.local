@@ -1,6 +1,15 @@
 #!/bin/bash
 set -e
 
+brew install mas
+
+echo -n "Mac App Store Password:"
+read -s password
+echo
+
+mas signout
+mas signin "jacob@jacobsmith.io" "$password"
+
 brew bundle -v --file=- <<EOF
 tap "caskroom/fonts"
 cask "font-hack"
@@ -20,7 +29,6 @@ brew "fzf"
 brew "ghc"
 brew "gist"
 brew "hub"
-brew "mas"
 brew "multirust"
 brew "phantomjs"
 brew "ranger"
@@ -57,18 +65,7 @@ cask "sketch"
 cask "spotify"
 cask "steam"
 cask "taskpaper"
-EOF
 
-brew link --force qt55
-
-echo -n "Mac App Store Password:"
-read -s password
-echo
-
-mas signout
-mas signin "jacob@jacobsmith.io" "$password"
-
-brew bundle -v --file=- <<EOF
 mas 'FoldingText', id: 540003654
 mas 'Napkin', id: 581789185
 mas 'Keynote', id: 409183694
@@ -94,6 +91,8 @@ mas 'Transmit', id: 403388562
 mas 'Deliveries', id: 924726344
 mas 'Spillo', id: 873245660
 EOF
+
+brew link --force qt55
 
 default_docker_machine() {
   docker-machine ls | grep -Fq "default"
