@@ -1,5 +1,5 @@
-Plug 'altercation/vim-colors-solarized'
 Plug 'christoomey/vim-tmux-navigator'   " seamless navigation between tmux panes and vim splits
+Plug 'chriskempson/base16-vim'          " colorschemes
 Plug 'davidoc/taskpaper.vim'
 Plug 'godlygeek/tabular'                " Aligning text
 Plug 'junegunn/goyo.vim'                " Distration-free writing
