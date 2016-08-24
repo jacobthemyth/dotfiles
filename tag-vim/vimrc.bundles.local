@@ -3,6 +3,7 @@ Plug 'christoomey/vim-tmux-navigator'   " seamless navigation between tmux panes
 Plug 'davidoc/taskpaper.vim'
 Plug 'godlygeek/tabular'                " Aligning text
 Plug 'junegunn/goyo.vim'                " Distration-free writing
+Plug 'junegunn/vim-emoji'               " Emoji in Vim
 Plug 'ctrlpvim/ctrlp.vim'               " fuzzy finder
 Plug 'mattn/emmet-vim'                  " web dev workflow toolkit
 Plug 'nelstrom/vim-markdown-folding'    " foldexpr for markdown headers
