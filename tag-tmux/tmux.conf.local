@@ -68,6 +68,4 @@ bind C-l send-keys 'C-l'
 set -s escape-time 0
 # }}}
 
-if-shell "test -f $HOME/.tmux/themes/solarized.conf" "source $HOME/.tmux/themes/solarized.conf"
-
 # vim: foldmethod=marker:foldlevel=0
