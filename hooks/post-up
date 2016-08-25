@@ -10,3 +10,13 @@ fi
 # Set up links for nvim
 [[ -L $HOME/.vim/init.vim ]] || ln -s "$HOME/.vimrc" "$HOME/.vim/init.vim"
 [[ -L $HOME/.config/nvim ]] || ln -s "$HOME/.vim" "$HOME/.config/nvim"
+
+# Setup shell colors
+# function copied from `which base16_eighties`
+base16_eighties () {
+  [ -f /Users/jacobsmith/.config/base16-shell/scripts/base16-eighties.sh ] && . /Users/jacobsmith/.config/base16-shell/scripts/base16-eighties.sh
+  ln -v -fs /Users/jacobsmith/.config/base16-shell/scripts/base16-eighties.sh ~/.base16_theme
+  export BASE16_THEME=eighties
+  [ -f ~/.vimrc_background ] && rm ~/.vimrc_background
+  echo "colorscheme base16-eighties" >> ~/.vimrc_background
+}

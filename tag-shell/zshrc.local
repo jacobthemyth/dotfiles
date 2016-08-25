@@ -5,8 +5,11 @@ zstyle ":completion:*:descriptions" format "%B%d%b"
 
 [ -f $HOME/.config/digitalocean ] && source $HOME/.config/digitalocean
 
-export PATH="$PATH:$(brew --prefix coreutils)/libexec/gnubin"
+export PATH="$(brew --prefix coreutils)/libexec/gnubin:$PATH"
 export PATH="$HOME/.bin:$PATH"
 export PATH=".git/safe/../../bin:$PATH"
 
 eval "$(rbenv init - --no-rehash)"
+
+BASE16_SHELL=$HOME/.config/base16-shell/
+[ -n "$PS1" ] && [ -s $BASE16_SHELL/profile_helper.sh ] && eval "$($BASE16_SHELL/profile_helper.sh)"

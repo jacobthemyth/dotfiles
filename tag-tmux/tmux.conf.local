@@ -46,7 +46,7 @@ set -g status-left-length "100"
 set -g status-left "(#S) "
 
 # More useful status-right with battery percentage and nicely formated datetime
-set -g status-right "#[fg=white]#(date '+%a, %b %d - %I:%M')#[default] #h #(battery -p -t -g black)"
+set -g status-right "#[fg=white]#(date '+%a, %b %d - %I:%M')#[default] #h #(battery -p -t -g black) "
 # }}}
 
 # {{{ Vim integration

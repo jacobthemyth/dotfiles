@@ -12,7 +12,7 @@ fi
 
 brew bundle --file=- <<EOF
 tap "caskroom/fonts"
-cask "font-hack"
+cask "font-roboto-mono-for-powerline"
 
 tap "Goles/battery"
 brew "battery"
@@ -23,7 +23,7 @@ brew "neovim"
 tap "homebrew/versions"
 brew "qt55"
 
-brew "coreutils"
+brew "coreutils", args: ['with-default-names']
 brew "flow"
 brew "fzf"
 brew "ghc"

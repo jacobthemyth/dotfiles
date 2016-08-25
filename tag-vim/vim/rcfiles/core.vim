@@ -1,5 +1,8 @@
 " UI
-colorscheme base16-default-dark
+if &t_Co == 256
+  let base16colorspace=256
+endif
+colorscheme base16-eighties
 set cursorline
 
 " Indentation
