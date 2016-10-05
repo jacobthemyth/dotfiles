@@ -17,16 +17,11 @@ cask "font-roboto-mono-for-powerline"
 tap "Goles/battery"
 brew "battery"
 
-tap "neovim/neovim"
-brew "neovim"
-
-tap "homebrew/versions"
-brew "qt55"
-
 brew "coreutils", args: ['with-default-names']
 brew "flow"
 brew "fzf"
 brew "ghc"
+brew "ghi"
 brew "gist"
 brew "hub"
 brew "phantomjs"
