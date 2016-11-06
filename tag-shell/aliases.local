@@ -3,6 +3,7 @@ alias la='ls -lAFh'
 alias ip="dig +short myip.opendns.com @resolver1.opendns.com"
 alias localip="ipconfig getifaddr en1"
 alias today="date +%Y-%m-%d"
+alias less="less -R"
 
 # ruby
 alias be="bundle exec"
