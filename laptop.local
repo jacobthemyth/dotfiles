@@ -15,12 +15,13 @@ tap "Goles/battery"
 brew "battery"
 
 brew "awscli"
-brew "coreutils", args: ['with-default-names']
+brew "coreutils"
 brew "docker"
 brew "docker-compose"
 brew "docker-machine"
 brew "emojify"
 brew "exercism"
+brew "findutils"
 brew "flow"
 brew "fzf"
 brew "ghc"
@@ -50,13 +51,8 @@ cask "1password"
 cask "alfred"
 cask "appcleaner"
 cask "arq"
-cask "astropad"
-cask "balsamiq-mockups"
-cask "colorpicker"
-cask "colorpicker-skalacolor"
 cask "dash"
 cask "dropbox"
-cask "duet"
 cask "fluid"
 cask "flux"
 cask "font-fontawesome"
@@ -65,16 +61,13 @@ cask "iterm2"
 cask "java"
 cask "marked"
 cask "monodraw"
-cask "omnigraffle"
 cask "phoenix"
 cask "psequel"
-cask "screenhero"
 cask "send-to-kindle"
 cask "sketch"
 cask "slack"
 cask "spotify"
 cask "steam"
-cask "taskpaper"
 cask "vagrant"
 cask "virtualbox"
 
@@ -85,7 +78,6 @@ mas 'Xcode', id: 497799835
 
 mas 'Airmail 2', id: 918858936
 mas 'DaisyDisk', id: 411643860
-mas 'Deckset', id: 847496013
 mas 'Fantastical', id: 435003921
 mas 'Pixelmator', id: 407963104
 mas 'ReadKit', id: 588726889
@@ -103,6 +95,3 @@ brew cleanup
 brew cask cleanup
 
 RCRC="$HOME/.dotfiles/rcrc" rcup -f
-
-# shellcheck disable=SC1090
-. "$HOME/.osx"
