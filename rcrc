@@ -2,4 +2,4 @@
 EXCLUDES="setup README.md LICENSE"
 SYMLINK_DIRS="rbenv/plugins"
 DOTFILES_DIRS="$HOME/.dotfiles $HOME/Dropbox/.dotfiles-private $HOME/Code/thoughtbot/dotfiles"
-TAGS="frontend git osx ruby shell tmux vim"
+TAGS="frontend git osx ruby shell tmux"
