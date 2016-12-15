@@ -19,7 +19,7 @@ if [ ! -d "$HOME/.dotfiles" ]; then
 fi
 
 if [ ! -e "$HOME/.laptop.local" ]; then
-  ln -s "$HOME/.dotfiles/tag-osx/laptop.local" "$HOME/.laptop.local"
+  ln -s "$HOME/.dotfiles/laptop.local" "$HOME/.laptop.local"
 fi
 
 curl -s https://raw.githubusercontent.com/thoughtbot/laptop/master/mac | sh 2>&1
