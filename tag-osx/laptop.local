@@ -11,54 +11,72 @@ if ! mas account >/dev/null; then
 fi
 
 brew bundle --file=- <<EOF
-tap "caskroom/fonts"
-cask "font-roboto-mono-for-powerline"
-
 tap "Goles/battery"
 brew "battery"
 
+brew "awscli"
 brew "coreutils", args: ['with-default-names']
+brew "docker"
+brew "docker-compose"
+brew "docker-machine"
+brew "emojify"
+brew "exercism"
 brew "flow"
 brew "fzf"
 brew "ghc"
 brew "ghi"
 brew "gist"
 brew "hub"
+brew "jq"
+brew "leiningen"
+brew "macvim"
 brew "phantomjs"
+brew "qt5", args: ['with-qtwebkit']
 brew "ranger"
 brew "rmtrash"
 brew "rust"
 brew "ssh-copy-id"
 brew "the_silver_searcher"
 brew "tig"
+brew "tmate"
 brew "tree"
 brew "watchman"
-brew "wget"
 brew "youtube-dl"
+
+tap "caskroom/fonts"
+cask "font-roboto-mono-for-powerline"
 
 cask "1password"
 cask "alfred"
 cask "appcleaner"
 cask "arq"
 cask "astropad"
+cask "balsamiq-mockups"
+cask "colorpicker"
+cask "colorpicker-skalacolor"
 cask "dash"
-cask "dockertoolbox"
 cask "dropbox"
 cask "duet"
 cask "fluid"
 cask "flux"
+cask "font-fontawesome"
 cask "google-chrome"
 cask "iterm2"
+cask "java"
 cask "marked"
 cask "monodraw"
-cask "nvalt"
+cask "omnigraffle"
 cask "phoenix"
+cask "psequel"
 cask "screenhero"
 cask "send-to-kindle"
 cask "sketch"
+cask "slack"
 cask "spotify"
 cask "steam"
 cask "taskpaper"
+cask "vagrant"
+cask "virtualbox"
 
 mas 'Pages', id: 409201541
 mas 'Keynote', id: 409183694
@@ -78,7 +96,7 @@ mas 'xScope', id: 889428659
 EOF
 
 # qt is keg-only, but webkit-capybara needs the qmake binary
-hash qmake 2>/dev/null || brew link --force qt55
+hash qmake 2>/dev/null || brew link --force qt5
 
 echo "Cleaning up old Homebrew formulae ..."
 brew cleanup
