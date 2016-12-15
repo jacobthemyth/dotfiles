@@ -12,4 +12,4 @@ target_commit=$(
 
 printf "%s" "$target_commit" | pbcopy
 
-echo "Commit hash copied ($target_commit)"
+echo "$target_commit"
