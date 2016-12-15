@@ -1,12 +1,24 @@
 # Unix
+alias f='fzf | pbcopy'
 alias la='ls -lAFh'
 alias ip="dig +short myip.opendns.com @resolver1.opendns.com"
 alias localip="ipconfig getifaddr en1"
+alias r="ranger"
 alias today="date +%Y-%m-%d"
 alias less="less -R"
 
 # ruby
 alias be="bundle exec"
+alias dbm='bundle exec rake db:migrate'
+alias dbtp='bundle exec rake test:prepare'
+alias dbpp='bundle exec rake parallel:prepare'
 
 # Applications
 alias marked="open -a Marked\ 2.app"
+
+#########
+# NEXIA #
+#########
+
+alias stat_ssh='ssh -oKexAlgorithms=+diffie-hellman-group1-sha1'
+alias nexiac='bundle exec pry -I . -r "initializer"'
