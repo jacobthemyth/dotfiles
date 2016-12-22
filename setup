@@ -15,7 +15,7 @@ if ! grep "$shell_path" /etc/shells > /dev/null 2>&1 ; then
 fi
 
 if [ ! -d "$HOME/.dotfiles" ]; then
-  git clone git@github.com:jacobthemyth/dotfiles.git "$HOME/.dotfiles"
+  git clone https://github.com/jacobthemyth/dotfiles.git "$HOME/.dotfiles"
 fi
 
 if [ ! -e "$HOME/.laptop.local" ]; then
