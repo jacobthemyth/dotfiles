@@ -7,6 +7,7 @@ Plug 'junegunn/goyo.vim'                " Distration-free writing
 Plug 'junegunn/vim-emoji'               " Emoji in Vim
 Plug 'kana/vim-textobj-user'
 Plug 'mattn/emmet-vim'                  " web dev workflow toolkit
+Plug 'mustache/vim-mustache-handlebars'
 Plug 'nelstrom/vim-markdown-folding'    " foldexpr for markdown headers
 Plug 'nelstrom/vim-textobj-rubyblock'   " A custom text object for selecting ruby blocks.
 Plug 'pangloss/vim-javascript'          " Vastly improved JS syntax

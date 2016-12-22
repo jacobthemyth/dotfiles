@@ -9,7 +9,6 @@ colorscheme base16-eighties
 set cursorline
 set textwidth=0
 set colorcolumn=81
-set relativenumber
 
 " Indentation
 set smartindent
@@ -127,6 +126,17 @@ autocmd VimEnter *       RainbowParenthesesToggle
 autocmd Syntax   clojure RainbowParenthesesLoadRound
 autocmd Syntax   clojure RainbowParenthesesLoadSquare
 autocmd Syntax   clojure RainbowParenthesesLoadBraces
+
+" Annotate marked lines
+nmap <leader>b :%.!seeing_is_believing --timeout 12 --line-length 500 --number-of-captures 300 --alignment-strategy chunk --xmpfilter-style<CR>;
+" Annotate every line
+nmap <leader>B :%!seeing_is_believing --timeout 12 --line-length 500 --number-of-captures 300 --alignment-strategy chunk<CR>;
+" Remove annotations
+nmap <leader>c :%.!seeing_is_believing --clean<CR>;
+" Mark the current line for annotation
+nmap <leader>A A # => <Esc>
+" Mark the highlighted lines for annotation
+vmap <leader>A :norm A # => <Esc>
 
 " Syntastic
 let syntastic_mode_map = { 'passive_filetypes': ['html'] }
