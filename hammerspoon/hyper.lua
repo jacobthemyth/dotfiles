@@ -1,16 +1,22 @@
 -- A global variable for the Hyper Mode
-local hyper = hs.hotkey.modal.new({}, "F17")
+-- The key is irrelevant, it is only used to store state
+local hyper = hs.hotkey.modal.new({}, "F20")
 
--- Enter Hyper Mode when F18 (Hyper/Capslock) is pressed
-pressedF18 = function()
-  hyper:enter()
-end
+local CAPS = {
+  keycode = 57,
+  isEnabled = 65792,
+  isDisabled = 256
+}
 
--- Leave Hyper Mode when F18 (Hyper/Capslock) is pressed,
---   send ESCAPE if no other keys are pressed.
-releasedF18 = function()
-  hyper:exit()
-end
+trap_caps_lock = hs.eventtap.new({hs.eventtap.event.types.flagsChanged}, function(evt)
+  if evt:getKeyCode() == CAPS.keycode then
+    if evt:getRawEventData()["NSEventData"]["modifierFlags"] == CAPS.isEnabled then
+      hyper:enter()
+    else
+      hyper:exit()
+    end
+  end
+end)
+trap_caps_lock:start()
 
--- Bind the Hyper key
-f18 = hs.hotkey.bind({}, 'F18', pressedF18, releasedF18)
+return hyper
