@@ -2,7 +2,7 @@
 alias f='fzf | pbcopy'
 alias la='ls -lAFh'
 alias ip="dig +short myip.opendns.com @resolver1.opendns.com"
-alias localip="ipconfig getifaddr en1"
+alias localip="ipconfig getifaddr en0"
 alias r="ranger"
 alias today="date +%Y-%m-%d"
 alias less="less -R"
@@ -15,6 +15,10 @@ alias dbpp='bundle exec rake parallel:prepare'
 
 # Applications
 alias marked="open -a Marked\ 2.app"
+
+# React Native
+alias rn="react-native"
+alias rni="react-native run-ios"
 
 #########
 # NEXIA #

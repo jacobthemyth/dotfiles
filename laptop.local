@@ -10,11 +10,16 @@ if ! mas account >/dev/null; then
   mas signin "jacob@jacobsmith.io" "$password"
 fi
 
+# Install Xcode
+mas install 497799835
+sudo xcodebuild -license accept
+
 brew bundle --file=- <<EOF
 tap "Goles/battery"
 brew "battery"
 
 brew "awscli"
+brew "cmake"
 brew "coreutils"
 brew "emojify"
 brew "exercism"
@@ -37,6 +42,7 @@ brew "tig"
 brew "tmate"
 brew "tree"
 brew "watchman"
+brew "yarn"
 brew "youtube-dl"
 
 tap "caskroom/fonts"
@@ -67,7 +73,6 @@ cask "steam"
 cask "vagrant"
 cask "virtualbox"
 
-mas 'Xcode', id: 497799835
 brew "qt5", args: ['with-qtwebkit']
 
 mas 'Pages', id: 409201541
@@ -92,4 +97,5 @@ echo "Cleaning up old Homebrew formulae ..."
 brew cleanup
 brew cask cleanup
 
+rcup -d $HOME/.dotfiles-thoughtbot -f
 RCRC="$HOME/.dotfiles/rcrc" rcup -f

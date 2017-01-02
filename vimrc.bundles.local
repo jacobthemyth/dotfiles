@@ -1,5 +1,5 @@
-Plug 'christoomey/vim-tmux-navigator'   " seamless navigation between tmux panes and vim splits
 Plug 'chriskempson/base16-vim'          " colorschemes
+Plug 'christoomey/vim-tmux-navigator'   " seamless navigation between tmux panes and vim splits
 Plug 'davidoc/taskpaper.vim'
 Plug 'ecomba/vim-ruby-refactoring'
 Plug 'godlygeek/tabular'                " Aligning text
@@ -8,19 +8,21 @@ Plug 'junegunn/vim-emoji'               " Emoji in Vim
 Plug 'kana/vim-textobj-user'
 Plug 'mattn/emmet-vim'                  " web dev workflow toolkit
 Plug 'mustache/vim-mustache-handlebars'
+Plug 'mxw/vim-jsx'
 Plug 'nelstrom/vim-markdown-folding'    " foldexpr for markdown headers
 Plug 'nelstrom/vim-textobj-rubyblock'   " A custom text object for selecting ruby blocks.
 Plug 'pangloss/vim-javascript'          " Vastly improved JS syntax
 Plug 'rust-lang/rust.vim'
-Plug 'SirVer/ultisnips'
+Plug 'sirver/ultisnips'
 Plug 'skwp/greplace.vim'                " Global search and replace for VI
 Plug 'stefanoverna/vim-i18n'            " Vim plugin to easily add I18n translations to your Rails project
 Plug 'ternjs/tern_for_vim'              " A code-analysis engine for JavaScript
-Plug 'tpope/vim-unimpaired'             " pairs of handy bracket mappings
 Plug 'tpope/vim-dispatch'               " dispatch.vim: asynchronous build and test dispatcher
+Plug 'tpope/vim-markdown'
 Plug 'tpope/vim-rsi'                    " readline style insertion
+Plug 'tpope/vim-unimpaired'             " pairs of handy bracket mappings
 Plug 'tpope/vim-vinegar'                " netrw enhancements
-Plug 'Valloric/YouCompleteMe'           " A code-completion engine for Vim
+Plug 'valloric/YouCompleteMe'           " A code-completion engine for Vim
 Plug 'vim-airline/vim-airline'          " status/tabline
 Plug 'vim-airline/vim-airline-themes'
 Plug 'vim-scripts/auto_autoread.vim'    " Use a python polling thread to autoread
