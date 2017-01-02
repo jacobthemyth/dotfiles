@@ -14,6 +14,8 @@ bind C-r source-file ~/.tmux.conf \; display "Reloaded ~/.tmux.conf"
 # }}}
 
 # {{{ General settings
+set -g default-terminal "tmux-256color"
+
 setw -g mouse on
 
 # 12 hour clock

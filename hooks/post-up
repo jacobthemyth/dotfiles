@@ -20,3 +20,10 @@ base16_eighties () {
   [ -f ~/.vimrc_background ] && rm ~/.vimrc_background
   echo "colorscheme base16-eighties" >> ~/.vimrc_background
 }
+base16_eighties
+
+# Setup tmux terminfo
+if ! infocmp tmux > /dev/null 2>&1; then
+  tic -x -e tmux          $HOME/.config/terminfo/terminfo.src
+  tic -x -e tmux-256color $HOME/.config/terminfo/terminfo.src
+fi

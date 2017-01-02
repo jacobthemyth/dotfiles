@@ -10,6 +10,12 @@ set cursorline
 set textwidth=0
 set colorcolumn=81
 
+highlight Comment gui=italic cterm=italic
+highlight htmlArg gui=italic cterm=italic ctermfg=3
+highlight xmlAttrib gui=italic cterm=italic ctermfg=3
+highlight htmlBold gui=bold cterm=bold
+highlight htmlItalic gui=italic cterm=italic
+
 " Indentation
 set smartindent
 set breakindent
