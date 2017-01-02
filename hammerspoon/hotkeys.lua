@@ -1,6 +1,6 @@
-local hyper = require('hyper')
+local hyper = {"alt", "cmd"}
 
-hyper:bind({}, "[", nil, function()
+hs.hotkey.bind(hyper, "left", nil, function()
   local win = hs.window.focusedWindow()
   local f = win:frame()
   local screen = win:screen()
@@ -13,7 +13,7 @@ hyper:bind({}, "[", nil, function()
   win:setFrame(f)
 end)
 
-hyper:bind({}, "]", nil, function()
+hs.hotkey.bind(hyper, "right", nil, function()
   local win = hs.window.focusedWindow()
   local f = win:frame()
   local screen = win:screen()
@@ -26,7 +26,7 @@ hyper:bind({}, "]", nil, function()
   win:setFrame(f)
 end)
 
-hyper:bind({}, "m", nil, function()
+hs.hotkey.bind(hyper, "up", nil, function()
   local win = hs.window.focusedWindow()
   local f = win:frame()
   local screen = win:screen()
@@ -36,5 +36,18 @@ hyper:bind({}, "m", nil, function()
   f.y = max.y
   f.w = max.w
   f.h = max.h
+  win:setFrame(f)
+end)
+
+hs.hotkey.bind(hyper, "down", nil, function()
+  local win = hs.window.focusedWindow()
+  local f = win:frame()
+  local screen = win:screen()
+  local screenFrame = screen:frame()
+
+  f.w = screenFrame.w / 2
+  f.h = screenFrame.h
+  f.x = screenFrame.x + ((screenFrame.w - f.w) / 2)
+  f.y = screenFrame.y + ((screenFrame.h - f.h) / 2)
   win:setFrame(f)
 end)
