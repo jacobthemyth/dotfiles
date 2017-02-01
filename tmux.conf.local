@@ -9,7 +9,6 @@ bind - split-window -v -c "#{pane_current_path}"
 bind c new-window -c "#{pane_current_path}"
 
 bind t new-window "tig"
-bind r split-window -h "ranger"
 bind C-r source-file ~/.tmux.conf \; display "Reloaded ~/.tmux.conf"
 # }}}
 
@@ -42,6 +41,9 @@ bind-key -t vi-copy MouseDragEnd1Pane copy-pipe "reattach-to-user-namespace pbco
 # }}}
 
 # {{{ Status
+# Use emacs / readline key-bindings at the tmux command prompt `<prefix>:`
+set -g status-keys emacs
+
 set -g status-position "top"
 set -g status-right-length "100"
 set -g status-left-length "100"
