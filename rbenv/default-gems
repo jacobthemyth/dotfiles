@@ -2,4 +2,6 @@ bundler
 ghi
 neovim
 tmuxinator
+travis
 seeing_is_believing
+scss_lint

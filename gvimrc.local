@@ -1,5 +1,4 @@
-set background=light
 set guioptions-=r "Hide the right side scrollbar
 set guioptions-=L "Hide the left side scrollbar
-set guioptions-=T "Hide toolbars...this is vim for craps sake
-set guioptions-=m "Hide the menu, see above
+set macligatures
+set guifont=Fira\ Code:h16

@@ -18,6 +18,12 @@
   ra = !git r --all
   l = "!. ~/.githelpers && pretty_git_log"
   la = !git l --all
+
+  today="!git log --pretty=format:'%Cred%h%Creset - %s%Creset - %Cgreen%cd%Creset ' --date=relative --all --since=6am  --author=\"$(git config user.name)\""
+  yesterday="!git log --pretty=format:'%Cred%h%Creset - %s%Creset - %Cgreen%cd%Creset ' --date=relative --all --since=6am.yesterday --until=6am  --author=\"$(git config user.name)\""
+  friday="!git log --pretty=format:'%Cred%h%Creset - %s%Creset - %Cgreen%cd%Creset ' --date=relative --all --since=6am.last.friday --until=6am  --author=\"$(git config user.name)\""
+
+  cd = !git checkout $(git branch | cut -c 3- | fzf)
 [core]
   pager = less -FRX
   editor = vim
