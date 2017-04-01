@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 if [ ! -e ~/.vim/bundle/YouCompleteMe/python/ycm/youcompleteme.pyc ]; then
-  ~/.vim/bundle/YouCompleteMe/install.py --tern-completer --racer-completer
+  ~/.vim/bundle/YouCompleteMe/install.py --tern-completer
 fi
 
 if [ ! -d ~/.vim/bundle/tern_for_vim/node_modules ]; then
