@@ -14,16 +14,17 @@
   head = !git r -1
   h = !git head
   hp = "!. ~/.githelpers && show_git_head"
-  r = !GIT_NO_PAGER=1 git l -10
+  r = !GIT_NO_PAGER=1 git l -20
   ra = !git r --all
   l = "!. ~/.githelpers && pretty_git_log"
   la = !git l --all
 
+  pullhard = "!git fetch --all && git reset --hard @{u}"
+
   today="!git log --pretty=format:'%Cred%h%Creset - %s%Creset - %Cgreen%cd%Creset ' --date=relative --all --since=6am  --author=\"$(git config user.name)\""
   yesterday="!git log --pretty=format:'%Cred%h%Creset - %s%Creset - %Cgreen%cd%Creset ' --date=relative --all --since=6am.yesterday --until=6am  --author=\"$(git config user.name)\""
   friday="!git log --pretty=format:'%Cred%h%Creset - %s%Creset - %Cgreen%cd%Creset ' --date=relative --all --since=6am.last.friday --until=6am  --author=\"$(git config user.name)\""
-
-  cd = !git checkout $(git branch | cut -c 3- | fzf)
+  sprint="!git log --pretty=format:'%Cred%h%Creset - %s%Creset - %Cgreen%cd%Creset ' --date=relative --all --since=6am.2.weeks.ago --until=6am  --author=\"$(git config user.name)\""
 [core]
   pager = less -FRX
   editor = vim

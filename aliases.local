@@ -15,14 +15,11 @@ alias dbpp='bundle exec rake parallel:prepare'
 
 # Applications
 alias marked="open -a Marked\ 2.app"
+alias chrome="/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome"
 
 # React Native
 alias rn="react-native"
 alias rni="react-native run-ios"
 
-#########
-# NEXIA #
-#########
-
-alias stat_ssh='ssh -oKexAlgorithms=+diffie-hellman-group1-sha1'
-alias nexiac='bundle exec pry -I . -r "initializer"'
+# Include custom aliases
+[[ -f ~/.aliases.private ]] && source ~/.aliases.private

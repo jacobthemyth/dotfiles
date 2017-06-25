@@ -21,9 +21,13 @@ brew "battery"
 tap "homebrew/dupes"
 brew "less"
 
+tap "nodenv/nodenv"
+brew "nodenv-default-packages"
+
 brew "awscli"
 brew "cmake"
 brew "coreutils"
+brew "dialog"
 brew "emojify"
 brew "exercism"
 brew "findutils"
@@ -35,11 +39,12 @@ brew "gifsicle"
 brew "gist"
 brew "hub"
 brew "jq"
+brew "jsonlint"
 brew "leiningen"
 brew "macvim"
+brew "nodenv"
 brew "phantomjs"
 brew "rmtrash"
-brew "rust"
 brew "ssh-copy-id"
 brew "the_silver_searcher"
 brew "tig"
@@ -52,21 +57,21 @@ brew "youtube-dl"
 tap "caskroom/fonts"
 cask "font-fira-code"
 
-tap "caskroom/versions"
-cask "alfred2"
-
 cask "1password"
+cask "alfred"
+cask "android-studio"
 cask "appcleaner"
 cask "arq"
+cask "cloak"
 cask "dash"
 cask "docker"
 cask "dropbox"
 cask "duet"
 cask "fluid"
 cask "flux"
-cask "font-fontawesome"
 cask "google-chrome"
 cask "hammerspoon"
+cask "hazel"
 cask "iterm2"
 cask "java"
 cask "karabiner-elements"
@@ -78,32 +83,47 @@ cask "screenflow5"
 cask "slack"
 cask "spotify"
 cask "steam"
+cask "thingsmacsandboxhelper"
 cask "vagrant"
 cask "virtualbox"
 
-brew "qt5", args: ['with-qtwebkit']
-
-mas 'Pages', id: 409201541
-mas 'Keynote', id: 409183694
-mas 'Numbers', id: 409203825
-
-mas 'Airmail 2', id: 918858936
+mas '1Blocker', id: 1107421413
+mas 'Airmail 3', id: 918858936
 mas 'DaisyDisk', id: 411643860
-mas 'Fantastical', id: 435003921
+mas 'Deckset', id: 847496013
+mas 'Deliveries', id: 924726344
+mas 'Fantastical 2', id: 975937182
+mas 'Focus', id: 777233759
+mas 'GIPHY CAPTURE', id: 668208984
+mas 'Keynote', id: 409183694
+mas 'MindNode', id: 992076693
+mas 'Napkin', id: 581789185
+mas 'Numbers', id: 409203825
+mas 'OmniOutliner', id: 1142578772
+mas 'Pages', id: 409201541
 mas 'Pixelmator', id: 407963104
 mas 'ReadKit', id: 588726889
+mas 'ScanSnap Cloud', id: 1211119808
+mas 'Scrivener', id: 418889511
 mas 'Shush', id: 496437906
+mas 'Spillo', id: 873245660
+mas 'Studies', id: 1071676469
+mas 'Things3', id: 904280696
 mas 'Transmit', id: 403388562
 mas 'iA Writer', id: 775737590
 mas 'xScope', id: 889428659
 EOF
 
-# qt is keg-only, but webkit-capybara needs the qmake binary
-hash qmake 2>/dev/null || brew link --force qt5
-
 echo "Cleaning up old Homebrew formulae ..."
 brew cleanup
 brew cask cleanup
 
-rcup -d $HOME/.dotfiles-thoughtbot -f
+if ! hash rustup 2>/dev/null; then
+  curl https://sh.rustup.rs -sSf | sh
+fi
+
+rustup update
+rustup component add rust-src
+cargo install rustfmt
+
 RCRC="$HOME/.dotfiles/rcrc" rcup -f

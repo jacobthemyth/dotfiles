@@ -1,0 +1,41 @@
+#!/bin/bash
+
+TITLE="Branch Selector"
+MENU="Select a branch to checkout:"
+
+OPTIONS=()
+tempBranches=()
+BRANCHES=()
+eval "$(git for-each-ref --shell --format='tempBranches+=(%(refname))' refs/heads/)"
+
+i=0
+max_width=0
+for branch in "${tempBranches[@]}"; do
+  OPTIONS+=($i)
+  i="$((i+1))"
+  branch=${branch:11}
+  BRANCHES+=($branch)
+  OPTIONS+=($branch)
+
+  if [ "${#branch}" -gt "$max_width" ]; then
+    max_width="${#branch}"
+  fi
+done
+
+WIDTH="$((max_width+12))"
+CHOICE_HEIGHT="$((i*2))"
+HEIGHT="$((CHOICE_HEIGHT))"
+
+CHOICE=$(dialog --keep-tite\
+                --clear \
+                --title "$TITLE" \
+                --menu "$MENU" \
+                $HEIGHT $WIDTH $CHOICE_HEIGHT \
+                "${OPTIONS[@]}" \
+                2>&1 >/dev/tty)
+
+if [[ "$CHOICE" == "" ]]; then
+  exit 1
+fi
+
+git checkout ${BRANCHES[CHOICE]}

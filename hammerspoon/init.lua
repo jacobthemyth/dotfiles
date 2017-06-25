@@ -1,7 +1,17 @@
-local hyper = {"alt", "cmd"}
+require('emacs')
+
+local hyper = {"ctrl", "shift", "alt", "cmd"}
 
 hs.hotkey.bind("cmd", ".", nil, function()
   os.execute("cd ~/Dropbox/Work; /usr/local/bin/mvim . &")
+end)
+
+hs.hotkey.bind(hyper, "r", nil, function()
+  hs.reload()
+end)
+
+hs.hotkey.bind(hyper, "i", nil, function()
+  os.execute("cd ~/Dropbox/Inbox; /usr/local/bin/mvim . &")
 end)
 
 hs.hotkey.bind(hyper, "left", nil, function()

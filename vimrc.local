@@ -6,6 +6,7 @@ if &t_Co == 256
   let base16colorspace=256
 endif
 colorscheme base16-eighties
+set autoread
 set cursorline
 set textwidth=0
 set colorcolumn=81
@@ -127,6 +128,10 @@ let g:airline#extensions#tabline#show_tab_type = 0
 let g:airline#extensions#tabline#show_close_button = 0
 let g:airline_section_y = ""       " remove fileencoding[fileformat]
 let g:airline_powerline_fonts = 1
+let g:airline_section_error = '%{ALEGetStatusLine()}'
+
+" ale
+let g:ale_statusline_format = ['⨉ %d', '⚠ %d', '']
 
 " ctrlp
 " Ignore non project files
@@ -134,29 +139,11 @@ let g:ctrlp_custom_ignore = {
   \ 'dir':  '\v[\/](\.git|node_modules)$',
   \ }
 
-let g:ctrlp_buffer_func = { 'enter': 'MyCtrlPMappings' }
-
-func! MyCtrlPMappings()
-    nnoremap <buffer> <silent> <c-d> :call <sid>DeleteBuffer()<cr>
-endfunc
-
-func! s:DeleteBuffer()
-    let line = getline('.')
-    let bufid = line =~ '\[\d\+\*No Name\]$' ? str2nr(matchstr(line, '\d\+'))
-        \ : fnamemodify(line[2:], ':p')
-    exec "bd" bufid
-    exec "norm \<F5>"
-endfunc
-
 " fugitive
 autocmd BufReadPost fugitive://* set bufhidden=delete
 
 " goyo
 nnoremap <leader>w :Goyo<CR>
-
-" grep
-" Used by Greplace
-let g:grep_cmd_opts = '--line-numbers --noheading'
 
 " i18n
 vmap <Leader>z :call I18nTranslateString()<CR>
@@ -168,28 +155,39 @@ let g:jsx_ext_required = 0
 " mustache
 let g:mustache_abbreviations = 1
 
-" rainbow_parentheses
-" Make Rainbow play nicely with vim-clojure-highlight
-autocmd VimEnter *       RainbowParenthesesToggle
-autocmd Syntax   clojure RainbowParenthesesLoadRound
-autocmd Syntax   clojure RainbowParenthesesLoadSquare
-autocmd Syntax   clojure RainbowParenthesesLoadBraces
+" netrw
+let g:netrw_bufsettings = 'noma nomod nu nobl nowrap ro'
+augroup netrw
+  autocmd!
+  autocmd FileType netrw set colorcolumn=""
+augroup END
+
+" pencil
+let g:pencil#wrapModeDefault = 'soft'   " default is 'hard'
+
+augroup pencil
+  autocmd!
+  autocmd FileType markdown,mkd call pencil#init()
+  autocmd FileType text         call pencil#init({'wrap': 'hard'})
+augroup END
+
+" textobj-quote
+augroup textobj_quote
+  autocmd!
+  autocmd FileType markdown call textobj#quote#init()
+augroup END
 
 " vim-rust
 let g:rustfmt_autosave = 1
-
-" Syntastic
-let syntastic_mode_map = { 'passive_filetypes': ['html'] }
-let g:syntastic_javascript_checkers = ['eslint']
-let g:syntastic_always_populate_loc_list = 1
-let g:syntastic_json_checkers = ['jsonlint']
-let g:syntastic_ruby_checkers = ['mri', 'rubocop']
 
 " tern
 let g:tern_map_prefix='<Leader>'
 let g:tern_map_keys=1
 let g:tern_show_arguments_hints="on_hold"
 let g:tern_show_signature_in_pum=1
+
+" UltiSnips
+let g:UltiSnipsExpandTrigger="<c-j>"
 
 " vim-test
 let g:test#strategy = 'dispatch'
@@ -199,6 +197,11 @@ nmap <silent> <leader>T :TestFile<CR>
 nmap <silent> <leader>a :TestSuite<CR>
 nmap <silent> <leader>l :TestLast<CR>
 nmap <silent> <leader>g :TestVisit<CR>
+
+" YouCompleteMe
+" getting `rust-src` rustup component path for current rustc version
+let g:ycm_rust_src_path = substitute(system('rustc --print sysroot'), '\n\+$', '', '') . '/lib/rustlib/src/rust/src'
+
 " }}}
 
 " vim: set foldmethod=marker:
