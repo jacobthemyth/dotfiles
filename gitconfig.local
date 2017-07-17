@@ -25,6 +25,8 @@
   yesterday="!git log --pretty=format:'%Cred%h%Creset - %s%Creset - %Cgreen%cd%Creset ' --date=relative --all --since=6am.yesterday --until=6am  --author=\"$(git config user.name)\""
   friday="!git log --pretty=format:'%Cred%h%Creset - %s%Creset - %Cgreen%cd%Creset ' --date=relative --all --since=6am.last.friday --until=6am  --author=\"$(git config user.name)\""
   sprint="!git log --pretty=format:'%Cred%h%Creset - %s%Creset - %Cgreen%cd%Creset ' --date=relative --all --since=6am.2.weeks.ago --until=6am  --author=\"$(git config user.name)\""
+
+  cleanup="!git branch --merged master | grep -v '* master' | xargs -n 1 git branch -d"
 [core]
   pager = less -FRX
   editor = vim

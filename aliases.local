@@ -21,5 +21,8 @@ alias chrome="/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome"
 alias rn="react-native"
 alias rni="react-native run-ios"
 
+# Docker
+alias dc="docker-compose"
+
 # Include custom aliases
 [[ -f ~/.aliases.private ]] && source ~/.aliases.private
