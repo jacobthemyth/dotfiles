@@ -1,13 +1,14 @@
 
 Plug 'kana/vim-textobj-user' " used by rubyblock and quote
 
-Plug 'ecomba/vim-ruby-refactoring'
 Plug 'chriskempson/base16-vim'
 Plug 'christoomey/vim-tmux-navigator'
+Plug 'davidoc/taskpaper.vim',            { 'for': 'taskpaper' }
 Plug 'dhruvasagar/vim-table-mode',       { 'for': 'markdown' }
 Plug 'honza/vim-snippets'
 Plug 'junegunn/goyo.vim',                { 'for': 'markdown' }
 Plug 'junegunn/vim-easy-align',          { 'on': '<Plug>(EasyAlign)' }
+Plug 'keith/swift.vim',                  { 'for': 'swift' }
 Plug 'mattn/emmet-vim',                  { 'for': ['html', 'html.handlebars', 'javascript.jsx'] }
 Plug 'mustache/vim-mustache-handlebars', { 'for': 'html.handlebars' }
 Plug 'mxw/vim-jsx',                      { 'for': 'javascript' }
@@ -28,7 +29,6 @@ Plug 'tpope/vim-vinegar'
 Plug 'valloric/YouCompleteMe',           { 'do': './install.py --tern-completer' }
 Plug 'vim-airline/vim-airline'
 Plug 'vim-airline/vim-airline-themes'
-Plug 'wakatime/vim-wakatime'
 Plug 'w0rp/ale'
 Plug 'yssl/QFEnter'
 

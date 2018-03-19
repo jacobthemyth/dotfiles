@@ -1,21 +1,33 @@
 " Extends thoughtbot/dotfiles/vimrc and vim-sensible
 
 " Core {{{
+
 " UI
 if &t_Co == 256
   let base16colorspace=256
 endif
 colorscheme base16-eighties
 set autoread
-set cursorline
-set textwidth=0
 set colorcolumn=81
+set cursorline
+set hidden
+set textwidth=0
 
 highlight Comment gui=italic cterm=italic
 highlight htmlArg gui=italic cterm=italic ctermfg=3
 highlight xmlAttrib gui=italic cterm=italic ctermfg=3
 highlight htmlBold gui=bold cterm=bold
 highlight htmlItalic gui=italic cterm=italic
+
+function! AdjustColorScheme()
+  " Hide tildes on empty lines
+  hi! EndOfBuffer ctermbg=bg ctermfg=bg guibg=bg guifg=bg
+endfunction
+
+augroup adjust_color_scheme
+    autocmd!
+    autocmd ColorScheme * call AdjustColorScheme()
+augroup END
 
 " Indentation
 set smartindent
@@ -91,13 +103,13 @@ nunmap <Down>
 iunmap <Tab>
 iunmap <S-Tab>
 
-vnoremap <Leader>y "*y
-vnoremap <Leader>d "*d
-vnoremap <Leader>p "*p
+vnoremap <Leader>y "+y
+vnoremap <Leader>d "+d
+vnoremap <Leader>p "+p
 
-nnoremap <Leader>y "*y
-nnoremap <Leader>p "*p
-nnoremap <Leader>P "*P
+nnoremap <Leader>y "+y
+nnoremap <Leader>p "+p
+nnoremap <Leader>P "+P
 
 nnoremap <Leader>m :!open -a Marked\ 2.app %<CR><CR>
 
@@ -132,11 +144,28 @@ let g:airline_section_error = '%{ALEGetStatusLine()}'
 
 " ale
 let g:ale_statusline_format = ['⨉ %d', '⚠ %d', '']
+nnoremap <Leader>af :ALEFix<CR>
+
+" This is gross
+let g:ale_javascript_eslint_executable='/bin/sh -c "cd $(dirname %) && ~/.nodenv/shims/eslint"'
+let g:ale_linters = {
+\   'javascript': ['eslint'],
+\}
+let g:ale_fixers = {
+\   'javascript': ['eslint'],
+\}
 
 " ctrlp
 " Ignore non project files
 let g:ctrlp_custom_ignore = {
   \ 'dir':  '\v[\/](\.git|node_modules)$',
+  \ }
+
+let g:ctrlp_prompt_mappings = {
+  \ 'PrtSelectMove("j")':   ['<c-j>', '<c-n>'],
+  \ 'PrtSelectMove("k")':   ['<c-k>', '<c-p>'],
+  \ 'PrtHistory(-1)':       ['<down>'],
+  \ 'PrtHistory(1)':        ['<up>'],
   \ }
 
 " fugitive
@@ -171,10 +200,11 @@ augroup pencil
   autocmd FileType text         call pencil#init({'wrap': 'hard'})
 augroup END
 
-" textobj-quote
-augroup textobj_quote
+" taskpaper
+augroup taskpaper
   autocmd!
-  autocmd FileType markdown call textobj#quote#init()
+  autocmd BufRead,BufNewFile *.taskpaper set filetype=taskpaper
+  autocmd FileType taskpaper set noexpandtab
 augroup END
 
 " vim-rust
@@ -188,6 +218,22 @@ let g:tern_show_signature_in_pum=1
 
 " UltiSnips
 let g:UltiSnipsExpandTrigger="<c-j>"
+let g:UltiSnipsJumpForwardTrigger="<c-j>"
+let g:UltiSnipsJumpBackwardTrigger="<c-k>"
+let g:UltiSnipsListSnippets="<c-l>"
+let g:UltiSnipsSnippetDirectories=["UltiSnips"]
+
+autocmd FileType javascript UltiSnipsAddFiletypes javascript-jasmine-arrow
+autocmd FileType coffee UltiSnipsAddFiletypes coffee-jasmine
+
+inoremap <silent> <C-j> <C-r>=LoadUltiSnips()<cr>
+function! LoadUltiSnips()
+  let l:curpos = getcurpos()
+  execute plug#load('ultisnips')
+  call cursor(l:curpos[1], l:curpos[2])
+  call UltiSnips#ExpandSnippet()
+  return ""
+endfunction
 
 " vim-test
 let g:test#strategy = 'dispatch'
