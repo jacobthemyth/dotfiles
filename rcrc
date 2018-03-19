@@ -1,4 +1,5 @@
 #!/bin/bash
 EXCLUDES="setup README.md LICENSE"
-SYMLINK_DIRS="rbenv/plugins"
-DOTFILES_DIRS="$HOME/.dotfiles $HOME/Dropbox/.dotfiles-private $HOME/.dotfiles-thoughtbot"
+SYMLINK_DIRS="rbenv/plugins vim/UltiSnips"
+DOTFILES_DIRS="$HOME/.dotfiles /Volumes/Safe/dotfiles-private $HOME/.dotfiles-thoughtbot"
+UNDOTTED="Library"

@@ -5,9 +5,13 @@ alias ip="dig +short myip.opendns.com @resolver1.opendns.com"
 alias localip="ipconfig getifaddr en0"
 alias r="ranger"
 alias today="date +%Y-%m-%d"
+alias ts="tig status"
 alias less="less -R"
 
+alias ssh='TERM=xterm-256color ssh'
+
 # ruby
+alias b="bundle"
 alias be="bundle exec"
 alias dbm='bundle exec rake db:migrate'
 alias dbtp='bundle exec rake test:prepare'
@@ -15,11 +19,13 @@ alias dbpp='bundle exec rake parallel:prepare'
 
 # Applications
 alias marked="open -a Marked\ 2.app"
-alias chrome="/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome"
 
 # React Native
 alias rn="react-native"
 alias rni="react-native run-ios"
+alias rna="react-native run-android"
+alias shake="adb shell input keyevent 82"
+alias emulator="cd ~/Library/Android/sdk/tools && ./emulator"
 
 # Docker
 alias dc="docker-compose"

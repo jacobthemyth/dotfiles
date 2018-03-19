@@ -1,5 +1,6 @@
 [alias]
   c = commit -v
+  ca = !git commit --amend -v
   d = diff
   p = push
   dc = diff --cached
@@ -27,8 +28,20 @@
   sprint="!git log --pretty=format:'%Cred%h%Creset - %s%Creset - %Cgreen%cd%Creset ' --date=relative --all --since=6am.2.weeks.ago --until=6am  --author=\"$(git config user.name)\""
 
   cleanup="!git branch --merged master | grep -v '* master' | xargs -n 1 git branch -d"
+[color "diff-highlight"]
+  oldNormal = red bold
+  oldHighlight = red bold 52
+  newNormal = green bold
+  newHighlight = green bold 22
+[color "diff"]
+  meta = 227
+  frag = magenta bold
+  commit = 227 bold
+  old = red bold
+  new = green bold
+  whitespace = red reverse
 [core]
-  pager = less -FRX
+  pager = diff-so-fancy | less --tabs=4 -RFX
   editor = vim
 [credential]
   helper = osxkeychain
@@ -50,5 +63,5 @@
   name = Jacob Smith
   email = jacob@jacobsmith.io
 [github]
-  user = jacobthemyth
+  user = iakobos
 # vim: ft=gitconfig

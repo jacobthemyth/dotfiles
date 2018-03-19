@@ -1,5 +1,11 @@
 # {{{ Keybindings
+set-option -g prefix C-Space
 bind C-l send-keys -R \; clear-history
+
+# Reload tmux.conf with prefix-r
+bind C-r source-file ~/.tmux.conf \; display "Reloaded ~/.tmux.conf"
+
+bind t split-window -h -c "#{pane_current_path}" "tig status"
 # }}}
 
 # {{{ General settings
