@@ -1,7 +1,7 @@
-# jacobthemyth dotfiles
+# iakobos dotfiles
 
 I use [thoughtbot/dotfiles](https://github.com/thoughtbot/dotfiles) and
-jacobthemyth/dotfiles together using [the `*.local` convention][dot-local].
+iakobos/dotfiles together using [the `*.local` convention][dot-local].
 
 [dot-local]: http://robots.thoughtbot.com/manage-team-and-personal-dotfiles-together-with-rcm
 
@@ -20,7 +20,7 @@ Install [rcm](https://github.com/mike-burns/rcm).
 
 Clone onto my laptop:
 
-    git clone git://github.com/jacobthemyth/dotfiles.git
+    git clone git://github.com/iakobos/dotfiles.git
 
 Install:
 
@@ -38,10 +38,10 @@ or skips packages based on what is already installed on the machine.
 It is tightly coupled to
 [thoughtbot/laptop](https://github.com/thoughtbot/laptop),
 [thoughtbot/dotfiles](https://github.com/thoughtbot/dotfiles), and
-[jacobthemyth/dotfiles](https://github.com/jacobthemyth/dotfiles).
+[iakobos/dotfiles](https://github.com/iakobos/dotfiles).
 
 ### Make It So
 
 ```sh
-curl -s https://raw.githubusercontent.com/jacobthemyth/dotfiles/master/setup | sh 2>&1 | tee ~/setup.log
+curl -s https://raw.githubusercontent.com/iakobos/dotfiles/master/setup | sh 2>&1 | tee ~/setup.log
 ```
