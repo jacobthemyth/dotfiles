@@ -1,36 +1,39 @@
-UnPlug 'syntastic'
 
-Plug 'SirVer/ultisnips'
-Plug 'Valloric/YouCompleteMe'
-Plug 'chriskempson/base16-vim'          " colorschemes
-Plug 'christoomey/vim-tmux-navigator'   " seamless navigation between tmux panes and vim splits
-Plug 'dhruvasagar/vim-table-mode'
+Plug 'kana/vim-textobj-user' " used by rubyblock and quote
+
 Plug 'ecomba/vim-ruby-refactoring'
+Plug 'chriskempson/base16-vim'
+Plug 'christoomey/vim-tmux-navigator'
+Plug 'dhruvasagar/vim-table-mode',       { 'for': 'markdown' }
 Plug 'honza/vim-snippets'
-Plug 'junegunn/goyo.vim'                " Distration-free writing
-Plug 'junegunn/vim-easy-align'
-Plug 'kana/vim-textobj-user'            " used by rubyblock and quote
-Plug 'mattn/emmet-vim'                  " web dev workflow toolkit
-Plug 'mustache/vim-mustache-handlebars'
-Plug 'mxw/vim-jsx'
-Plug 'nelstrom/vim-markdown-folding'    " foldexpr for markdown headers
-Plug 'nelstrom/vim-textobj-rubyblock'   " A custom text object for selecting ruby blocks.
-Plug 'pangloss/vim-javascript'          " Vastly improved JS syntax
-Plug 'reedes/vim-colors-pencil'         " Light (& dark) color scheme inspired by iA Writer
-Plug 'reedes/vim-pencil'                " Rethinking Vim as a tool for writing
-Plug 'reedes/vim-textobj-quote'         " Use ‘curly’ quote characters in Vim
-Plug 'rust-lang/rust.vim'
-Plug 'tpope/vim-abolish'                " easily search for, substitute, and abbreviate multiple variants of a word
-Plug 'tpope/vim-dispatch'
-Plug 'tpope/vim-markdown'
-Plug 'tpope/vim-rsi'                    " readline style insertion
-Plug 'tpope/vim-unimpaired'             " pairs of handy bracket mappings
-Plug 'tpope/vim-vinegar'                " netrw enhancements
-Plug 'vim-airline/vim-airline'          " status/tabline
+Plug 'junegunn/goyo.vim',                { 'for': 'markdown' }
+Plug 'junegunn/vim-easy-align',          { 'on': '<Plug>(EasyAlign)' }
+Plug 'mattn/emmet-vim',                  { 'for': ['html', 'html.handlebars', 'javascript.jsx'] }
+Plug 'mustache/vim-mustache-handlebars', { 'for': 'html.handlebars' }
+Plug 'mxw/vim-jsx',                      { 'for': 'javascript' }
+Plug 'nelstrom/vim-markdown-folding',    { 'for': 'markdown' }
+Plug 'nelstrom/vim-textobj-rubyblock',   { 'for': 'ruby' }
+Plug 'pangloss/vim-javascript',          { 'for': 'javascript' }
+Plug 'reedes/vim-colors-pencil'
+Plug 'reedes/vim-pencil'
+Plug 'reedes/vim-textobj-quote'
+Plug 'rust-lang/rust.vim',               { 'for': 'rust' }
+Plug 'sirver/ultisnips'
+Plug 'tpope/vim-abolish'
+Plug 'tpope/vim-dispatch',               { 'on': 'Dispatch' }
+Plug 'tpope/vim-markdown',               { 'for': 'markdown' }
+Plug 'tpope/vim-rsi'
+Plug 'tpope/vim-unimpaired'
+Plug 'tpope/vim-vinegar'
+Plug 'valloric/YouCompleteMe',           { 'do': './install.py --tern-completer' }
+Plug 'vim-airline/vim-airline'
 Plug 'vim-airline/vim-airline-themes'
-Plug 'w0rp/ale'                         " Asynchronous Lint Engine
 Plug 'wakatime/vim-wakatime'
-Plug 'yssl/QFEnter'                     " Open a Quickfix item in a window you choose.
+Plug 'w0rp/ale'
+Plug 'yssl/QFEnter'
 
 " Sensible defaults
-Plug 'tpope/vim-sensible' " needs to be last
+" needs to be last
+if !has('nvim')
+  Plug 'tpope/vim-sensible'
+endif
