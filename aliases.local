@@ -9,6 +9,8 @@ alias ts="tig status"
 alias less="less -R"
 
 alias ssh='TERM=xterm-256color ssh'
+alias vim="nvim"
+alias vimdiff="nvim -d"
 
 # ruby
 alias b="bundle"

@@ -42,3 +42,5 @@ bind refs gg move-first-line
 bind stash gg move-first-line
 bind grep gg move-first-line
 bind generic gg move-first-line
+
+bind generic y @sh -c "printf '%s' %(commit) | pbcopy"

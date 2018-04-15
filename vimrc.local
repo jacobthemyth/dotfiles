@@ -57,7 +57,6 @@ cnoremap %% <C-R>=fnameescape(expand('%:h')).'/'<cr>
 " automatically rebalance windows on vim resize
 autocmd VimResized * wincmd =
 set foldmethod=indent
-set foldnestmax=3
 set nofoldenable       " don't fold by default
 
 " Persistent undo
@@ -150,9 +149,11 @@ nnoremap <Leader>af :ALEFix<CR>
 let g:ale_javascript_eslint_executable='/bin/sh -c "cd $(dirname %) && ~/.nodenv/shims/eslint"'
 let g:ale_linters = {
 \   'javascript': ['eslint'],
+\   'java': [],
 \}
 let g:ale_fixers = {
 \   'javascript': ['eslint'],
+\   'ruby': ['rubocop'],
 \}
 
 " ctrlp
