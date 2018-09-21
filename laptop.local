@@ -24,39 +24,47 @@ brew "less"
 tap "nodenv/nodenv"
 brew "nodenv-default-packages"
 
+tap "heroku/brew"
+brew "heroku"
+
+tap "thoughtbot/formulae"
+brew "rcm"
+
 brew "awscli"
 brew "cmake"
 brew "coreutils"
+brew "ctags"
 brew "dialog"
 brew "diff-so-fancy"
+brew "dnsmasq"
 brew "emojify"
 brew "exercism"
 brew "findutils"
 brew "fzf"
 brew "gawk"
+brew "gdb"
 brew "gist"
 brew "hub"
 brew "jq"
-brew "jsonlint"
-brew "leiningen"
+brew "kafkacat"
 brew "macvim", args: ["with-override-system-vim"]
 brew "neovim"
 brew "netcat"
 brew "nodenv"
+brew "overmind"
 brew "phantomjs"
-brew "poppler"
-brew "rbenv-chefdk"
+brew "postgis"
+brew "rbenv-gemset"
 brew "rmtrash"
 brew "rustup"
 brew "ssh-copy-id"
+brew "sourcekitten"
 brew "the_silver_searcher"
 brew "tig"
 brew "tmate"
 brew "tree"
-brew "unar"
-brew "watchman"
 brew "watch"
-brew "yarn"
+brew "watchman"
 brew "youtube-dl"
 
 tap "caskroom/fonts"
@@ -69,39 +77,30 @@ cask "anylist"
 cask "appcleaner"
 cask "backblaze"
 cask "bartender"
-cask "bettertouchtool"
-cask "chefdk"
+cask "cleanmymac"
 cask "cloak"
 cask "cryptomator"
 cask "dash"
 cask "docker"
 cask "dropbox"
 cask "dropzone"
-cask "duet"
 cask "firefox"
 cask "fluid"
-cask "flux"
 cask "google-chrome"
-cask "hammerspoon"
+cask "google-cloud-sdk"
 cask "hazel"
 cask "iterm2"
-cask "java"
-cask "java8"
 cask "kaleidoscope"
-cask "karabiner-elements"
 cask "kindle"
-cask "mactex"
 cask "marked"
-cask "medis"
 cask "monodraw"
 cask "muzzle"
-cask "nvalt"
+cask "osxfuse"
 cask "papers"
 cask "paw"
 cask "postico"
 cask "quitter"
-cask "recordit"
-cask "rescuetime"
+cask "reflector"
 cask "screenflow"
 cask "send-to-kindle"
 cask "sketch"
@@ -111,8 +110,10 @@ cask "tableflip"
 cask "taskpaper"
 cask "textexpander"
 cask "thingsmacsandboxhelper"
-cask "timing"
 cask "tinderbox"
+cask "transmit"
+cask "transmit-disk"
+cask "tripmode"
 cask "vagrant"
 cask "vimr"
 cask "virtualbox"
@@ -127,7 +128,6 @@ mas 'Fantastical 2', id: 975937182
 mas 'Keynote', id: 409183694
 mas 'Magnet', id: 441258766
 mas 'MindNode', id: 992076693
-mas 'Napkin', id: 581789185
 mas 'Numbers', id: 409203825
 mas 'OmniOutliner', id: 1142578772
 mas 'Pages', id: 409201541
@@ -135,18 +135,18 @@ mas 'Pixelmator', id: 407963104
 mas 'PopClip', id: 445189367
 mas 'ReadKit', id: 588726889
 mas 'ScanSnap Cloud', id: 1211119808
+mas 'Sequence Diagram', id: 1195426709
 mas 'Shush', id: 496437906
 mas 'Slack', id: 803453959
 mas 'Spectrum', id: 518156125
 mas 'Spillo', id: 873245660
-mas 'Studies', id: 1071676469
 mas 'The Clock', id: 488764545
 mas 'Things3', id: 904280696
+mas 'Trello', id: 1278508951
 mas 'Tooth Fairy', id: 1191449274
 mas 'Transmit', id: 403388562
 mas 'Trello', id: 1278508951
 mas 'iA Writer', id: 775737590
-mas 'xScope', id: 889428659
 EOF
 
 echo "Cleaning up old Homebrew formulae ..."
@@ -162,5 +162,7 @@ rustup component add rust-src
 
 ! rustup run stable cargo install racer
 ! rustup run stable cargo install rustfmt
+
+defaults write com.pilotmoon.popclip OtherURLSchemes -array x-devonthink-item spotify things
 
 RCRC="$HOME/.dotfiles/rcrc" rcup -f

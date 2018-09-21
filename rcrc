@@ -1,5 +1,5 @@
 #!/bin/bash
 EXCLUDES="setup README.md LICENSE"
-SYMLINK_DIRS="rbenv/plugins vim/UltiSnips"
+SYMLINK_DIRS="rbenv/plugins vim/UltiSnips Library/Scripts/AddFilesToThings.app"
 DOTFILES_DIRS="$HOME/.dotfiles /Volumes/Safe/dotfiles-private $HOME/.dotfiles-thoughtbot"
 UNDOTTED="Library"

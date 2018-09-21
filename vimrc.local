@@ -67,8 +67,7 @@ endif
 set undodir=~/.vim/undo
 set undofile
 
-" bind K to grep word under cursor
-nnoremap K :grep! "\b<C-R><C-W>\b"<CR>:cw<CR>
+nnoremap gr :grep! "\b<cword>\b"<CR>:cw<CR>
 
 " ignore whitespace in vimdiff
 set diffopt+=iwhite
@@ -84,6 +83,12 @@ function! DiffW()
   silent execute "!diff -a --binary " . opt .
         \ v:fname_in . " " . v:fname_new .  " > " . v:fname_out
 endfunction
+
+" applescript
+augroup applescript
+  autocmd!
+  autocmd BufRead,BufNewFile *.applescript set filetype=javascript
+augroup END
 " }}}
 
 " Mappings {{{
@@ -139,7 +144,6 @@ let g:airline#extensions#tabline#show_tab_type = 0
 let g:airline#extensions#tabline#show_close_button = 0
 let g:airline_section_y = ""       " remove fileencoding[fileformat]
 let g:airline_powerline_fonts = 1
-let g:airline_section_error = '%{ALEGetStatusLine()}'
 
 " ale
 let g:ale_statusline_format = ['⨉ %d', '⚠ %d', '']
@@ -149,7 +153,6 @@ nnoremap <Leader>af :ALEFix<CR>
 let g:ale_javascript_eslint_executable='/bin/sh -c "cd $(dirname %) && ~/.nodenv/shims/eslint"'
 let g:ale_linters = {
 \   'javascript': ['eslint'],
-\   'java': [],
 \}
 let g:ale_fixers = {
 \   'javascript': ['eslint'],
@@ -192,20 +195,29 @@ augroup netrw
   autocmd FileType netrw set colorcolumn=""
 augroup END
 
-" pencil
-let g:pencil#wrapModeDefault = 'soft'   " default is 'hard'
+" ranger
+let g:ranger_map_keys = 0
+map <leader>f :RangerNewTab<CR>
 
-augroup pencil
+" sql.erb
+augroup sql
   autocmd!
-  autocmd FileType markdown,mkd call pencil#init()
-  autocmd FileType text         call pencil#init({'wrap': 'hard'})
+  autocmd BufRead,BufNewFile *.sql.erb setlocal tabstop=4
+  autocmd BufRead,BufNewFile *.sql.erb setlocal shiftwidth=4
 augroup END
 
 " taskpaper
 augroup taskpaper
   autocmd!
   autocmd BufRead,BufNewFile *.taskpaper set filetype=taskpaper
-  autocmd FileType taskpaper set noexpandtab
+  autocmd FileType taskpaper setlocal noexpandtab
+augroup END
+
+" textobj-quote
+augroup textobj_quote
+  autocmd!
+  autocmd FileType markdown call textobj#quote#init()
+  autocmd FileType text call textobj#quote#init({'educate': 0})
 augroup END
 
 " vim-rust
@@ -239,16 +251,11 @@ endfunction
 " vim-test
 let g:test#strategy = 'dispatch'
 
-nmap <silent> <leader>t :TestNearest<CR>
-nmap <silent> <leader>T :TestFile<CR>
-nmap <silent> <leader>a :TestSuite<CR>
-nmap <silent> <leader>l :TestLast<CR>
-nmap <silent> <leader>g :TestVisit<CR>
-
-" YouCompleteMe
-" getting `rust-src` rustup component path for current rustc version
-let g:ycm_rust_src_path = substitute(system('rustc --print sysroot'), '\n\+$', '', '') . '/lib/rustlib/src/rust/src'
-
+nmap <silent> t<C-n> :TestNearest<CR>
+nmap <silent> t<C-f> :TestFile<CR>
+nmap <silent> t<C-s> :TestSuite<CR>
+nmap <silent> t<C-l> :TestLast<CR>
+nmap <silent> t<C-g> :TestVisit<CR>
 " }}}
 
 " vim: set foldmethod=marker:

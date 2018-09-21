@@ -13,6 +13,8 @@ export PATH="node_modules/.bin:$PATH"
 export PATH="/usr/local/opt/vertica/bin:$PATH"
 export PATH="/usr/local/opt/postgresql@9.4/bin:$PATH"
 export PATH="$HOME/.cargo/bin:$PATH"
+export PATH="$(brew --prefix qt@5.5)/bin:$PATH"
+export PATH=$(go env GOPATH)/bin:$PATH
 
 export ANDROID_HOME=${HOME}/Library/Android/sdk
 export PATH=${PATH}:${ANDROID_HOME}/tools

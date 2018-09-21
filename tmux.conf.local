@@ -1,5 +1,6 @@
 # {{{ Keybindings
 set-option -g prefix C-Space
+bind-key C-Space send-prefix
 bind C-l send-keys -R \; clear-history
 
 # Reload tmux.conf with prefix-r
@@ -9,9 +10,8 @@ bind t split-window -h -c "#{pane_current_path}" "tig status"
 # }}}
 
 # {{{ General settings
+set -g mouse on
 set -g default-terminal "tmux-256color"
-
-setw -g mouse on
 
 # 24 hour clock
 set-window-option -g clock-mode-style 24
