@@ -100,6 +100,10 @@ set undodir=~/.vim/undo
 set undofile
 
 nnoremap gr :grep! "\b<cword>\b"<CR>:cw<CR>
+if filereadable(expand("~/.vim/colorscheme.vim"))
+  let base16colorspace=256
+  source ~/.vim/colorscheme.vim
+endif
 " }}}
 
 " Mappings {{{

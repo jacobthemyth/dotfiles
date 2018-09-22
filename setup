@@ -62,6 +62,9 @@ brew "heroku"
 tap "thoughtbot/formulae"
 brew "rcm"
 
+tap "chrokh/tap"
+brew "base16-manager"
+
 brew "awscli"
 brew "cmake"
 brew "coreutils"
