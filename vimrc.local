@@ -172,6 +172,17 @@ let g:ctrlp_prompt_mappings = {
   \ 'PrtHistory(1)':        ['<up>'],
   \ }
 
+" deoplete
+let g:deoplete#enable_at_startup = 1
+autocmd FileType swift imap <buffer> <C-k> <Plug>(autocomplete_swift_jump_to_placeholder)
+
+call deoplete#custom#option('sources', {
+\ 'ruby': ['solargraph'],
+\})
+
+" https://github.com/Shougo/deoplete.nvim/issues/761
+call deoplete#custom#option('num_processes', 1)
+
 " fugitive
 autocmd BufReadPost fugitive://* set bufhidden=delete
 

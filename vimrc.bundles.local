@@ -28,13 +28,15 @@ Plug 'tpope/vim-markdown',               { 'for': 'markdown' }
 Plug 'tpope/vim-rsi'
 Plug 'tpope/vim-unimpaired'
 Plug 'tpope/vim-vinegar'
-Plug 'valloric/YouCompleteMe',           { 'do': './install.py --js-completer --java-completer' }
 Plug 'vim-airline/vim-airline'
 Plug 'vim-airline/vim-airline-themes'
 Plug 'w0rp/ale'
 Plug 'yssl/QFEnter'
 
-if !has('nvim')
+if has('nvim')
+  Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
+  Plug 'mitsuse/autocomplete-swift'
+else
   " Sensible defaults
   " needs to be last
   Plug 'tpope/vim-sensible'
