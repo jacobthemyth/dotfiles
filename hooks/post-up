@@ -22,3 +22,5 @@ case "$SHELL" in
       chsh -s "$(which zsh)"
     ;;
 esac
+
+yard gems

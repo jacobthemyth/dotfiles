@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # shellcheck disable=SC2154
 trap 'ret=$?; test $ret -ne 0 && printf "failed\n\n" >&2; exit $ret' EXIT
@@ -70,7 +70,6 @@ brew "gdb"
 brew "gist"
 brew "git"
 brew "git-crypt"
-brew "heroku-toolbelt"
 brew "hub"
 brew "jq"
 brew "kafkacat"
@@ -192,7 +191,6 @@ EOF
 
 echo "Cleaning up old Homebrew formulae ..."
 brew cleanup
-brew cask cleanup
 
 echo "Configuring Ruby ..."
 find_latest_ruby() {
@@ -240,5 +238,6 @@ op get document dotfiles.key > $keyfile
 
 pushd "$HOME/.dotfiles"
 git crypt unlock $keyfile
+popd
 
 RCRC="$HOME/.dotfiles/rcrc" rcup -f

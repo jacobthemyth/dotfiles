@@ -179,12 +179,15 @@ let g:ctrlp_prompt_mappings = {
 let g:deoplete#enable_at_startup = 1
 autocmd FileType swift imap <buffer> <C-k> <Plug>(autocomplete_swift_jump_to_placeholder)
 
-call deoplete#custom#option('sources', {
-\ 'ruby': ['solargraph'],
-\})
+let s:default_sources = ['syntax', 'tag', 'buffer', 'file'] " TODO: ultisnips
+if (exists('g:deoplete_loaded') && g:deoplete_loaded)
+  call deoplete#custom#option('sources', {
+  \ 'ruby': ['solargraph'] + s:default_sources,
+  \})
 
-" https://github.com/Shougo/deoplete.nvim/issues/761
-call deoplete#custom#option('num_processes', 1)
+  " https://github.com/Shougo/deoplete.nvim/issues/761
+  call deoplete#custom#option('num_processes', 1)
+endif
 
 " fugitive
 autocmd BufReadPost fugitive://* set bufhidden=delete
