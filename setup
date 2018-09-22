@@ -69,6 +69,7 @@ brew "gawk"
 brew "gdb"
 brew "gist"
 brew "git"
+brew "git-crypt"
 brew "heroku-toolbelt"
 brew "hub"
 brew "jq"
@@ -110,6 +111,7 @@ tap "caskroom/fonts"
 cask "font-firacode-nerd-font"
 
 cask "1password"
+cask "1password-cli"
 cask "alfred"
 cask "android-studio"
 cask "anylist"
@@ -228,5 +230,15 @@ defaults write com.pilotmoon.popclip OtherURLSchemes -array x-devonthink-item sp
 if [ ! -d "$HOME/.dotfiles" ]; then
   git clone https://github.com/iakobos/dotfiles.git "$HOME/.dotfiles"
 fi
+
+read -p "1Password subdomain: " opsubdomain
+read -p "1Password email: " opemail
+eval $(op signin "$opsubdomain.1password.com" "$opemail")
+
+keyfile=$(mktemp)
+op get document dotfiles.key > $keyfile
+
+pushd "$HOME/.dotfiles"
+git crypt unlock $keyfile
 
 RCRC="$HOME/.dotfiles/rcrc" rcup -f
