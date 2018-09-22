@@ -23,15 +23,23 @@ if ! command -v mas >/dev/null; then
   brew install mas
 fi
 
-if ! mas account >/dev/null; then
-  echo -n "Mac App Store Password:"
-  read -rs password
-  echo
-  mas signin "jacob@jacobsmith.io" "$password"
+echo "Installing XCode..."
+
+# mas signin is currently broken
+# https://github.com/mas-cli/mas/issues/164
+# if ! mas account >/dev/null; then
+#   echo -n "Mac App Store Password:"
+#   read -rs password
+#   echo
+#   mas signin "jacob@jacobsmith.io" "$password"
+# fi
+
+mas_result=$(mas install 497799835 2>&1 || true)
+if [[ $mas_result = *"Not signed in"* ]]; then
+  echo "Please sign in to the Mac App Store"
+  exit 1
 fi
 
-# Install Xcode
-mas install 497799835
 sudo xcodebuild -license accept
 
 echo "Updating Homebrew formulae ..."
