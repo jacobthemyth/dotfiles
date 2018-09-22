@@ -10,6 +10,3 @@
 [submodule "tmux/plugins/tmux-scroll-copy-mode"]
 	path = tmux/plugins/tmux-scroll-copy-mode
 	url = https://github.com/NHDaly/tmux-scroll-copy-mode.git
-[submodule "tag-shell/config/base16-shell"]
-	path = config/base16-shell
-	url = https://github.com/chriskempson/base16-shell.git

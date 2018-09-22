@@ -1,9 +1,10 @@
 #!/bin/sh
+
 set -e
 
-if hash /usr/local/bin/ctags 2>/dev/null; then
-  PATH="/usr/local/bin:$PATH"
-  trap "rm -f .git/tags.$$" EXIT
-  git ls-files | ctags --tag-relative -f.git/tags.$$ --fields=+l --languages=-sql -L-
-  mv .git/tags.$$ .git/tags
-fi
+PATH="/usr/local/bin:$PATH"
+dir="$(git rev-parse --git-dir)"
+trap 'rm -f "$dir/$$.tags"' EXIT
+git ls-files | \
+  "${CTAGS:-ctags}" --tag-relative -L - -f"$dir/$$.tags" --languages=-javascript,sql
+mv "$dir/$$.tags" "$dir/tags"

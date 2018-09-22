@@ -1,9 +1,13 @@
 [alias]
+  aa = add --all
+  ap = add --patch
   c = commit -v
   ca = !git commit --amend -v
   d = diff
-  p = push
   dc = diff --cached
+  p = push
+  pf = push --force-with-lease
+  st = status
 
   # Fancy logging.
   #   h = head
@@ -19,15 +23,8 @@
   ra = !git r --all
   l = "!. ~/.githelpers && pretty_git_log"
   la = !git l --all
-
-  pullhard = "!git fetch --all && git reset --hard @{u}"
-
-  today="!git log --pretty=format:'%Cred%h%Creset - %s%Creset - %Cgreen%cd%Creset ' --date=relative --all --since=6am  --author=\"$(git config user.name)\""
-  yesterday="!git log --pretty=format:'%Cred%h%Creset - %s%Creset - %Cgreen%cd%Creset ' --date=relative --all --since=6am.yesterday --until=6am  --author=\"$(git config user.name)\""
-  friday="!git log --pretty=format:'%Cred%h%Creset - %s%Creset - %Cgreen%cd%Creset ' --date=relative --all --since=6am.last.friday --until=6am  --author=\"$(git config user.name)\""
-  sprint="!git log --pretty=format:'%Cred%h%Creset - %s%Creset - %Cgreen%cd%Creset ' --date=relative --all --since=6am.2.weeks.ago --until=6am  --author=\"$(git config user.name)\""
-
-  cleanup="!git branch --merged master | grep -v '* master' | xargs -n 1 git branch -d"
+[color]
+  ui = true
 [color "diff-highlight"]
   oldNormal = red bold
   oldHighlight = red bold 52
@@ -40,6 +37,8 @@
   old = red bold
   new = green bold
   whitespace = red reverse
+[commit]
+  template = ~/.gitmessage
 [core]
   pager = diff-so-fancy | less --tabs=4 -RFX
   editor = vim
@@ -49,6 +48,8 @@
   compactionHeuristic = true
 [difftool]
   prompt = false
+[fetch]
+  prune = true
 [grep]
   lineNumber = true
 [init]
@@ -59,6 +60,8 @@
   prompt = false
 [push]
   default = simple
+[rebase]
+  autosquash = true
 [user]
   name = Jacob Smith
   email = jacob@jacobsmith.io

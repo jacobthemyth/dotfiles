@@ -1,51 +1,83 @@
-" Extends thoughtbot/dotfiles/vimrc and vim-sensible
+let mapleader = " "
+
+syntax on
+
+" Load matchit.vim, but only if the user hasn't installed a newer version.
+if !exists('g:loaded_matchit') && findfile('plugin/matchit.vim', &rtp) ==# ''
+  runtime! macros/matchit.vim
+endif
+
+filetype plugin indent on
+
+" When the type of shell script is /bin/sh, assume a POSIX-compatible
+" shell for syntax highlighting purposes.
+let g:is_posix = 1
+
+" Softtabs, 2 spaces
+set tabstop=2
+set shiftwidth=2
+set shiftround
+set expandtab
+
+" Display extra whitespace
+set list listchars=tab:»·,trail:·,nbsp:·
+
+" Use one space, not two, after punctuation.
+set nojoinspaces
+
+if executable('ag')
+  " Use Ag over Grep
+  set grepprg=ag\ --nogroup\ --nocolor
+
+  " Use ag in CtrlP for listing files. Lightning fast and respects .gitignore
+  let g:ctrlp_user_command = 'ag --literal --files-with-matches --nocolor --hidden -g "" %s'
+
+  " ag is fast enough that CtrlP doesn't need to cache
+  let g:ctrlp_use_caching = 0
+
+  if !exists(":Ag")
+    command -nargs=+ -complete=file -bar Ag silent! grep! <args>|cwindow|redraw!
+    nnoremap \ :Ag<SPACE>
+  endif
+endif
+
+set number
+
+" Open new split panes to right and bottom, which feels more natural
+set splitbelow
+set splitright
+
+if filereadable(expand("~/.vimrc.bundles"))
+  source ~/.vimrc.bundles
+endif
 
 " Core {{{
 
 " UI
-if &t_Co == 256
-  let base16colorspace=256
-endif
-colorscheme base16-eighties
 set autoread
 set colorcolumn=81
 set cursorline
 set hidden
 set textwidth=0
-
-highlight Comment gui=italic cterm=italic
-highlight htmlArg gui=italic cterm=italic ctermfg=3
-highlight xmlAttrib gui=italic cterm=italic ctermfg=3
-highlight htmlBold gui=bold cterm=bold
-highlight htmlItalic gui=italic cterm=italic
-
-function! AdjustColorScheme()
-  " Hide tildes on empty lines
-  hi! EndOfBuffer ctermbg=bg ctermfg=bg guibg=bg guifg=bg
-endfunction
-
-augroup adjust_color_scheme
-    autocmd!
-    autocmd ColorScheme * call AdjustColorScheme()
-augroup END
-
-" Indentation
+set backspace=2   " Backspace deletes like most programs in insert mode
+set nobackup
+set nowritebackup
+set noswapfile    " http://robots.thoughtbot.com/post/18739402579/global-gitignore#comment-458413287
+set history=50
+set ruler         " show the cursor position all the time
+set showcmd       " display incomplete commands
+set incsearch     " do incremental searching
+set laststatus=2  " Always display the status line
+set autowrite     " Automatically :write before running commands
 set smartindent
 set breakindent
 let &showbreak = '→ '
 set linebreak
-
-" Search
 set hlsearch
 set ignorecase  " searches are case insensitive...
 set smartcase   " ... unless they contain at least one capital letter
 set infercase   " Use the correct case when autocompleting
-
-" Enable mouse in all modes
-set mouse=a
-
-" send CursorHold more often than 4s
-set updatetime=500
+set mouse=a " Enable mouse in all modes
 
 " fix & command to preserve flags
 nnoremap & :&&<CR>
@@ -68,27 +100,6 @@ set undodir=~/.vim/undo
 set undofile
 
 nnoremap gr :grep! "\b<cword>\b"<CR>:cw<CR>
-
-" ignore whitespace in vimdiff
-set diffopt+=iwhite
-set diffexpr=DiffW()
-function! DiffW()
-  let opt = ""
-  if &diffopt =~ "icase"
-    let opt = opt . "-i "
-  endif
-  if &diffopt =~ "iwhite"
-    let opt = opt . "-w -B " " vim uses -b by default
-  endif
-  silent execute "!diff -a --binary " . opt .
-        \ v:fname_in . " " . v:fname_new .  " > " . v:fname_out
-endfunction
-
-" applescript
-augroup applescript
-  autocmd!
-  autocmd BufRead,BufNewFile *.applescript set filetype=javascript
-augroup END
 " }}}
 
 " Mappings {{{
@@ -98,14 +109,6 @@ nnoremap <silent> <leader><C-L> :nohlsearch<C-R>=has('diff')?'<Bar>diffupdate':'
 
 nnoremap <leader>d :Dispatch<CR>
 nnoremap <silent><Leader>] <C-w><C-]><C-w>T
-
-" Override .vimrc
-nunmap <Left>
-nunmap <Right>
-nunmap <Up>
-nunmap <Down>
-iunmap <Tab>
-iunmap <S-Tab>
 
 vnoremap <Leader>y "+y
 vnoremap <Leader>d "+d
