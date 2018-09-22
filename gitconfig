@@ -64,7 +64,7 @@
   autosquash = true
 [user]
   name = Jacob Smith
-  email = jacob@jacobsmith.io
+  email = jacob@testdouble.com
 [github]
   user = iakobos
 # vim: ft=gitconfig

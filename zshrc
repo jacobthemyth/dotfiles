@@ -35,6 +35,8 @@ export PATH=${PATH}:${ANDROID_HOME}/platform-tools
 
 export FZF_DEFAULT_OPTS="--extended --cycle"
 
+export POWERLEVEL9K_MODE='nerdfont-complete'
+
 eval "$(rbenv init - --no-rehash)"
 eval "$(nodenv init -)"
 

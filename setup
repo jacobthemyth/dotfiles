@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# shellcheck disable=SC2154
+trap 'ret=$?; test $ret -ne 0 && printf "failed\n\n" >&2; exit $ret' EXIT
+
 set -e
 
 # Ask for the administrator password upfront
@@ -8,18 +11,222 @@ sudo -v
 # Keep-alive: update existing `sudo` time stamp until `setup` has finished
 while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
 
-shell_path="/usr/local/bin/zsh"
-if ! grep "$shell_path" /etc/shells > /dev/null 2>&1 ; then
-  echo "Adding '$shell_path' to /etc/shells"
-  sudo sh -c "echo $shell_path >> /etc/shells"
+if ! command -v brew >/dev/null; then
+  echo "Installing Homebrew ..."
+    curl -fsS \
+      'https://raw.githubusercontent.com/Homebrew/install/master/install' | ruby
+
+    export PATH="/usr/local/bin:$PATH"
 fi
+
+if ! command -v mas >/dev/null; then
+  brew install mas
+fi
+
+if ! mas account >/dev/null; then
+  echo -n "Mac App Store Password:"
+  read -rs password
+  echo
+  mas signin "jacob@jacobsmith.io" "$password"
+fi
+
+# Install Xcode
+mas install 497799835
+sudo xcodebuild -license accept
+
+echo "Updating Homebrew formulae ..."
+brew update
+brew bundle --file=- <<EOF
+tap "homebrew/services"
+
+tap "Goles/battery"
+brew "battery"
+
+tap "homebrew/dupes"
+brew "less"
+
+tap "nodenv/nodenv"
+brew "nodenv-default-packages"
+
+tap "heroku/brew"
+brew "heroku"
+
+tap "thoughtbot/formulae"
+brew "rcm"
+
+brew "awscli"
+brew "cmake"
+brew "coreutils"
+brew "ctags"
+brew "dialog"
+brew "diff-so-fancy"
+brew "dnsmasq"
+brew "emojify"
+brew "exercism"
+brew "findutils"
+brew "fzf"
+brew "gawk"
+brew "gdb"
+brew "gist"
+brew "git"
+brew "heroku-toolbelt"
+brew "hub"
+brew "jq"
+brew "kafkacat"
+brew "neovim"
+brew "netcat"
+brew "nodenv"
+brew "openssl"
+brew "overmind"
+brew "phantomjs"
+brew "postgis"
+brew "postgres", restart_service: true
+brew "qt@5.5"
+brew "rbenv"
+brew "rbenv-bundler"
+brew "rbenv-ctags"
+brew "rbenv-default-gems"
+brew "rbenv-gemset"
+brew "reattach-to-user-namespace"
+brew "redis", restart_service: true
+brew "rmtrash"
+brew "ruby-build"
+brew "rustup"
+brew "ssh-copy-id"
+brew "sourcekitten"
+brew "the_silver_searcher"
+brew "tig"
+brew "tmate"
+brew "tmux"
+brew "tree"
+brew "vim"
+brew "watch"
+brew "watchman"
+brew "youtube-dl"
+brew "zplug"
+brew "zsh"
+
+tap "caskroom/fonts"
+cask "font-firacode-nerd-font"
+
+cask "1password"
+cask "alfred"
+cask "android-studio"
+cask "anylist"
+cask "appcleaner"
+cask "backblaze"
+cask "bartender"
+cask "cleanmymac"
+cask "cloak"
+cask "cryptomator"
+cask "dash"
+cask "docker"
+cask "dropbox"
+cask "dropzone"
+cask "firefox"
+cask "fluid"
+cask "google-chrome"
+cask "google-cloud-sdk"
+cask "hazel"
+cask "iterm2"
+cask "kaleidoscope"
+cask "kindle"
+cask "marked"
+cask "monodraw"
+cask "muzzle"
+cask "osxfuse"
+cask "papers"
+cask "paw"
+cask "postico"
+cask "quitter"
+cask "reflector"
+cask "screenflow"
+cask "send-to-kindle"
+cask "sketch"
+cask "spotify"
+cask "steam"
+cask "tableflip"
+cask "taskpaper"
+cask "textexpander"
+cask "thingsmacsandboxhelper"
+cask "tinderbox"
+cask "transmit"
+cask "transmit-disk"
+cask "tripmode"
+cask "vagrant"
+cask "vimr"
+cask "virtualbox"
+cask "virtualbox-extension-pack"
+
+mas '1Blocker', id: 1107421413
+mas 'Airmail 3', id: 918858936
+mas 'Copied', id: 1026349850
+mas 'Deckset', id: 847496013
+mas 'Deliveries', id: 924726344
+mas 'Fantastical 2', id: 975937182
+mas 'Keynote', id: 409183694
+mas 'Magnet', id: 441258766
+mas 'MindNode', id: 992076693
+mas 'Numbers', id: 409203825
+mas 'OmniOutliner', id: 1142578772
+mas 'Pages', id: 409201541
+mas 'Pixelmator', id: 407963104
+mas 'PopClip', id: 445189367
+mas 'ReadKit', id: 588726889
+mas 'ScanSnap Cloud', id: 1211119808
+mas 'Sequence Diagram', id: 1195426709
+mas 'Shush', id: 496437906
+mas 'Slack', id: 803453959
+mas 'Spectrum', id: 518156125
+mas 'Spillo', id: 873245660
+mas 'The Clock', id: 488764545
+mas 'Things3', id: 904280696
+mas 'Trello', id: 1278508951
+mas 'Tooth Fairy', id: 1191449274
+mas 'Transmit', id: 403388562
+mas 'Trello', id: 1278508951
+mas 'iA Writer', id: 775737590
+EOF
+
+echo "Cleaning up old Homebrew formulae ..."
+brew cleanup
+brew cask cleanup
+
+echo "Configuring Ruby ..."
+find_latest_ruby() {
+  rbenv install -l | grep -v - | tail -1 | sed -e 's/^ *//'
+}
+
+ruby_version="$(find_latest_ruby)"
+# shellcheck disable=SC2016
+eval "$(rbenv init -)"
+
+if ! rbenv versions | grep -Fq "$ruby_version"; then
+  RUBY_CONFIGURE_OPTS=--with-openssl-dir=/usr/local/opt/openssl rbenv install -s "$ruby_version"
+fi
+
+rbenv global "$ruby_version"
+rbenv shell "$ruby_version"
+gem update --system
+gem install 'bundler'
+number_of_cores=$(sysctl -n hw.ncpu)
+bundle config --global jobs $((number_of_cores - 1))
+
+echo "Configuring Rust ..."
+if ! hash rustup 2>/dev/null; then
+  curl https://sh.rustup.rs -sSf | sh
+fi
+
+rustup update
+rustup component add rust-src
+
+! rustup run stable cargo install racer
+! rustup run stable cargo install rustfmt
+
+defaults write com.pilotmoon.popclip OtherURLSchemes -array x-devonthink-item spotify things
 
 if [ ! -d "$HOME/.dotfiles" ]; then
   git clone https://github.com/iakobos/dotfiles.git "$HOME/.dotfiles"
 fi
 
-if [ ! -e "$HOME/.laptop.local" ]; then
-  ln -s "$HOME/.dotfiles/laptop.local" "$HOME/.laptop.local"
-fi
-
-curl -s https://raw.githubusercontent.com/iakobos/laptop/master/mac | sh 2>&1
+RCRC="$HOME/.dotfiles/rcrc" rcup -f
