@@ -83,6 +83,7 @@ brew "overmind"
 brew "phantomjs"
 brew "postgis"
 brew "postgres", restart_service: true
+brew "python"
 brew "qt@5.5"
 brew "rbenv"
 brew "rbenv-bundler"
@@ -195,6 +196,9 @@ EOF
 
 echo "Cleaning up old Homebrew formulae ..."
 brew cleanup
+
+echo "Configuring Python for NeoVim ..."
+pip3 install neovim
 
 echo "Configuring Rust ..."
 if ! hash rustup 2>/dev/null; then

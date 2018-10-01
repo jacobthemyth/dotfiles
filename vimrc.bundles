@@ -51,7 +51,7 @@ Plug 'yssl/QFEnter'
 
 if has('nvim')
   Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
-  Plug 'mitsuse/autocomplete-swift'
+  Plug 'mitsuse/autocomplete-swift', { 'do': 'pip3 install pyyaml' }
   Plug 'uplus/deoplete-solargraph', { 'do': 'gem install solargraph -v 0.18.0; pip3 install solargraph-utils.py --user' }
 else
   " Sensible defaults
