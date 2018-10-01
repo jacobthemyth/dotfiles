@@ -3,6 +3,7 @@
   ap = add --patch
   c = commit -v
   ca = !git commit --amend -v
+  co = checkout
   d = diff
   dc = diff --cached
   p = push

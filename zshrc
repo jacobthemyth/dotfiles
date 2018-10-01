@@ -3,8 +3,6 @@ source $ZPLUG_HOME/init.zsh
 
 zplug 'mafredri/zsh-async'
 zplug 'sindresorhus/pure'
-zplug 'zsh-users/zsh-syntax-highlighting', defer:2
-zplug 'zsh-users/zsh-completions', defer:2
 
 if ! zplug check --verbose; then
   printf "Install zsh plugins? [y/N]: "
@@ -46,7 +44,6 @@ export PATH="$HOME/.bin:$PATH"
 export PATH=".git/safe/../../bin:$PATH"
 export PATH="node_modules/.bin:$PATH"
 export PATH="$(brew --prefix qt@5.5)/bin:$PATH"
-export PATH=$(go env GOPATH)/bin:$PATH
 export PATH="$HOME/.cargo/bin:$PATH"
 
 export FZF_DEFAULT_OPTS="--extended --cycle"

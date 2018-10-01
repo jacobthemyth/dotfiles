@@ -23,7 +23,7 @@ for branch in "${tempBranches[@]}"; do
 done
 
 WIDTH="$((max_width+12))"
-CHOICE_HEIGHT="$((i*2))"
+CHOICE_HEIGHT="$((i*3))"
 HEIGHT="$((CHOICE_HEIGHT))"
 
 CHOICE=$(dialog --keep-tite\

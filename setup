@@ -34,12 +34,6 @@ echo "Installing XCode..."
 #   mas signin "jacob@jacobsmith.io" "$password"
 # fi
 
-mas_result=$(mas install 497799835 2>&1 || true)
-if [[ $mas_result = *"Not signed in"* ]]; then
-  echo "Please sign in to the Mac App Store"
-  exit 1
-fi
-
 sudo xcodebuild -license accept
 
 echo "Updating Homebrew formulae ..."
@@ -49,9 +43,6 @@ tap "homebrew/services"
 
 tap "Goles/battery"
 brew "battery"
-
-tap "homebrew/dupes"
-brew "less"
 
 tap "nodenv/nodenv"
 brew "nodenv-default-packages"
@@ -120,6 +111,9 @@ brew "zsh"
 tap "caskroom/fonts"
 cask "font-firacode-nerd-font"
 
+tap "homebrew/cask-drivers"
+cask "logitech-options"
+
 cask "1password"
 cask "1password-cli"
 cask "alfred"
@@ -133,15 +127,16 @@ cask "cryptomator"
 cask "dash"
 cask "docker"
 cask "dropbox"
-cask "dropzone"
 cask "encryptme"
 cask "firefox"
 cask "fluid"
+cask "gemini"
 cask "google-chrome"
 cask "google-cloud-sdk"
 cask "hazel"
 cask "iterm2"
 cask "kaleidoscope"
+cask "keep-it"
 cask "kindle"
 cask "marked"
 cask "monodraw"
@@ -162,7 +157,6 @@ cask "taskpaper"
 cask "textexpander"
 cask "thingsmacsandboxhelper"
 cask "tinderbox"
-cask "transmit"
 cask "transmit-disk"
 cask "tripmode"
 cask "vagrant"
@@ -178,12 +172,11 @@ mas 'Deliveries', id: 924726344
 mas 'Fantastical 2', id: 975937182
 mas 'Keynote', id: 409183694
 mas 'Magnet', id: 441258766
-mas 'MindNode', id: 992076693
+mas 'MindNode', id: 1289197285
 mas 'Numbers', id: 409203825
 mas 'OmniOutliner', id: 1142578772
 mas 'Pages', id: 409201541
 mas 'Pixelmator', id: 407963104
-mas 'PopClip', id: 445189367
 mas 'ReadKit', id: 588726889
 mas 'ScanSnap Cloud', id: 1211119808
 mas 'Sequence Diagram', id: 1195426709
@@ -228,13 +221,12 @@ if ! hash rustup 2>/dev/null; then
   curl https://sh.rustup.rs -sSf | sh
 fi
 
+source $HOME/.cargo/env
 rustup update
 rustup component add rust-src
 
 ! rustup run stable cargo install racer
 ! rustup run stable cargo install rustfmt
-
-defaults write com.pilotmoon.popclip OtherURLSchemes -array x-devonthink-item spotify things
 
 if [ ! -d "$HOME/.dotfiles" ]; then
   git clone https://github.com/iakobos/dotfiles.git "$HOME/.dotfiles"
