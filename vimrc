@@ -100,10 +100,14 @@ set undodir=~/.vim/undo
 set undofile
 
 nnoremap gr :grep! "\b<cword>\b"<CR>:cw<CR>
+
 if filereadable(expand("~/.vim/colorscheme.vim"))
   let base16colorspace=256
   source ~/.vim/colorscheme.vim
 endif
+
+highlight link ALEError Error
+
 " }}}
 
 " Mappings {{{
@@ -183,7 +187,7 @@ let g:ctrlp_prompt_mappings = {
 let g:deoplete#enable_at_startup = 1
 autocmd FileType swift imap <buffer> <C-k> <Plug>(autocomplete_swift_jump_to_placeholder)
 
-let s:default_sources = ['syntax', 'tag', 'buffer', 'file'] " TODO: ultisnips
+let s:default_sources = ['syntax', 'tag', 'buffer', 'file']
 if (exists('g:deoplete_loaded') && g:deoplete_loaded)
   call deoplete#custom#option('sources', {
   \ 'ruby': ['solargraph'] + s:default_sources,
@@ -242,25 +246,6 @@ let g:tern_map_prefix='<Leader>'
 let g:tern_map_keys=1
 let g:tern_show_arguments_hints="on_hold"
 let g:tern_show_signature_in_pum=1
-
-" UltiSnips
-let g:UltiSnipsExpandTrigger="<c-j>"
-let g:UltiSnipsJumpForwardTrigger="<c-j>"
-let g:UltiSnipsJumpBackwardTrigger="<c-k>"
-let g:UltiSnipsListSnippets="<c-l>"
-let g:UltiSnipsSnippetDirectories=["UltiSnips"]
-
-autocmd FileType javascript UltiSnipsAddFiletypes javascript-jasmine-arrow
-autocmd FileType coffee UltiSnipsAddFiletypes coffee-jasmine
-
-inoremap <silent> <C-j> <C-r>=LoadUltiSnips()<cr>
-function! LoadUltiSnips()
-  let l:curpos = getcurpos()
-  execute plug#load('ultisnips')
-  call cursor(l:curpos[1], l:curpos[2])
-  call UltiSnips#ExpandSnippet()
-  return ""
-endfunction
 
 " vim-test
 let g:test#strategy = 'dispatch'

@@ -13,9 +13,9 @@ fi
 
 zplug load
 
-# for zsh_source in $HOME/.zsh/configs/*.zsh; do
-#   source $zsh_source
-# done
+for zsh_source in $HOME/.zsh/configs/*.zsh; do
+  source $zsh_source
+done
 
 # load custom executable functions
 for function in ~/.zsh/functions/*; do

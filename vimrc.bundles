@@ -9,30 +9,28 @@ Plug 'kana/vim-textobj-user' " used by rubyblock and quote
 Plug 'chriskempson/base16-vim'
 Plug 'christoomey/vim-tmux-navigator'
 Plug 'ctrlpvim/ctrlp.vim'
-Plug 'davidoc/taskpaper.vim',            { 'for': 'taskpaper' }
-Plug 'dhruvasagar/vim-table-mode',       { 'for': 'markdown' }
-Plug 'digitaltoad/vim-pug',              { 'for': ['jade', 'pug'] }
-Plug 'ecomba/vim-ruby-refactoring',      { 'for': 'ruby' }
-Plug 'fatih/vim-go',                     { 'do': ':GoUpdateBinaries' }
-Plug 'honza/vim-snippets'
+Plug 'davidoc/taskpaper.vim',                   { 'for': 'taskpaper' }
+Plug 'dhruvasagar/vim-table-mode',              { 'for': 'markdown' }
+Plug 'ecomba/vim-ruby-refactoring',             { 'for': 'ruby' }
+Plug 'fatih/vim-go',                            { 'do': ':GoUpdateBinaries' }
+Plug 'hail2u/vim-css3-syntax'
 Plug 'janko-m/vim-test'
-Plug 'junegunn/goyo.vim',                { 'for': 'markdown' }
-Plug 'junegunn/vim-easy-align',          { 'on': '<Plug>(EasyAlign)' }
-Plug 'keith/swift.vim',                  { 'for': 'swift' }
-Plug 'mattn/emmet-vim',                  { 'for': ['eruby', 'html', 'html.handlebars', 'javascript.jsx'] }
-Plug 'mustache/vim-mustache-handlebars', { 'for': 'html.handlebars' }
-Plug 'mxw/vim-jsx',                      { 'for': 'javascript' }
-Plug 'nelstrom/vim-markdown-folding',    { 'for': 'markdown' }
-Plug 'nelstrom/vim-textobj-rubyblock',   { 'for': 'ruby' }
-Plug 'pangloss/vim-javascript',          { 'for': 'javascript' }
-Plug 'sirver/ultisnips'
+Plug 'junegunn/vim-easy-align',                 { 'on': '<Plug>(EasyAlign)' }
+Plug 'keith/swift.vim',                         { 'for': 'swift' }
+Plug 'mattn/emmet-vim',                         { 'for': ['eruby', 'html', 'html.handlebars', 'javascript.jsx'] }
+Plug 'mxw/vim-jsx'
+Plug 'nelstrom/vim-markdown-folding',           { 'for': 'markdown' }
+Plug 'nelstrom/vim-textobj-rubyblock',          { 'for': 'ruby' }
+Plug 'othree/es.next.syntax.vim'
+Plug 'othree/yajs.vim'
+Plug 'styled-components/vim-styled-components', { 'branch': 'main' }
 Plug 'tpope/vim-abolish'
 Plug 'tpope/vim-bundler'
-Plug 'tpope/vim-dispatch',               { 'on': 'Dispatch' }
+Plug 'tpope/vim-dispatch',                      { 'on': 'Dispatch' }
 Plug 'tpope/vim-endwise'
 Plug 'tpope/vim-eunuch'
 Plug 'tpope/vim-fugitive'
-Plug 'tpope/vim-markdown',               { 'for': 'markdown' }
+Plug 'tpope/vim-markdown',                      { 'for': 'markdown' }
 Plug 'tpope/vim-projectionist'
 Plug 'tpope/vim-rails'
 Plug 'tpope/vim-rake'
@@ -48,11 +46,17 @@ Plug 'vim-ruby/vim-ruby'
 Plug 'vim-scripts/tComment'
 Plug 'w0rp/ale'
 Plug 'yssl/QFEnter'
+Plug 'HerringtonDarkholme/yats.vim' " TypeScript
 
 if has('nvim')
   Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
+  Plug 'Shougo/denite.nvim'
+  Plug 'Shougo/neco-syntax' " Syntax source for deoplete
   Plug 'mitsuse/autocomplete-swift', { 'do': 'pip3 install pyyaml' }
   Plug 'uplus/deoplete-solargraph', { 'do': 'gem install solargraph -v 0.18.0; pip3 install solargraph-utils.py --user' }
+  Plug 'carlitux/deoplete-ternjs', { 'do': 'npm install -g tern' }
+  Plug 'zchee/deoplete-go', { 'do': 'make'}
+  Plug 'mhartington/nvim-typescript', {'do': 'npm -g install typescript; ./install.sh'}
 else
   " Sensible defaults
   " needs to be last
