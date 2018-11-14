@@ -2,7 +2,9 @@ export ZPLUG_HOME=/usr/local/opt/zplug
 source $ZPLUG_HOME/init.zsh
 
 zplug 'mafredri/zsh-async'
-zplug 'sindresorhus/pure'
+zplug 'sindresorhus/pure', use:pure.zsh, as:theme
+zplug 'zsh-users/zsh-syntax-highlighting', defer:2
+zplug 'zsh-users/zsh-completions', defer:2
 
 if ! zplug check --verbose; then
   printf "Install zsh plugins? [y/N]: "
@@ -90,6 +92,8 @@ setopt extendedglob
 unsetopt nomatch
 
 setopt promptsubst
+
+export TERM="xterm-256color-italic"
 
 # aliases
 [[ -f ~/.aliases ]] && source ~/.aliases

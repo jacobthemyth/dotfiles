@@ -1,12 +1,13 @@
 # Unix
 alias f='fzf | pbcopy'
-alias la='ls -lAFh'
 alias ip="dig +short myip.opendns.com @resolver1.opendns.com"
+alias la='ls -lAFh'
+alias less="less -R"
 alias localip="ipconfig getifaddr en0"
+alias mux="tmuxinator"
 alias r="ranger"
 alias today="date +%Y-%m-%d"
 alias ts="tig status"
-alias less="less -R"
 
 alias ssh='TERM=xterm-256color ssh'
 alias vim="nvim"

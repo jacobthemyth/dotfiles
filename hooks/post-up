@@ -26,11 +26,11 @@ esac
 yard gems
 
 if ! base16-manager list | grep -q chriskempson/base16-shell; then
-  base16-manager install chriskempson/base16-shell 
+  base16-manager install chriskempson/base16-shell
 fi
 
 if ! base16-manager list | grep -q chriskempson/base16-vim; then
-  base16-manager install chriskempson/base16-vim 
+  base16-manager install chriskempson/base16-vim
 fi
 
 echo "Configuring Ruby ..."
@@ -51,3 +51,5 @@ gem update --system
 gem install 'bundler'
 number_of_cores=$(sysctl -n hw.ncpu)
 bundle config --global jobs $((number_of_cores - 1))
+
+nodenv default-packages install --all

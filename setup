@@ -117,24 +117,27 @@ cask "logitech-options"
 
 tap "iakobos/formulae"
 cask "screenflow6"
+cask "the-archive"
 cask "timeular"
 
 cask "1password"
 cask "1password-cli"
+cask "airtable"
 cask "alfred"
 cask "android-studio"
 cask "anylist"
 cask "appcleaner"
 cask "backblaze"
 cask "bartender"
+cask "base"
 cask "cleanmymac"
 cask "cryptomator"
 cask "dash"
 cask "docker"
 cask "dropbox"
+cask "epichrome"
 cask "encryptme"
 cask "firefox"
-cask "fluid"
 cask "gemini"
 cask "google-chrome"
 cask "google-cloud-sdk"
@@ -169,6 +172,7 @@ cask "vagrant"
 cask "vimr"
 cask "virtualbox"
 cask "virtualbox-extension-pack"
+cask "visual-studio-code"
 
 mas '1Blocker', id: 1107421413
 mas 'Airmail 3', id: 918858936
@@ -176,6 +180,7 @@ mas 'Copied', id: 1026349850
 mas 'Deckset', id: 847496013
 mas 'Deliveries', id: 924726344
 mas 'Fantastical 2', id: 975937182
+mas 'Horo', id: 1437226581
 mas 'Keynote', id: 409183694
 mas 'Magnet', id: 441258766
 mas 'MindNode', id: 1289197285
@@ -183,6 +188,7 @@ mas 'Numbers', id: 409203825
 mas 'OmniOutliner', id: 1142578772
 mas 'Pages', id: 409201541
 mas 'Pixelmator', id: 407963104
+mas 'PopClip', id: 445189367
 mas 'ReadKit', id: 588726889
 mas 'ScanSnap Cloud', id: 1211119808
 mas 'Sequence Diagram', id: 1195426709
@@ -216,6 +222,8 @@ rustup component add rust-src
 
 ! rustup run stable cargo install racer
 ! rustup run stable cargo install rustfmt
+
+defaults write com.pilotmoon.popclip OtherURLSchemes -array keepit papers3 spotify things
 
 if [ ! -d "$HOME/.dotfiles" ]; then
   git clone https://github.com/iakobos/dotfiles.git "$HOME/.dotfiles"

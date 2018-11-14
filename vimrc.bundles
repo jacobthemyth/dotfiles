@@ -14,15 +14,16 @@ Plug 'dhruvasagar/vim-table-mode',              { 'for': 'markdown' }
 Plug 'ecomba/vim-ruby-refactoring',             { 'for': 'ruby' }
 Plug 'fatih/vim-go',                            { 'do': ':GoUpdateBinaries' }
 Plug 'hail2u/vim-css3-syntax'
+Plug 'honza/vim-snippets'
 Plug 'janko-m/vim-test'
 Plug 'junegunn/vim-easy-align',                 { 'on': '<Plug>(EasyAlign)' }
 Plug 'keith/swift.vim',                         { 'for': 'swift' }
+Plug 'lilydjwg/colorizer'
 Plug 'mattn/emmet-vim',                         { 'for': ['eruby', 'html', 'html.handlebars', 'javascript.jsx'] }
 Plug 'mxw/vim-jsx'
 Plug 'nelstrom/vim-markdown-folding',           { 'for': 'markdown' }
 Plug 'nelstrom/vim-textobj-rubyblock',          { 'for': 'ruby' }
-Plug 'othree/es.next.syntax.vim'
-Plug 'othree/yajs.vim'
+Plug 'pangloss/vim-javascript',                 { 'for': ['javascript'] }
 Plug 'styled-components/vim-styled-components', { 'branch': 'main' }
 Plug 'tpope/vim-abolish'
 Plug 'tpope/vim-bundler'
@@ -46,7 +47,9 @@ Plug 'vim-ruby/vim-ruby'
 Plug 'vim-scripts/tComment'
 Plug 'w0rp/ale'
 Plug 'yssl/QFEnter'
+Plug 'Galooshi/vim-import-js', { 'do': 'npm install -g import-js' }
 Plug 'HerringtonDarkholme/yats.vim' " TypeScript
+Plug 'SirVer/ultisnips'
 
 if has('nvim')
   Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }

@@ -53,6 +53,9 @@ endif
 
 " Core {{{
 
+" Allow project specific vimrc
+set exrc
+
 " UI
 set autoread
 set colorcolumn=81
@@ -106,8 +109,23 @@ if filereadable(expand("~/.vim/colorscheme.vim"))
   source ~/.vim/colorscheme.vim
 endif
 
-highlight link ALEError Error
+set t_ZH=[3m
+set t_ZR=[23m
 
+" :h xterm-true-color
+if &term =~# '^tmux'
+  let &t_8f = "\<Esc>[38;2;%lu;%lu;%lum"
+  let &t_8b = "\<Esc>[48;2;%lu;%lu;%lum"
+endif
+set termguicolors
+
+highlight link ALEError Error
+highlight htmlArg gui=italic
+highlight Comment gui=italic
+highlight Type    gui=italic
+highlight htmlArg cterm=italic
+highlight Comment cterm=italic
+highlight Type    cterm=italic
 " }}}
 
 " Mappings {{{
@@ -115,11 +133,9 @@ highlight link ALEError Error
 " Use <leader><C-L> to clear the highlighting of :set hlsearch.
 nnoremap <silent> <leader><C-L> :nohlsearch<C-R>=has('diff')?'<Bar>diffupdate':''<CR><CR><C-L>
 
-nnoremap <leader>d :Dispatch<CR>
 nnoremap <silent><Leader>] <C-w><C-]><C-w>T
 
 vnoremap <Leader>y "+y
-vnoremap <Leader>d "+d
 vnoremap <Leader>p "+p
 
 nnoremap <Leader>y "+y
@@ -127,8 +143,6 @@ nnoremap <Leader>p "+p
 nnoremap <Leader>P "+P
 
 nnoremap <Leader>m :!open -a Marked\ 2.app %<CR><CR>
-
-vnoremap <Leader>s :'<,'>!sort<CR>
 
 " EasyAlign
 " Start interactive EasyAlign in visual mode (e.g. vipga)
@@ -143,6 +157,8 @@ nnoremap dp dp:redraw!<CR>
 nnoremap do do:redraw!<CR>
 
 nnoremap <Leader>b :CtrlPBuffer<CR>
+
+nnoremap <Leader>s :%s/\<<C-r><C-w>\>//g<Left><Left>
 " }}}
 
 " Plugins {{{
@@ -162,10 +178,17 @@ nnoremap <Leader>af :ALEFix<CR>
 
 " This is gross
 let g:ale_javascript_eslint_executable='/bin/sh -c "cd $(dirname %) && ~/.nodenv/shims/eslint"'
+
+let g:ale_fix_on_save = 1
+let g:ale_javascript_prettier_eslint_use_global=1
+let g:ale_linter_aliases = {'jsx': ['css', 'javascript']}
 let g:ale_linters = {
 \   'javascript': ['eslint'],
+\   'jsx': ['stylelint', 'eslint'],
+\   'css': ['stylelint'],
 \}
 let g:ale_fixers = {
+\   '*': ['remove_trailing_lines', 'trim_whitespace'],
 \   'javascript': ['eslint'],
 \   'ruby': ['rubocop'],
 \}
@@ -187,11 +210,14 @@ let g:ctrlp_prompt_mappings = {
 let g:deoplete#enable_at_startup = 1
 autocmd FileType swift imap <buffer> <C-k> <Plug>(autocomplete_swift_jump_to_placeholder)
 
-let s:default_sources = ['syntax', 'tag', 'buffer', 'file']
+let s:default_sources = ['syntax', 'tag', 'buffer', 'file', 'ultisnips']
 if (exists('g:deoplete_loaded') && g:deoplete_loaded)
   call deoplete#custom#option('sources', {
+  \ '_': s:default_sources,
   \ 'ruby': ['solargraph'] + s:default_sources,
   \})
+
+  call deoplete#custom#source('ultisnips', 'rank', 1000)
 
   " https://github.com/Shougo/deoplete.nvim/issues/761
   call deoplete#custom#option('num_processes', 1)
@@ -247,6 +273,11 @@ let g:tern_map_keys=1
 let g:tern_show_arguments_hints="on_hold"
 let g:tern_show_signature_in_pum=1
 
+" ultisnips
+let g:UltiSnipsExpandTrigger="<tab>"
+let g:UltiSnipsJumpForwardTrigger="<c-b>"
+let g:UltiSnipsJumpBackwardTrigger="<c-z>"
+
 " vim-test
 let g:test#strategy = 'dispatch'
 
@@ -257,4 +288,5 @@ nmap <silent> t<C-l> :TestLast<CR>
 nmap <silent> t<C-g> :TestVisit<CR>
 " }}}
 
+set secure
 " vim: set foldmethod=marker:
