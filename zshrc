@@ -41,6 +41,9 @@ zstyle ":completion:*:descriptions" format "%B%d%b"
 [ -f $HOME/.config/digitalocean ] && source $HOME/.config/digitalocean
 [ -f $HOME/.config/homebrew ] && source $HOME/.config/homebrew
 
+export GOPATH="$HOME/go"
+
+export PATH="/usr/local/opt/go/libexec/bin:$HOME/go/bin:$PATH"
 export PATH="/usr/local/bin:$PATH"
 export PATH="$HOME/.bin:$PATH"
 export PATH=".git/safe/../../bin:$PATH"

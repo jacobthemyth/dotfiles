@@ -6,6 +6,7 @@ call plug#begin('~/.vim/bundle')
 
 Plug 'kana/vim-textobj-user' " used by rubyblock and quote
 
+Plug 'airblade/vim-gitgutter'
 Plug 'chriskempson/base16-vim'
 Plug 'christoomey/vim-tmux-navigator'
 Plug 'ctrlpvim/ctrlp.vim'
@@ -19,7 +20,7 @@ Plug 'janko-m/vim-test'
 Plug 'junegunn/vim-easy-align',                 { 'on': '<Plug>(EasyAlign)' }
 Plug 'keith/swift.vim',                         { 'for': 'swift' }
 Plug 'lilydjwg/colorizer'
-Plug 'mattn/emmet-vim',                         { 'for': ['eruby', 'html', 'html.handlebars', 'javascript.jsx'] }
+Plug 'mattn/emmet-vim',                         { 'for': ['eruby', 'html', 'html.handlebars', 'javascript.jsx', 'vue'] }
 Plug 'mxw/vim-jsx'
 Plug 'nelstrom/vim-markdown-folding',           { 'for': 'markdown' }
 Plug 'nelstrom/vim-textobj-rubyblock',          { 'for': 'ruby' }
@@ -45,21 +46,21 @@ Plug 'vim-airline/vim-airline'
 Plug 'vim-airline/vim-airline-themes'
 Plug 'vim-ruby/vim-ruby'
 Plug 'vim-scripts/tComment'
-Plug 'w0rp/ale'
+Plug 'w0rp/ale',                                { 'do': 'go get golang.org/x/tools/cmd/goimports' }
 Plug 'yssl/QFEnter'
-Plug 'Galooshi/vim-import-js', { 'do': 'npm install -g import-js' }
-Plug 'HerringtonDarkholme/yats.vim' " TypeScript
+Plug 'Galooshi/vim-import-js',                  { 'do': 'npm install -g import-js' }
 Plug 'SirVer/ultisnips'
+
+Plug 'leafgarland/typescript-vim'
+Plug 'Quramy/tsuquyomi'
+Plug 'Quramy/tsuquyomi-vue'
+Plug 'posva/vim-vue'
 
 if has('nvim')
   Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
   Plug 'Shougo/denite.nvim'
   Plug 'Shougo/neco-syntax' " Syntax source for deoplete
-  Plug 'mitsuse/autocomplete-swift', { 'do': 'pip3 install pyyaml' }
-  Plug 'uplus/deoplete-solargraph', { 'do': 'gem install solargraph -v 0.18.0; pip3 install solargraph-utils.py --user' }
-  Plug 'carlitux/deoplete-ternjs', { 'do': 'npm install -g tern' }
-  Plug 'zchee/deoplete-go', { 'do': 'make'}
-  Plug 'mhartington/nvim-typescript', {'do': 'npm -g install typescript; ./install.sh'}
+  Plug 'zchee/deoplete-go', { 'do': 'make; go get -u github.com/mdempsky/gocode' }
 else
   " Sensible defaults
   " needs to be last

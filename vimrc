@@ -81,6 +81,8 @@ set ignorecase  " searches are case insensitive...
 set smartcase   " ... unless they contain at least one capital letter
 set infercase   " Use the correct case when autocompleting
 set mouse=a " Enable mouse in all modes
+set updatetime=100
+set fillchars=eob:\ ,stl:─,vert:│
 
 " fix & command to preserve flags
 nnoremap & :&&<CR>
@@ -108,6 +110,8 @@ if filereadable(expand("~/.vim/colorscheme.vim"))
   let base16colorspace=256
   source ~/.vim/colorscheme.vim
 endif
+
+hi VertSplit guibg=NONE
 
 set t_ZH=[3m
 set t_ZR=[23m
@@ -178,19 +182,27 @@ nnoremap <Leader>af :ALEFix<CR>
 
 " This is gross
 let g:ale_javascript_eslint_executable='/bin/sh -c "cd $(dirname %) && ~/.nodenv/shims/eslint"'
-
 let g:ale_fix_on_save = 1
 let g:ale_javascript_prettier_eslint_use_global=1
-let g:ale_linter_aliases = {'jsx': ['css', 'javascript']}
+let g:ale_linter_aliases = {
+\   'jsx': ['css', 'javascript'],
+\   'vue': ['typescript'],
+\}
 let g:ale_linters = {
+\   'css': ['stylelint'],
+\   'go': ['gobuild', 'gofmt'],
 \   'javascript': ['eslint'],
 \   'jsx': ['stylelint', 'eslint'],
-\   'css': ['stylelint'],
+\   'ruby': ['rubocop'],
+\   'typescript': ['tsserver', 'eslint'],
+\   'vue': ['tsserver', 'eslint'],
 \}
 let g:ale_fixers = {
 \   '*': ['remove_trailing_lines', 'trim_whitespace'],
+\   'go': ['gofmt', 'goimports'],
 \   'javascript': ['eslint'],
-\   'ruby': ['rubocop'],
+\   'typescript': ['eslint'],
+\   'vue': ['eslint'],
 \}
 
 " ctrlp
@@ -214,7 +226,7 @@ let s:default_sources = ['syntax', 'tag', 'buffer', 'file', 'ultisnips']
 if (exists('g:deoplete_loaded') && g:deoplete_loaded)
   call deoplete#custom#option('sources', {
   \ '_': s:default_sources,
-  \ 'ruby': ['solargraph'] + s:default_sources,
+  \ 'go': ['go'] + s:default_sources,
   \})
 
   call deoplete#custom#source('ultisnips', 'rank', 1000)
