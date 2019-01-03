@@ -42,6 +42,7 @@
   template = ~/.gitmessage
 [core]
   pager = diff-so-fancy | less --tabs=4 -RFX
+  autocrlf = input
 [credential]
   helper = osxkeychain
 [diff]
@@ -64,7 +65,9 @@
   autosquash = true
 [user]
   name = Jacob Smith
-  email = jacob@testdouble.com
+  email = jacob@jacobsmith.io
 [github]
   user = iakobos
+[include]
+  path = ~/.gitconfig.private
 # vim: ft=gitconfig

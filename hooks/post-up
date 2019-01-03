@@ -23,8 +23,6 @@ case "$SHELL" in
     ;;
 esac
 
-yard gems
-
 if ! base16-manager list | grep -q chriskempson/base16-shell; then
   base16-manager install chriskempson/base16-shell
 fi
@@ -32,6 +30,8 @@ fi
 if ! base16-manager list | grep -q chriskempson/base16-vim; then
   base16-manager install chriskempson/base16-vim
 fi
+
+base16-manager set eighties
 
 echo "Configuring Ruby ..."
 find_latest_ruby() {

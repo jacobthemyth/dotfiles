@@ -6,6 +6,10 @@ call plug#begin('~/.vim/bundle')
 
 Plug 'kana/vim-textobj-user' " used by rubyblock and quote
 
+Plug 'Galooshi/vim-import-js',                  { 'do': 'npm install -g import-js' }
+Plug 'OrangeT/vim-csharp'
+Plug 'Quramy/vim-js-pretty-template'
+Plug 'SirVer/ultisnips'
 Plug 'airblade/vim-gitgutter'
 Plug 'chriskempson/base16-vim'
 Plug 'christoomey/vim-tmux-navigator'
@@ -24,7 +28,7 @@ Plug 'mattn/emmet-vim',                         { 'for': ['eruby', 'html', 'html
 Plug 'mxw/vim-jsx'
 Plug 'nelstrom/vim-markdown-folding',           { 'for': 'markdown' }
 Plug 'nelstrom/vim-textobj-rubyblock',          { 'for': 'ruby' }
-Plug 'pangloss/vim-javascript',                 { 'for': ['javascript'] }
+Plug 'pangloss/vim-javascript'
 Plug 'styled-components/vim-styled-components', { 'branch': 'main' }
 Plug 'tpope/vim-abolish'
 Plug 'tpope/vim-bundler'
@@ -48,8 +52,6 @@ Plug 'vim-ruby/vim-ruby'
 Plug 'vim-scripts/tComment'
 Plug 'w0rp/ale',                                { 'do': 'go get golang.org/x/tools/cmd/goimports' }
 Plug 'yssl/QFEnter'
-Plug 'Galooshi/vim-import-js',                  { 'do': 'npm install -g import-js' }
-Plug 'SirVer/ultisnips'
 
 Plug 'leafgarland/typescript-vim'
 Plug 'Quramy/tsuquyomi'

@@ -27,10 +27,10 @@ set nojoinspaces
 
 if executable('ag')
   " Use Ag over Grep
-  set grepprg=ag\ --nogroup\ --nocolor
+  set grepprg=ag\ --nogroup\ --nocolor\ --silent
 
   " Use ag in CtrlP for listing files. Lightning fast and respects .gitignore
-  let g:ctrlp_user_command = 'ag --literal --files-with-matches --nocolor --hidden -g "" %s'
+  let g:ctrlp_user_command = 'ag --ignore .git --literal --files-with-matches --nocolor --hidden -g "" %s'
 
   " ag is fast enough that CtrlP doesn't need to cache
   let g:ctrlp_use_caching = 0
@@ -104,7 +104,7 @@ endif
 set undodir=~/.vim/undo
 set undofile
 
-nnoremap gr :grep! "\b<cword>\b"<CR>:cw<CR>
+nnoremap gr :grep! "\b<cword>\b"<CR>:cw<CR><CR>
 
 if filereadable(expand("~/.vim/colorscheme.vim"))
   let base16colorspace=256
@@ -299,6 +299,10 @@ nmap <silent> t<C-s> :TestSuite<CR>
 nmap <silent> t<C-l> :TestLast<CR>
 nmap <silent> t<C-g> :TestVisit<CR>
 " }}}
+
+if filereadable(expand("~/.vimrc.private"))
+  source ~/.vimrc.private
+endif
 
 set secure
 " vim: set foldmethod=marker:

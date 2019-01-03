@@ -47,9 +47,6 @@ brew "battery"
 tap "nodenv/nodenv"
 brew "nodenv-default-packages"
 
-tap "heroku/brew"
-brew "heroku"
-
 tap "thoughtbot/formulae"
 brew "rcm"
 
@@ -72,6 +69,7 @@ brew "gdb"
 brew "gist"
 brew "git"
 brew "git-crypt"
+brew "go"
 brew "hub"
 brew "jq"
 brew "kafkacat"
@@ -80,23 +78,15 @@ brew "netcat"
 brew "nodenv"
 brew "openssl"
 brew "overmind"
-brew "phantomjs"
-brew "postgis"
-brew "postgres", restart_service: true
 brew "python"
-brew "qt@5.5"
 brew "rbenv"
 brew "rbenv-bundler"
 brew "rbenv-ctags"
 brew "rbenv-default-gems"
-brew "rbenv-gemset"
 brew "reattach-to-user-namespace"
-brew "redis", restart_service: true
 brew "rmtrash"
 brew "ruby-build"
-brew "rustup"
 brew "ssh-copy-id"
-brew "sourcekitten"
 brew "the_silver_searcher"
 brew "tig"
 brew "tmate"
@@ -105,7 +95,6 @@ brew "tree"
 brew "vim"
 brew "watch"
 brew "watchman"
-brew "youtube-dl"
 brew "zplug"
 brew "zsh"
 
@@ -115,68 +104,47 @@ cask "font-firacode-nerd-font"
 tap "homebrew/cask-drivers"
 cask "logitech-options"
 
-tap "iakobos/formulae"
-cask "screenflow6"
-cask "the-archive"
-cask "timeular"
-
 cask "1password"
 cask "1password-cli"
 cask "airtable"
 cask "alfred"
 cask "amethyst"
-cask "android-studio"
-cask "anylist"
 cask "appcleaner"
-cask "backblaze"
 cask "bartender"
 cask "base"
-cask "cleanmymac"
+cask "choosy"
 cask "dash"
 cask "docker"
 cask "dropbox"
-cask "epichrome"
 cask "firefox"
-cask "gemini"
 cask "google-chrome"
-cask "google-cloud-sdk"
 cask "hazel"
 cask "iterm2"
 cask "kaleidoscope"
 cask "karabiner-elements"
 cask "keep-it"
-cask "kindle"
+cask macvim
 cask "marked"
 cask "monodraw"
 cask "muzzle"
-cask "osxfuse"
-cask "papers"
 cask "paw"
 cask "postico"
 cask "quitter"
 cask "reflector"
 cask "rocket"
-cask "send-to-kindle"
 cask "sketch"
 cask "spotify"
-cask "steam"
-cask "tableflip"
-cask "taskpaper"
 cask "thingsmacsandboxhelper"
 cask "tinderbox"
 cask "transmit-disk"
 cask "tripmode"
 cask "vagrant"
-cask "vimr"
-cask "virtualbox"
-cask "virtualbox-extension-pack"
 cask "visual-studio-code"
 
 mas '1Blocker', id: 1107421413
 mas 'Airmail 3', id: 918858936
 mas 'Copied', id: 1026349850
 mas 'Deckset', id: 847496013
-mas 'Deliveries', id: 924726344
 mas 'Fantastical 2', id: 975937182
 mas 'Horo', id: 1437226581
 mas 'Keynote', id: 409183694
@@ -188,15 +156,11 @@ mas 'Pages', id: 409201541
 mas 'Pixelmator', id: 407963104
 mas 'PopClip', id: 445189367
 mas 'ReadKit', id: 588726889
-mas 'ScanSnap Cloud', id: 1211119808
 mas 'Sequence Diagram', id: 1195426709
 mas 'Shush', id: 496437906
 mas 'Slack', id: 803453959
-mas 'Spectrum', id: 518156125
 mas 'Spillo', id: 873245660
-mas 'The Clock', id: 488764545
 mas 'Things3', id: 904280696
-mas 'Trello', id: 1278508951
 mas 'Tooth Fairy', id: 1191449274
 mas 'Transmit', id: 403388562
 mas 'Trello', id: 1278508951
@@ -208,18 +172,6 @@ brew cleanup
 
 echo "Configuring Python for NeoVim ..."
 pip3 install neovim
-
-echo "Configuring Rust ..."
-if ! hash rustup 2>/dev/null; then
-  curl https://sh.rustup.rs -sSf | sh
-fi
-
-source $HOME/.cargo/env
-rustup update
-rustup component add rust-src
-
-! rustup run stable cargo install racer
-! rustup run stable cargo install rustfmt
 
 defaults write com.pilotmoon.popclip OtherURLSchemes -array keepit papers3 spotify things
 
