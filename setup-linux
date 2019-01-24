@@ -20,25 +20,28 @@ silversearcher-ag \
 tig \
 tmate \
 tree \
+unzip \
 zsh
+
+export PATH="~/.nodenv/bin:~/.rbenv/bin:$PATH"
 
 if ! hash node 2>/dev/null; then
   curl -sL https://deb.nodesource.com/setup_10.x | sudo bash -
   sudo apt install -y nodejs
 fi
 
-if ! hash nodenv 2>/dev/null; then
+if [ ! -d ~/.nodenv ]; then
   npx @nodenv/nodenv-installer
 fi
 
-if [ ! -f $(nodenv root)/plugins/nodenv-default-packages ]; then
-  git clone https://github.com/nodenv/nodenv-default-packages.git $(nodenv root)/plugins/nodenv-default-packages
+if [ ! -d ~/.nodenv/plugins/nodenv-default-packages ]; then
+  git clone https://github.com/nodenv/nodenv-default-packages.git ~/.nodenv/plugins/nodenv-default-packages
 fi
 
 if ! hash base16-manager 2>/dev/null; then
   mkdir -p ~/src
-  git clone https://github.com/AuditeMarlow/base16-manager.git ~/src
-  pushd ~/src
+  git clone https://github.com/AuditeMarlow/base16-manager.git ~/src/base16-manager
+  pushd ~/src/base16-manager
   sudo make install
   popd
 fi
@@ -52,38 +55,37 @@ if ! hash emojify 2>/dev/null; then
 fi
 
 if ! hash rbenv 2>/dev/null; then
-  sudo apt-get -y install autoconf bison build-essential libssl-dev libyaml-dev libreadline6-dev zlib1g-dev libncurses5-dev libffi-dev libgdbm3 libgdbm-dev
-  git clone https://github.com/rbenv/rbenv.git ~/.rbenv
+  curl -fsSL https://github.com/rbenv/rbenv-installer/raw/master/bin/rbenv-installer | bash
 fi
 
-if [ ! -f ~/.rbenv/plugins/ruby-build ]; then
-  mkdir -p ~/.rbenv/plugins
-  git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
-fi
-
-if [ ! -f ~/.rbenv/plugins/bundler ]; then
+if [ ! -d ~/.rbenv/plugins/bundler ]; then
   mkdir -p ~/.rbenv/plugins
   git clone https://github.com/carsomyr/rbenv-bundler.git ~/.rbenv/plugins/bundler
 fi
 
-if [ ! -f ~/.rbenv/plugins/rbenv-ctags ]; then
+if [ ! -d ~/.rbenv/plugins/rbenv-ctags ]; then
   mkdir -p ~/.rbenv/plugins
   git clone git://github.com/tpope/rbenv-ctags.git ~/.rbenv/plugins/rbenv-ctags
 fi
 
-if [ ! -f ~/.rbenv/plugins/rbenv-default-gems ]; then
+if [ ! -d ~/.rbenv/plugins/rbenv-default-gems ]; then
   mkdir -p ~/.rbenv/plugins
   git clone https://github.com/rbenv/rbenv-default-gems.git ~/.rbenv/plugins/rbenv-default-gems
 fi
 
-if [ ! -f ~/.zplug ]; then
+if [ ! -d ~/.zplug ]; then
   git clone https://github.com/zplug/zplug ~/.zplug
 fi
 
-if [ ! -f ~/.op ]; then
-  curl -o ~/src/op.zip https://cache.agilebits.com/dist/1P/op/pkg/v0.5.5/op_linux_386_v0.5.5.zip
-  unzip ~/src/op.zip ~/.op
+if [ ! -d ~/.op ]; then
+  curl -o ~/src/op.zip https://cache.agilebits.com/dist/1P/op/pkg/v0.5.5/op_linux_amd64_v0.5.5.zip
+  unzip ~/src/op.zip -d ~/.op
 fi
 
-sudo add-apt-repository ppa:martin-frost/thoughtbot-rcm
-sudo apt install -y rcm
+if ! hash rcup 2>/dev/null; then
+  sudo add-apt-repository ppa:martin-frost/thoughtbot-rcm
+  sudo apt install -y rcm
+fi
+
+echo "running rcup"
+RCRC="$HOME/.dotfiles/rcrc" TAGS="linux" rcup
