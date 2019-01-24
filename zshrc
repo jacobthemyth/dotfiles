@@ -48,7 +48,8 @@ export PATH="/usr/local/bin:$PATH"
 export PATH="$HOME/.bin:$PATH"
 export PATH=".git/safe/../../bin:$PATH"
 export PATH="node_modules/.bin:$PATH"
-export PATH="$HOME/.cargo/bin:$PATH"
+export PATH="$HOME/.rbenv/bin:$PATH"
+export PATH="$HOME/.nodenv/bin:$PATH"
 
 export FZF_DEFAULT_OPTS="--extended --cycle"
 
