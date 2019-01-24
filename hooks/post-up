@@ -29,7 +29,7 @@ ruby_version="$(find_latest_ruby)"
 eval "$(rbenv init -)"
 
 if ! rbenv versions | grep -Fq "$ruby_version"; then
-  RUBY_CONFIGURE_OPTS=--with-openssl-dir=/usr/local/opt/openssl rbenv install -s "$ruby_version"
+  rbenv install -s "$ruby_version"
 fi
 
 rbenv global "$ruby_version"
