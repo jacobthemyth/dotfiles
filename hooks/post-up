@@ -54,5 +54,8 @@ bundle config --global jobs $((number_of_cores - 1))
 
 nodenv default-packages install --all
 
+echo "Configuring Python for NeoVim ..."
+pip3 install neovim
+
 tic -x ~/.config/terminfo/tmux-256color-italic.terminfo
 tic -x ~/.config/terminfo/xterm-256color-italic.terminfo

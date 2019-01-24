@@ -1,16 +1,5 @@
 #!/bin/bash
 
-# shellcheck disable=SC2154
-trap 'ret=$?; test $ret -ne 0 && printf "failed\n\n" >&2; exit $ret' EXIT
-
-set -e
-
-# Ask for the administrator password upfront
-sudo -v
-
-# Keep-alive: update existing `sudo` time stamp until `setup` has finished
-while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
-
 if ! command -v brew >/dev/null; then
   echo "Installing Homebrew ..."
     curl -fsS \
@@ -23,8 +12,6 @@ if ! command -v mas >/dev/null; then
   brew install mas
 fi
 
-echo "Installing XCode..."
-
 # mas signin is currently broken
 # https://github.com/mas-cli/mas/issues/164
 # if ! mas account >/dev/null; then
@@ -34,7 +21,10 @@ echo "Installing XCode..."
 #   mas signin "jacob@jacobsmith.io" "$password"
 # fi
 
-sudo xcodebuild -license accept
+if [ ! -f /Library/Developer/CommandLineTools/usr/bin/git ]; then
+  echo "Installing XCode..."
+  sudo xcodebuild -license accept
+fi
 
 echo "Updating Homebrew formulae ..."
 brew update
@@ -59,7 +49,6 @@ brew "coreutils"
 brew "ctags"
 brew "dialog"
 brew "diff-so-fancy"
-brew "dnsmasq"
 brew "emojify"
 brew "exercism"
 brew "findutils"
@@ -123,7 +112,7 @@ cask "iterm2"
 cask "kaleidoscope"
 cask "karabiner-elements"
 cask "keep-it"
-cask macvim
+cask "macvim"
 cask "marked"
 cask "monodraw"
 cask "muzzle"
@@ -131,14 +120,12 @@ cask "paw"
 cask "postico"
 cask "quitter"
 cask "reflector"
-cask "rocket"
 cask "sketch"
 cask "spotify"
 cask "thingsmacsandboxhelper"
 cask "tinderbox"
 cask "transmit-disk"
 cask "tripmode"
-cask "vagrant"
 cask "visual-studio-code"
 
 mas '1Blocker', id: 1107421413
@@ -170,24 +157,4 @@ EOF
 echo "Cleaning up old Homebrew formulae ..."
 brew cleanup
 
-echo "Configuring Python for NeoVim ..."
-pip3 install neovim
-
 defaults write com.pilotmoon.popclip OtherURLSchemes -array keepit papers3 spotify things
-
-if [ ! -d "$HOME/.dotfiles" ]; then
-  git clone https://github.com/iakobos/dotfiles.git "$HOME/.dotfiles"
-fi
-
-read -p "1Password subdomain: " opsubdomain
-read -p "1Password email: " opemail
-eval $(op signin "$opsubdomain.1password.com" "$opemail")
-
-keyfile=$(mktemp)
-op get document dotfiles.key > $keyfile
-
-pushd "$HOME/.dotfiles"
-git crypt unlock $keyfile
-popd
-
-RCRC="$HOME/.dotfiles/rcrc" rcup -f

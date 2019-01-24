@@ -1,0 +1,33 @@
+#!/bin/bash
+
+trap 'ret=$?; test $ret -ne 0 && printf "failed\n\n" >&2; exit $ret' EXIT
+set -e
+
+sudo -v
+while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
+
+if [[ "$OSTYPE" == "linux-gnu" ]]; then
+  "$HOME/.dotfiles/setup-linux"
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+  "$HOME/.dotfiles/setup-mac"
+elif [[ "$OSTYPE" == "cygwin" ]]; then
+  :
+elif [[ "$OSTYPE" == "msys" ]]; then
+  :
+else
+  echo "$OSTYPE not supported"
+  exit 1;
+fi
+
+if [ ! -f "$HOME"/.dotfiles/.git/git-crypt/keys/default ]; then
+  read -p "1Password subdomain: " opsubdomain
+  read -p "1Password email: " opemail
+  eval $(op signin "$opsubdomain.1password.com" "$opemail")
+
+  keyfile=$(mktemp)
+  op get document dotfiles.key > $keyfile
+
+  pushd "$HOME/.dotfiles"
+  git crypt unlock $keyfile
+  popd
+fi

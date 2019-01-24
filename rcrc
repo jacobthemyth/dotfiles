@@ -1,7 +1,7 @@
 #!/bin/bash
-EXCLUDES="setup README.md LICENSE tag-encrypted/fonts"
+EXCLUDES="setup-mac setup-linux README.md LICENSE tag-encrypted/fonts"
 SYMLINK_DIRS="rbenv/plugins vim/UltiSnips Library/Scripts/AddFilesToThings.app"
-DOTFILES_DIRS="$HOME/.dotfiles /Volumes/Safe/dotfiles-private"
+DOTFILES_DIRS="$HOME/.dotfiles"
 UNDOTTED="Library"
-TAGS="encrypted"
+TAGS="encrypted mac"
 COPY_ALWAYS="Library/Fonts/*"
