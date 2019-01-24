@@ -43,7 +43,6 @@ zstyle ":completion:*:descriptions" format "%B%d%b"
 
 export GOPATH="$HOME/go"
 
-export PATH="/usr/local/opt/python/libexec/bin:$PATH"
 export PATH="/usr/local/opt/go/libexec/bin:$HOME/go/bin:$PATH"
 export PATH="/usr/local/bin:$PATH"
 export PATH="$HOME/.bin:$PATH"

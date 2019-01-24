@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -e
-
 sudo apt-get update
 
 sudo apt install -y \
@@ -16,12 +15,17 @@ git-crypt \
 golang-go \
 make \
 python3 \
+python3-pip \
 silversearcher-ag \
 tig \
 tmate \
 tree \
 unzip \
-zsh
+zsh \
+`# for ruby:` \
+libssl-dev \
+libreadline-dev \
+zlib1g-dev
 
 export PATH="~/.nodenv/bin:~/.rbenv/bin:$PATH"
 

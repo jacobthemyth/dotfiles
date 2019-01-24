@@ -82,7 +82,11 @@ set smartcase   " ... unless they contain at least one capital letter
 set infercase   " Use the correct case when autocompleting
 set mouse=a " Enable mouse in all modes
 set updatetime=100
-set fillchars=eob:\ ,stl:─,vert:│
+if has("nvim")
+  set fillchars=eob:\ ,stl:─,vert:│
+else
+  set fillchars=stl:─,vert:│
+end
 
 " fix & command to preserve flags
 nnoremap & :&&<CR>
