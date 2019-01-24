@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+PATH="$HOME/.nodenv/bin:$HOME/.rbenv/bin:$PATH"
+
 # Setup vim-plug
 if [ -e "$HOME"/.vim/autoload/plug.vim ]; then
   vim -E -s +PlugUpgrade +qa
@@ -40,7 +42,7 @@ bundle config --global jobs $((number_of_cores - 1))
 nodenv default-packages install --all
 
 echo "Configuring Python for NeoVim ..."
-pip3 install neovim
+pip install neovim
 
 tic -x ~/.config/terminfo/tmux-256color-italic.terminfo
 tic -x ~/.config/terminfo/xterm-256color-italic.terminfo
