@@ -14,6 +14,7 @@ gdb \
 git-crypt \
 golang-go \
 make \
+neovim \
 python3 \
 python3-pip \
 silversearcher-ag \

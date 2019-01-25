@@ -1,1 +1,1 @@
-set guifont=FuraCode\ Nerd\ Font:h16
+set guifont=Operator\ Mono\ Ssm\ for\ Powerline:h16
