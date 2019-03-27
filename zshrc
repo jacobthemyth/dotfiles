@@ -1,20 +1,3 @@
-export ZPLUG_HOME=$HOME/.zplug
-source $ZPLUG_HOME/init.zsh
-
-zplug 'mafredri/zsh-async'
-zplug 'sindresorhus/pure', use:pure.zsh, as:theme
-zplug 'zsh-users/zsh-syntax-highlighting', defer:2
-zplug 'zsh-users/zsh-completions', defer:2
-
-if ! zplug check --verbose; then
-  printf "Install zsh plugins? [y/N]: "
-  if read -q; then
-    echo; zplug install
-  fi
-fi
-
-zplug load
-
 for zsh_source in $HOME/.zsh/configs/*.zsh; do
   source $zsh_source
 done

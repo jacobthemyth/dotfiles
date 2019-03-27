@@ -43,7 +43,6 @@ brew "rcm"
 tap "chrokh/tap"
 brew "base16-manager"
 
-brew "awscli"
 brew "cmake"
 brew "coreutils"
 brew "ctags"
@@ -59,6 +58,7 @@ brew "gist"
 brew "git"
 brew "git-crypt"
 brew "go"
+brew "gpg"
 brew "hub"
 brew "jq"
 brew "kafkacat"
@@ -89,16 +89,10 @@ brew "zsh"
 tap "caskroom/fonts"
 cask "font-firacode-nerd-font"
 
-tap "homebrew/cask-drivers"
-cask "logitech-options"
-
 cask "1password"
 cask "1password-cli"
-cask "airtable"
 cask "alfred"
-cask "amethyst"
 cask "appcleaner"
-cask "bartender"
 cask "base"
 cask "choosy"
 cask "dash"
@@ -109,51 +103,31 @@ cask "google-chrome"
 cask "hazel"
 cask "iterm2"
 cask "kaleidoscope"
-cask "karabiner-elements"
-cask "keep-it"
-cask "macvim"
 cask "marked"
 cask "monodraw"
 cask "muzzle"
 cask "paw"
 cask "postico"
+cask "quickbooks-online"
 cask "quitter"
-cask "reflector"
+cask "rocket"
 cask "sketch"
 cask "spotify"
 cask "thingsmacsandboxhelper"
 cask "tinderbox"
-cask "transmit-disk"
+cask "toggl"
 cask "tripmode"
 cask "visual-studio-code"
 
 mas '1Blocker', id: 1107421413
 mas 'Airmail 3', id: 918858936
-mas 'Copied', id: 1026349850
-mas 'Deckset', id: 847496013
 mas 'Fantastical 2', id: 975937182
-mas 'Horo', id: 1437226581
-mas 'Keynote', id: 409183694
 mas 'Magnet', id: 441258766
-mas 'MindNode', id: 1289197285
-mas 'Numbers', id: 409203825
-mas 'OmniOutliner', id: 1142578772
-mas 'Pages', id: 409201541
-mas 'Pixelmator', id: 407963104
-mas 'PopClip', id: 445189367
 mas 'ReadKit', id: 588726889
-mas 'Sequence Diagram', id: 1195426709
-mas 'Shush', id: 496437906
-mas 'Slack', id: 803453959
-mas 'Spillo', id: 873245660
 mas 'Things3', id: 904280696
-mas 'Tooth Fairy', id: 1191449274
-mas 'Transmit', id: 403388562
 mas 'Trello', id: 1278508951
 mas 'iA Writer', id: 775737590
 EOF
 
 echo "Cleaning up old Homebrew formulae ..."
 brew cleanup
-
-defaults write com.pilotmoon.popclip OtherURLSchemes -array keepit papers3 spotify things

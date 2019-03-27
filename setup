@@ -20,10 +20,10 @@ esac
 if [ ! -f "$HOME/.dotfiles/.git/git-crypt/keys/default" ]; then
   read -p "1Password subdomain: " opsubdomain
   read -p "1Password email: " opemail
-  eval $(~/.op/op signin "$opsubdomain.1password.com" "$opemail")
+  eval $(op signin "$opsubdomain.1password.com" "$opemail")
 
   keyfile=$(mktemp)
-  ~/.op/op get document dotfiles.key > $keyfile
+  op get document dotfiles.key > $keyfile
 
   pushd "$HOME/.dotfiles"
   git crypt unlock $keyfile
