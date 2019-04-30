@@ -70,4 +70,6 @@
   user = iakobos
 [include]
   path = ~/.gitconfig.private
+[url "git@github.com:"]
+  insteadOf = https://github.com/
 # vim: ft=gitconfig

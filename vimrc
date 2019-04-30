@@ -167,6 +167,14 @@ nnoremap do do:redraw!<CR>
 nnoremap <Leader>b :CtrlPBuffer<CR>
 
 nnoremap <Leader>s :%s/\<<C-r><C-w>\>//g<Left><Left>
+
+nmap <leader>hi :call <SID>SynStack()<CR>
+function! <SID>SynStack()
+  if !exists("*synstack")
+    return
+  endif
+  echo map(synstack(line('.'), col('.')), 'synIDattr(v:val, "name")')
+endfunc
 " }}}
 
 " Plugins {{{
@@ -187,26 +195,19 @@ nnoremap <Leader>af :ALEFix<CR>
 " This is gross
 let g:ale_javascript_eslint_executable='/bin/sh -c "cd $(dirname %) && ~/.nodenv/shims/eslint"'
 let g:ale_fix_on_save = 1
-let g:ale_javascript_prettier_eslint_use_global=1
-let g:ale_linter_aliases = {
-\   'jsx': ['css', 'javascript'],
-\   'vue': ['typescript'],
-\}
+let g:ale_use_global_executables = 1
+
 let g:ale_linters = {
 \   'css': ['stylelint'],
 \   'go': ['gobuild', 'gofmt'],
-\   'javascript': ['eslint'],
-\   'jsx': ['stylelint', 'eslint'],
+\   'javascript': ['prettier', 'eslint'],
+\   'javascript.jsx': ['prettier', 'eslint'],
 \   'ruby': ['rubocop'],
-\   'typescript': ['tsserver', 'eslint'],
-\   'vue': ['tsserver', 'eslint'],
 \}
 let g:ale_fixers = {
 \   '*': ['remove_trailing_lines', 'trim_whitespace'],
 \   'go': ['gofmt', 'goimports'],
 \   'javascript': ['eslint'],
-\   'typescript': ['eslint'],
-\   'vue': ['eslint'],
 \}
 
 " ctrlp
@@ -279,6 +280,11 @@ augroup taskpaper
   autocmd BufRead,BufNewFile *.taskpaper set filetype=taskpaper
   autocmd FileType taskpaper setlocal noexpandtab
 augroup END
+
+" vim-js-pretty-template
+call jspretmpl#register_tag('.*', 'html')
+autocmd FileType javascript JsPreTmpl
+autocmd FileType javascript.jsx JsPreTmpl
 
 " vim-rust
 let g:rustfmt_autosave = 1

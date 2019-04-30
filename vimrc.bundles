@@ -23,7 +23,7 @@ Plug 'honza/vim-snippets'
 Plug 'janko-m/vim-test'
 Plug 'junegunn/vim-easy-align',                 { 'on': '<Plug>(EasyAlign)' }
 Plug 'keith/swift.vim',                         { 'for': 'swift' }
-Plug 'lilydjwg/colorizer'
+Plug 'lilydjwg/colorizer',                      { 'for': ['css', 'sass', 'less', 'vue'] }
 Plug 'mattn/emmet-vim',                         { 'for': ['eruby', 'html', 'html.handlebars', 'javascript.jsx', 'vue'] }
 Plug 'mxw/vim-jsx'
 Plug 'nelstrom/vim-markdown-folding',           { 'for': 'markdown' }

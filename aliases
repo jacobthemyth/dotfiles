@@ -32,6 +32,7 @@ alias emulator="cd ~/Library/Android/sdk/tools && ./emulator"
 
 # Docker
 alias dc="docker-compose"
+alias dvm="docker run --rm -it -v /:/vm-root alpine:edge $@"
 
 # Include custom aliases
 [[ -f ~/.aliases.private ]] && source ~/.aliases.private

@@ -78,10 +78,6 @@ if [ ! -d ~/.rbenv/plugins/rbenv-default-gems ]; then
   git clone https://github.com/rbenv/rbenv-default-gems.git ~/.rbenv/plugins/rbenv-default-gems
 fi
 
-if [ ! -d ~/.zplug ]; then
-  git clone https://github.com/zplug/zplug ~/.zplug
-fi
-
 if [ ! -d ~/.op ]; then
   curl -o ~/src/op.zip https://cache.agilebits.com/dist/1P/op/pkg/v0.5.5/op_linux_amd64_v0.5.5.zip
   unzip ~/src/op.zip -d ~/.op

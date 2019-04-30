@@ -1,3 +1,6 @@
+autoload -U promptinit; promptinit
+prompt pure
+
 for zsh_source in $HOME/.zsh/configs/*.zsh; do
   source $zsh_source
 done
