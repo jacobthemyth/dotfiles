@@ -29,18 +29,20 @@ zstyle ":completion:*:descriptions" format "%B%d%b"
 
 export GOPATH="$HOME/go"
 
-export PATH="/usr/local/opt/go/libexec/bin:$HOME/go/bin:$PATH"
+export PATH="$HOME/go/bin:$PATH"
+export PATH="$HOME/.cargo/bin:$PATH"
 export PATH="/usr/local/bin:$PATH"
 export PATH="$HOME/.bin:$PATH"
-export PATH=".git/safe/../../bin:$PATH"
-export PATH="node_modules/.bin:$PATH"
 export PATH="$HOME/.rbenv/bin:$PATH"
 export PATH="$HOME/.nodenv/bin:$PATH"
 
-export FZF_DEFAULT_OPTS="--extended --cycle"
-
 eval "$(rbenv init - --no-rehash)"
 eval "$(nodenv init -)"
+
+export PATH="$HOME/.jenv/bin:$PATH"
+eval "$(jenv init -)"
+
+export FZF_DEFAULT_OPTS="--extended --cycle"
 
 # Enable Ctrl-x-e to edit command line
 autoload -U edit-command-line
