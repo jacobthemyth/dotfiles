@@ -310,9 +310,5 @@ nmap <silent> t<C-l> :TestLast<CR>
 nmap <silent> t<C-g> :TestVisit<CR>
 " }}}
 
-if filereadable(expand("~/.vimrc.private"))
-  source ~/.vimrc.private
-endif
-
 set secure
 " vim: set foldmethod=marker:

@@ -16,23 +16,10 @@ alias vimdiff="nvim -d"
 # ruby
 alias b="bundle"
 alias be="bundle exec"
-alias dbm='bundle exec rake db:migrate'
-alias dbtp='bundle exec rake test:prepare'
-alias dbpp='bundle exec rake parallel:prepare'
 
 # Applications
 alias marked="open -a Marked\ 2.app"
 
-# React Native
-alias rn="react-native"
-alias rni="react-native run-ios"
-alias rna="react-native run-android"
-alias shake="adb shell input keyevent 82"
-alias emulator="cd ~/Library/Android/sdk/tools && ./emulator"
-
 # Docker
 alias dc="docker-compose"
 alias dvm="docker run --rm -it -v /:/vm-root alpine:edge $@"
-
-# Include custom aliases
-[[ -f ~/.aliases.private ]] && source ~/.aliases.private
