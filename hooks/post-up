@@ -1,14 +1,31 @@
 #!/usr/bin/env bash
 
+set -e
+
 PATH="$HOME/.nodenv/bin:$HOME/.rbenv/bin:$PATH"
+
+# Ensure shell is zsh
+shell_path="/usr/local/bin/zsh"
+if ! grep "$shell_path" /etc/shells > /dev/null 2>&1 ; then
+  echo "Adding '$shell_path' to /etc/shells"
+  sudo sh -c "echo $shell_path >> /etc/shells"
+fi
+
+case "$SHELL" in
+  */zsh) : ;;
+  *)
+    echo "Changing your shell to zsh ..."
+      chsh -s "$(which zsh)"
+    ;;
+esac
 
 # Setup vim-plug
 if [ -e "$HOME"/.vim/autoload/plug.vim ]; then
-  vim -E -s +PlugUpgrade +qa
+  vim -Es +PlugUpgrade +qa || true
 else
   curl -fLo "$HOME"/.vim/autoload/plug.vim --create-dirs \
       https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
-  vim -E -s +PlugInstall +qa
+  vim -Es +PlugInstall +qa || true
 fi
 
 if ! base16-manager list | grep -q chriskempson/base16-shell; then
@@ -61,3 +78,53 @@ pip3 install neovim
 
 tic -x ~/.config/terminfo/tmux-256color-italic.terminfo
 tic -x ~/.config/terminfo/xterm-256color-italic.terminfo
+
+if [ ! -f "/Library/LaunchDaemons/limit.maxfiles.plist" ]; then
+  cat <<EOS | sudo tee /Library/LaunchDaemons/limit.maxproc.plist >/dev/null
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+      <string>limit.maxfiles</string>
+    <key>ProgramArguments</key>
+      <array>
+        <string>launchctl</string>
+        <string>limit</string>
+        <string>maxfiles</string>
+        <string>524288</string>
+        <string>524288</string>
+      </array>
+    <key>RunAtLoad</key>
+      <true/>
+    <key>ServiceIPC</key>
+      <false/>
+  </dict>
+</plist>
+EOS
+fi
+
+if [ ! -f "/Library/LaunchDaemons/limit.maxproc.plist" ]; then
+  cat <<EOS | sudo tee /Library/LaunchDaemons/limit.maxproc.plist >/dev/null
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+      <string>limit.maxproc</string>
+    <key>ProgramArguments</key>
+      <array>
+        <string>launchctl</string>
+        <string>limit</string>
+        <string>maxproc</string>
+        <string>2048</string>
+        <string>2048</string>
+      </array>
+    <key>RunAtLoad</key>
+      <true/>
+    <key>ServiceIPC</key>
+      <false/>
+  </dict>
+</plist>
+EOS
+fi

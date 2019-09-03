@@ -1,6 +1,6 @@
 #!/bin/bash
-EXCLUDES="setup-mac setup-linux README.md LICENSE"
-SYMLINK_DIRS="rbenv/plugins vim/UltiSnips Library/Scripts/AddFilesToThings.app"
+EXCLUDES="script Brewfile README.md LICENSE"
+SYMLINK_DIRS="Library/Scripts/AddFilesToThings.app"
 DOTFILES_DIRS="$HOME/.dotfiles"
 UNDOTTED="Library"
 TAGS="encrypted"

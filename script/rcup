@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+set -e
+
+cd "$( dirname "${BASH_SOURCE[0]}" )/.."
+
+./script/bootstrap
+
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  RCRC="$HOME/.dotfiles/rcrc" TAGS="mac" rcup
+else
+  echo "Unsupported OS"
+  exit 1
+fi

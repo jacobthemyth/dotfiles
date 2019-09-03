@@ -1,23 +1,4 @@
-#!/bin/bash
-
-if ! command -v brew >/dev/null; then
-  echo "Installing Homebrew ..."
-  curl -fsS 'https://raw.githubusercontent.com/Homebrew/install/master/install' | ruby
-  export PATH="/usr/local/bin:$PATH"
-fi
-
-if ! command -v mas >/dev/null; then
-  brew install mas
-fi
-
-if [ ! -f /Library/Developer/CommandLineTools/usr/bin/git ]; then
-  echo "Installing XCode..."
-  sudo xcodebuild -license accept
-fi
-
-echo "Updating Homebrew formulae ..."
-brew update
-brew bundle --file=- <<EOF
+# frozen_string_literal: true
 tap "homebrew/services"
 
 tap "Goles/battery"
@@ -123,25 +104,21 @@ cask "tinderbox"
 cask "toggl"
 cask "tripmode"
 
-mas '1Blocker', id: 1107421413
-mas 'Bear', id: 1091189122
-mas 'Copied', id: 1026349850
-mas 'Delicious Library', id: 635124250
-mas 'Drafts', id: 1435957248
-mas 'Fantastical', id: 975937182
-mas 'Keep It', id: 1272768911
-mas 'Magnet', id: 441258766
-mas 'MindNode', id: 1289197285
-mas 'Progress Bar', id: 1441939775
-mas 'ReadKit', id: 588726889
-mas 'ScanSnap Cloud', id: 1211119808
-mas 'Shush', id: 496437906
-mas 'Things', id: 904280696
-mas 'ToothFairy', id: 1191449274
-mas 'Ulysses', id: 1225570693
-mas 'Xcode', id: 497799835
-mas 'iA Writer', id: 775737590
-EOF
-
-echo "Cleaning up old Homebrew formulae ..."
-brew cleanup
+mas "1Blocker", id: 1107421413
+mas "Bear", id: 1091189122
+mas "Copied", id: 1026349850
+mas "Delicious Library", id: 635124250
+mas "Drafts", id: 1435957248
+mas "Fantastical", id: 975937182
+mas "Keep It", id: 1272768911
+mas "Magnet", id: 441258766
+mas "MindNode", id: 1289197285
+mas "Progress Bar", id: 1441939775
+mas "ReadKit", id: 588726889
+mas "ScanSnap Cloud", id: 1211119808
+mas "Shush", id: 496437906
+mas "Things", id: 904280696
+mas "ToothFairy", id: 1191449274
+mas "Ulysses", id: 1225570693
+mas "Xcode", id: 497799835
+mas "iA Writer", id: 775737590
