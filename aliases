@@ -23,3 +23,6 @@ alias marked="open -a Marked\ 2.app"
 # Docker
 alias dc="docker-compose"
 alias dvm="docker run --rm -it -v /:/vm-root alpine:edge $@"
+
+# macOS
+alias fin="osascript -e 'display notification \"fin\" with title \"./fin\"'"

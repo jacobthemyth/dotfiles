@@ -29,18 +29,17 @@ zstyle ":completion:*:descriptions" format "%B%d%b"
 
 export GOPATH="$HOME/go"
 
+export PATH="$HOME/.rbenv/bin:$PATH"
+eval "$(rbenv init - --no-rehash)"
+
+export PATH="$HOME/.nodenv/bin:$PATH"
+eval "$(nodenv init -)"
+
 export PATH="$HOME/go/bin:$PATH"
 export PATH="$HOME/.cargo/bin:$PATH"
 export PATH="/usr/local/bin:$PATH"
 export PATH="$HOME/.bin:$PATH"
-export PATH="$HOME/.rbenv/bin:$PATH"
-export PATH="$HOME/.nodenv/bin:$PATH"
-
-eval "$(rbenv init - --no-rehash)"
-eval "$(nodenv init -)"
-
-export PATH="$HOME/.jenv/bin:$PATH"
-eval "$(jenv init -)"
+export PATH=".git/safe/../../bin:$PATH"
 
 export FZF_DEFAULT_OPTS="--extended --cycle"
 

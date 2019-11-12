@@ -6,10 +6,6 @@ call plug#begin('~/.vim/bundle')
 
 Plug 'kana/vim-textobj-user' " used by rubyblock and quote
 
-Plug 'Galooshi/vim-import-js',                  { 'do': 'npm install -g import-js' }
-Plug 'OrangeT/vim-csharp'
-Plug 'Quramy/vim-js-pretty-template'
-Plug 'SirVer/ultisnips'
 Plug 'airblade/vim-gitgutter'
 Plug 'chriskempson/base16-vim'
 Plug 'christoomey/vim-tmux-navigator'
@@ -18,18 +14,13 @@ Plug 'davidoc/taskpaper.vim',                   { 'for': 'taskpaper' }
 Plug 'dhruvasagar/vim-table-mode',              { 'for': 'markdown' }
 Plug 'ecomba/vim-ruby-refactoring',             { 'for': 'ruby' }
 Plug 'fatih/vim-go',                            { 'do': ':GoUpdateBinaries' }
-Plug 'hail2u/vim-css3-syntax'
-Plug 'honza/vim-snippets'
 Plug 'janko-m/vim-test'
 Plug 'junegunn/vim-easy-align',                 { 'on': '<Plug>(EasyAlign)' }
 Plug 'keith/swift.vim',                         { 'for': 'swift' }
-Plug 'lilydjwg/colorizer',                      { 'for': ['css', 'sass', 'less', 'vue'] }
 Plug 'mattn/emmet-vim',                         { 'for': ['eruby', 'html', 'html.handlebars', 'javascript.jsx', 'vue'] }
-Plug 'mxw/vim-jsx'
 Plug 'nelstrom/vim-markdown-folding',           { 'for': 'markdown' }
 Plug 'nelstrom/vim-textobj-rubyblock',          { 'for': 'ruby' }
 Plug 'pangloss/vim-javascript'
-Plug 'styled-components/vim-styled-components', { 'branch': 'main' }
 Plug 'tpope/vim-abolish'
 Plug 'tpope/vim-bundler'
 Plug 'tpope/vim-dispatch',                      { 'on': 'Dispatch' }
@@ -52,11 +43,6 @@ Plug 'vim-ruby/vim-ruby'
 Plug 'vim-scripts/tComment'
 Plug 'w0rp/ale',                                { 'do': 'go get golang.org/x/tools/cmd/goimports' }
 Plug 'yssl/QFEnter'
-
-Plug 'leafgarland/typescript-vim'
-Plug 'Quramy/tsuquyomi'
-Plug 'Quramy/tsuquyomi-vue'
-Plug 'posva/vim-vue'
 
 if has('nvim')
   Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }

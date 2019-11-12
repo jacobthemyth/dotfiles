@@ -134,6 +134,8 @@ highlight Type    gui=italic
 highlight htmlArg cterm=italic
 highlight Comment cterm=italic
 highlight Type    cterm=italic
+
+set tags^=./.git/tags;
 " }}}
 
 " Mappings {{{
@@ -201,11 +203,9 @@ let g:ale_linters = {
 \   'css': ['stylelint'],
 \   'go': ['gobuild', 'gofmt'],
 \   'javascript': ['prettier', 'eslint'],
-\   'javascript.jsx': ['prettier', 'eslint'],
 \   'ruby': ['rubocop'],
 \}
 let g:ale_fixers = {
-\   '*': ['remove_trailing_lines', 'trim_whitespace'],
 \   'go': ['gofmt', 'goimports'],
 \   'javascript': ['eslint'],
 \}
@@ -225,16 +225,12 @@ let g:ctrlp_prompt_mappings = {
 
 " deoplete
 let g:deoplete#enable_at_startup = 1
-autocmd FileType swift imap <buffer> <C-k> <Plug>(autocomplete_swift_jump_to_placeholder)
-
-let s:default_sources = ['syntax', 'tag', 'buffer', 'file', 'ultisnips']
+let s:default_sources = ['syntax', 'tag', 'buffer', 'file']
 if (exists('g:deoplete_loaded') && g:deoplete_loaded)
   call deoplete#custom#option('sources', {
   \ '_': s:default_sources,
   \ 'go': ['go'] + s:default_sources,
   \})
-
-  call deoplete#custom#source('ultisnips', 'rank', 1000)
 
   " https://github.com/Shougo/deoplete.nvim/issues/761
   call deoplete#custom#option('num_processes', 1)
@@ -246,32 +242,11 @@ autocmd BufReadPost fugitive://* set bufhidden=delete
 " goyo
 nnoremap <leader>w :Goyo<CR>
 
-" i18n
-vmap <Leader>z :call I18nTranslateString()<CR>
-vmap <Leader>dt :call I18nDisplayTranslation()<CR>
-
-" jsx
-let g:jsx_ext_required = 0
-
-" mustache
-let g:mustache_abbreviations = 1
-
 " netrw
 let g:netrw_bufsettings = 'noma nomod nu nobl nowrap ro'
 augroup netrw
   autocmd!
   autocmd FileType netrw set colorcolumn=""
-augroup END
-
-" ranger
-let g:ranger_map_keys = 0
-map <leader>f :RangerNewTab<CR>
-
-" sql.erb
-augroup sql
-  autocmd!
-  autocmd BufRead,BufNewFile *.sql.erb setlocal tabstop=4
-  autocmd BufRead,BufNewFile *.sql.erb setlocal shiftwidth=4
 augroup END
 
 " taskpaper
@@ -281,24 +256,8 @@ augroup taskpaper
   autocmd FileType taskpaper setlocal noexpandtab
 augroup END
 
-" vim-js-pretty-template
-call jspretmpl#register_tag('.*', 'html')
-autocmd FileType javascript JsPreTmpl
-autocmd FileType javascript.jsx JsPreTmpl
-
 " vim-rust
 let g:rustfmt_autosave = 1
-
-" tern
-let g:tern_map_prefix='<Leader>'
-let g:tern_map_keys=1
-let g:tern_show_arguments_hints="on_hold"
-let g:tern_show_signature_in_pum=1
-
-" ultisnips
-let g:UltiSnipsExpandTrigger="<tab>"
-let g:UltiSnipsJumpForwardTrigger="<c-b>"
-let g:UltiSnipsJumpBackwardTrigger="<c-z>"
 
 " vim-test
 let g:test#strategy = 'dispatch'
