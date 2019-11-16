@@ -1,77 +1,153 @@
-# frozen_string_literal: true
-tap "homebrew/services"
-
-tap "Goles/battery"
-brew "battery"
-
 tap "chrokh/tap"
-brew "base16-manager"
-
-tap "iakobos/formulae"
-cask "consider"
-cask "screenflow6"
-
-tap "nodenv/nodenv"
-brew "nodenv-default-packages"
-
-tap "thoughtbot/formulae"
-brew "rcm"
-
-tap "koekeishiya/formulae"
-brew "skhd"
-brew "yabai"
-
-brew "cmake"
-brew "coreutils"
-brew "ctags"
-brew "dialog"
-brew "diff-so-fancy"
-brew "emojify"
-brew "exercism"
-brew "findutils"
-brew "fzf"
-brew "gawk"
-brew "gdb"
-brew "gist"
-brew "git"
-brew "git-crypt"
-brew "go"
-brew "gpg"
-brew "highlight"
-brew "hub"
-brew "jq"
-brew "kafkacat"
-brew "neovim"
-brew "netcat"
-brew "nodenv"
-brew "openssl"
-brew "overmind"
-brew "python"
-brew "python@2"
-brew "rbenv"
-brew "rbenv-bundler"
-brew "rbenv-ctags"
-brew "rbenv-default-gems"
-brew "reattach-to-user-namespace"
-brew "rmtrash"
-brew "ruby-build"
-brew "ssh-copy-id"
-brew "the_silver_searcher"
-brew "tig"
-brew "tmate"
-brew "tmux"
-brew "tree"
-brew "vim"
-brew "watch"
-brew "watchman"
-brew "zsh"
-
-tap "homebrew/cask-fonts"
-cask "font-fontawesome"
-
+tap "goles/battery"
+tap "heroku/brew"
+tap "homebrew/bundle"
+tap "homebrew/cask"
 tap "homebrew/cask-drivers"
-cask "logitech-options"
-
+tap "homebrew/cask-fonts"
+tap "homebrew/core"
+tap "homebrew/services"
+tap "iakobos/formulae"
+tap "koekeishiya/formulae"
+tap "nodenv/nodenv"
+tap "thoughtbot/formulae"
+# Tool for generating GNU Standards-compliant Makefiles
+brew "automake"
+# Library for command-line editing
+brew "readline"
+# Interpreted, interactive, object-oriented programming language
+brew "python"
+# Official Amazon AWS command-line interface
+brew "awscli"
+# Core application library for C
+brew "glib"
+# Enables you to reproduce the CircleCI environment locally
+brew "circleci"
+# Cross-platform make
+brew "cmake"
+# GNU File, Shell, and Text utilities
+brew "coreutils"
+# Reimplementation of ctags(1)
+brew "ctags"
+# Display user-friendly message boxes from shell scripts
+brew "dialog"
+# Good-lookin' diffs with diff-highlight and more
+brew "diff-so-fancy"
+# Load/unload environment variables based on $PWD
+brew "direnv"
+# Emoji on the command-line :scream:
+brew "emojify"
+# Command-line tool to interact with exercism.io
+brew "exercism"
+# C/C++ and Java libraries for Unicode and globalization
+brew "icu4c"
+# Play, record, convert, and stream audio and video
+brew "ffmpeg"
+# Collection of GNU find, xargs, and locate
+brew "findutils"
+# Command-line fuzzy finder written in Go
+brew "fzf"
+# GNU awk utility
+brew "gawk"
+# GNU debugger
+brew "gdb"
+# Command-line utility for uploading Gists
+brew "gist"
+# Distributed revision control system
+brew "git"
+# Enable transparent encryption/decryption of files in a git repo
+brew "git-crypt"
+# GNU implementation of the famous stream editor
+brew "gnu-sed"
+# Open source programming language to build simple/reliable/efficient software
+brew "go"
+# Convert source code to formatted text with syntax highlighting
+brew "highlight"
+# Improved top (interactive process viewer)
+brew "htop"
+# Add GitHub support to git on the command-line
+brew "hub"
+# Lightweight and flexible command-line JSON processor
+brew "jq"
+# The Apache Kafka C/C++ library
+brew "librdkafka"
+# Generic command-line non-JVM Apache Kafka producer and consumer
+brew "kafkacat"
+# C library SSHv1/SSHv2 client and server protocols
+brew "libssh"
+# Utility for directing compilation
+brew "make"
+# Mac App Store command-line interface
+brew "mas"
+# Ambitious Vim-fork focused on extensibility and agility
+brew "neovim"
+# Utility for managing network connections
+brew "netcat"
+# Manage multiple NodeJS versions
+brew "nodenv"
+# SSL/TLS cryptography library
+brew "openssl"
+# Terminal multiplexer
+brew "tmux"
+# Process manager for Procfile-based applications and tmux
+brew "overmind"
+# Display the PID number for a given process name
+brew "pidof"
+# Show ps output as a tree
+brew "pstree"
+# Interpreted, interactive, object-oriented programming language
+brew "python@2"
+# Install various Ruby versions and implementations
+brew "ruby-build"
+# Ruby version manager
+brew "rbenv"
+# Makes shims aware of bundle install paths
+brew "rbenv-bundler"
+# Automatically generate ctags for rbenv Ruby stdlibs
+brew "rbenv-ctags"
+# Auto-installs gems for Ruby installs
+brew "rbenv-default-gems"
+# Reattach process (e.g., tmux) to background
+brew "reattach-to-user-namespace"
+# Move files to macOS's Trash
+brew "rmtrash"
+# Powerful, clean, object-oriented scripting language
+brew "ruby"
+# netcat on steroids
+brew "socat"
+# Add a public key to a remote machine's authorized_keys file
+brew "ssh-copy-id"
+# Code-search similar to ack
+brew "the_silver_searcher"
+# Text interface for Git repositories
+brew "tig"
+# Instant terminal sharing
+brew "tmate"
+# Display directories as trees (with optional color/HTML output)
+brew "tree"
+# Vi 'workalike' with many additional features
+brew "vim"
+# Executes a program periodically, showing output fullscreen
+brew "watch"
+# Watch files and take action when they change
+brew "watchman"
+# Download YouTube videos from the command-line
+brew "youtube-dl"
+# UNIX shell (command interpreter)
+brew "zsh"
+# A command line tool to install base16 templates and set themes globally.
+brew "chrokh/tap/base16-manager"
+brew "goles/battery/battery"
+# Everything you need to get started with Heroku
+brew "heroku/brew/heroku"
+# Simple hotkey-daemon for macOS.
+brew "koekeishiya/formulae/skhd"
+# A tiling window manager for macOS based on binary space partitioning.
+brew "koekeishiya/formulae/yabai"
+# Auto-installs packages for Node installs
+brew "nodenv/nodenv/nodenv-default-packages"
+# management suite for dotfiles
+brew "thoughtbot/formulae/rcm"
 cask "1password"
 cask "1password-cli"
 cask "airtable"
@@ -91,15 +167,19 @@ cask "dash"
 cask "docker"
 cask "dropbox"
 cask "encryptme"
+cask "feeder"
 cask "firefox"
 cask "focus"
+cask "font-fontawesome"
 cask "google-chrome"
 cask "hazel"
 cask "hook"
 cask "iterm2"
 cask "kaleidoscope"
 cask "kindle"
+cask "logitech-options"
 cask "marked"
+cask "miro-formerly-realtimeboard"
 cask "monodraw"
 cask "muzzle"
 cask "nightowl"
@@ -111,26 +191,36 @@ cask "quitter"
 cask "rocket"
 cask "scrivener"
 cask "send-to-kindle"
+cask "sf-symbols"
 cask "sketch"
 cask "slack"
 cask "spotify"
 cask "tinderbox"
 cask "toggl"
 cask "tripmode"
-
+cask "vimr"
+cask "iakobos/formulae/consider"
+cask "iakobos/formulae/screenflow6"
 mas "1Blocker", id: 1107421413
-mas "Copied", id: 1026349850
+mas "A Companion for SwiftUI", id: 1485436674
+mas "DaisyDisk", id: 411643860
 mas "Delicious Library", id: 635124250
 mas "Drafts", id: 1435957248
 mas "Fantastical", id: 975937182
+mas "GarageBand", id: 682658836
+mas "iMovie", id: 408981434
 mas "Keep It", id: 1272768911
+mas "Keynote", id: 409183694
 mas "MindNode", id: 1289197285
-mas "Progress Bar", id: 1441939775
-mas "ReadKit", id: 588726889
+mas "Numbers", id: 409203825
+mas "Pages", id: 409201541
+mas "Reeder", id: 1449412482
 mas "ScanSnap Cloud", id: 1211119808
+mas "Sequence Diagram", id: 1195426709
 mas "Shush", id: 496437906
+mas "Sip", id: 507257563
+mas "Spectrum", id: 518156125
 mas "Things", id: 904280696
 mas "ToothFairy", id: 1191449274
 mas "Ulysses", id: 1225570693
 mas "Xcode", id: 497799835
-mas "iA Writer", id: 775737590

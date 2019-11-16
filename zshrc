@@ -85,5 +85,7 @@ setopt promptsubst
 
 export TERM="xterm-256color-italic"
 
+eval "$(direnv hook zsh)"
+
 # aliases
 [[ -f ~/.aliases ]] && source ~/.aliases
