@@ -161,6 +161,7 @@ cask "base"
 cask "bookends"
 cask "charles"
 cask "choosy"
+cask "chromedriver"
 cask "clickup"
 cask "colorpicker-skalacolor"
 cask "dash"
@@ -222,5 +223,6 @@ mas "Sip", id: 507257563
 mas "Spectrum", id: 518156125
 mas "Things", id: 904280696
 mas "ToothFairy", id: 1191449274
+mas "Transmit", id: 403388562
 mas "Ulysses", id: 1225570693
 mas "Xcode", id: 497799835
