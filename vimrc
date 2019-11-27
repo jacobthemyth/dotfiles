@@ -56,6 +56,19 @@ endif
 " Allow project specific vimrc
 set exrc
 
+" Optimize for fast terminal connections
+set ttyfast
+
+" Use UTF-8 without BOM
+set encoding=utf-8 nobomb
+
+" Respect modeline in files
+set modeline
+set modelines=4
+
+" Don’t reset cursor to start of line when moving around.
+set nostartofline
+
 " UI
 set autoread
 set colorcolumn=81
@@ -269,5 +282,6 @@ nmap <silent> t<C-l> :TestLast<CR>
 nmap <silent> t<C-g> :TestVisit<CR>
 " }}}
 
+" disable unsafe commands in exrc files
 set secure
 " vim: set foldmethod=marker:
