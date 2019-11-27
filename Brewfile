@@ -13,6 +13,8 @@ tap "nodenv/nodenv"
 tap "thoughtbot/formulae"
 # Tool for generating GNU Standards-compliant Makefiles
 brew "automake"
+# Cryptography and SSL/TLS Toolkit
+brew "openssl@1.1"
 # Library for command-line editing
 brew "readline"
 # Interpreted, interactive, object-oriented programming language
@@ -85,8 +87,6 @@ brew "neovim"
 brew "netcat"
 # Manage multiple NodeJS versions
 brew "nodenv"
-# SSL/TLS cryptography library
-brew "openssl"
 # Terminal multiplexer
 brew "tmux"
 # Process manager for Procfile-based applications and tmux
