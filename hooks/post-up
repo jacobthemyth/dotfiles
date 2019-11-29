@@ -1,34 +1,27 @@
 #!/usr/bin/env bash
 
-set -ex
+set -e
 
 PATH="$HOME/.nodenv/bin:$HOME/.rbenv/bin:$PATH"
 
-# Ensure shell is zsh
+# Add homebrew zsh shell
 shell_path="/usr/local/bin/zsh"
 if ! grep "$shell_path" /etc/shells > /dev/null 2>&1 ; then
   echo "Adding '$shell_path' to /etc/shells"
   sudo sh -c "echo $shell_path >> /etc/shells"
 fi
 
-case "$SHELL" in
-  */zsh) : ;;
-  *)
-    echo "Changing your shell to zsh ..."
-      chsh -s "$(which zsh)"
-    ;;
-esac
-
 # Setup vim-plug
 if [ -e "$HOME"/.vim/autoload/plug.vim ]; then
-  vim -Es +PlugUpgrade +qa || true
+  nvim --headless +PlugUpgrade +qa
 else
   curl -fLo "$HOME"/.vim/autoload/plug.vim --create-dirs \
       https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
-  vim -Es +PlugInstall +qa || true
+  nvim --headless +PlugInstall +qa
 fi
 
-vim -E +PlugUpdate +qa
+echo "Updating vim plugins..."
+nvim --headless +PlugUpdate +qa
 
 if ! base16-manager list | grep -q chriskempson/base16-shell; then
   base16-manager install chriskempson/base16-shell

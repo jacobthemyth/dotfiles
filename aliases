@@ -1,17 +1,17 @@
 # Enable aliases to be sudo’ed
 alias sudo='sudo '
 
-# Unix
 alias f='fzf | pbcopy'
 alias ip="dig +short myip.opendns.com @resolver1.opendns.com"
 alias la='ls -lAFh'
-alias less="less -R"
 alias localip="ipconfig getifaddr en0"
 alias mux="tmuxinator"
 alias r="ranger"
 alias today="date +%Y-%m-%d"
 alias ts="tig status"
 
+alias less="less -R"
+alias socat="socat -d -d"
 alias ssh='TERM=xterm-256color ssh'
 alias vim="nvim"
 alias vimdiff="nvim -d"

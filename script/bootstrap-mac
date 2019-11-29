@@ -2,6 +2,17 @@
 
 set -e
 
+set +e
+case "$(/usr/bin/xcrun clang 2>&1)" in
+  *"install"* )
+    sudo /usr/bin/xcode-select --install
+    sudo /usr/bin/xcodebuild -license accept
+    ;;
+  *"license"* )
+    sudo /usr/bin/xcodebuild -license accept
+esac
+set -e
+
 if ! command -v brew >/dev/null; then
   echo "Installing Homebrew ..."
   curl -fsS 'https://raw.githubusercontent.com/Homebrew/install/master/install' | ruby
@@ -10,11 +21,6 @@ fi
 
 if ! command -v mas >/dev/null; then
   brew install mas
-fi
-
-if [ ! -f /Library/Developer/CommandLineTools/usr/bin/git ]; then
-  echo "Installing XCode..."
-  sudo xcodebuild -license accept
 fi
 
 echo "Updating Homebrew formulae ..."
