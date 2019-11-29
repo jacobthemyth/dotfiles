@@ -4,11 +4,11 @@ set -e
 
 if [ ! -f "$HOME/.dotfiles/.git/git-crypt/keys/default" ]; then
   read -p "Decrypt secrets using 1Password? (y/N) " -n 1 -r
-  echo    # (optional) move to a new line
+  echo
   if [[ $REPLY =~ ^[Yy]$ ]]; then
     read -p "1Password subdomain: " opsubdomain
     read -p "1Password email: " opemail
-    eval $(op signin "$opsubdomain.1password.com" "$opemail")
+    op signin "$opsubdomain.1password.com" "$opemail"
 
     keyfile=$(mktemp)
     op get document dotfiles.key > $keyfile
