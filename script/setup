@@ -1,21 +1,23 @@
 #!/usr/bin/env bash
 
-set -e
-set -o pipefail
+set -eo pipefail
 
 # Keep-alive: update existing `sudo` time stamp until `rcup` has finished
 sudo true; while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
 
-dotfiles_dir="$(cd "$( dirname "$0" )/.."; pwd -P)"
+dotfiles_root="$(cd "$( dirname "$0" )/.."; pwd -P)"
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
   RCRC="$HOME/.dotfiles/rcrc" rcup -t mac
-
-  # TODO: ideally this would be a hook
-  pushd "$dotfiles_dir/hooks/todo"
-  ./decrypt-git
-  popd
 else
   echo "Unsupported OS"
   exit 1
 fi
+
+# TODO: ideally these would be hooks, but decrypt-git is interactive and
+# hooks don't seem to support that and mac-fonts needs to happen after
+# decryption so it has to be called manually for now
+pushd "$dotfiles_root/hooks/todo" >/dev/null
+./decrypt-git
+./mac-fonts
+popd >/dev/null

@@ -1,5 +1,4 @@
-#!/bin/bash
-
+#!/usr/bin/env bash
 # Log output:
 #
 # * 51c333e    (12 days)    <Gary Bernhardt>   add vim-eunuch
@@ -12,6 +11,8 @@
 # The log format uses } characters between each field, and `column` is later
 # used to split on them. A } in the commit subject or any other field will
 # break this.
+
+set -eo pipefail
 
 HASH="%C(red)%h%Creset"
 REFS="%C(yellow)%d%Creset"

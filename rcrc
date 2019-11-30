@@ -1,6 +1,5 @@
-#!/bin/bash
-EXCLUDES="script/* hooks/* Brewfile README.md LICENSE decryption-status"
+#!/usr/bin/env bash
+EXCLUDES="script/* fonts/* Brewfile README.md LICENSE decryption-status"
 DOTFILES_DIRS="$HOME/.dotfiles"
 UNDOTTED="Library"
 TAGS="encrypted"
-COPY_ALWAYS="Library/Fonts/*"

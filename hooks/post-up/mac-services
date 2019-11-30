@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -eo pipefail
+
 brew services start skhd >/dev/null 2>&1
 brew services start yabai >/dev/null 2>&1
 brew services cleanup >/dev/null 2>&1

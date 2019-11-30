@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+
+set -eo pipefail
+
+# TODO: replace with tag hooks
+[[ "$OSTYPE" == "darwin"* ]] || exit
+
 if [ ! -f "/Library/LaunchDaemons/limit.maxfiles.plist" ]; then
   cat <<EOS | sudo tee /Library/LaunchDaemons/limit.maxproc.plist >/dev/null
 <?xml version="1.0" encoding="UTF-8"?>

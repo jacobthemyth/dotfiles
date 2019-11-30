@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+set -eo pipefail
 
 TITLE="Branch Selector"
 MENU="Select a branch to checkout:"

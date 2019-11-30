@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
-set -e
-set -o pipefail
+set -eo pipefail
 
 base16_installed_templates="$(base16-manager list)"
 if ! echo "$base16_installed_templates" | grep -q chriskempson/base16-shell; then
