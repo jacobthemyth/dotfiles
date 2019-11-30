@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -e
+set -o pipefail
 
 set +e
 case "$(/usr/bin/xcrun clang 2>&1)" in

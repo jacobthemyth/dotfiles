@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+set -e
+set -o pipefail
+
+PATH="$HOME/.nodenv/bin:$PATH"
+
+echo "Configuring Node ..."
+find_latest_node() {
+  nodenv install -l | grep -v - | grep '^\s*[0-9]' | tail -1 | sed -e 's/^ *//'
+}
+
+node_version="$(find_latest_node)"
+eval "$(nodenv init -)"
+
+if ! nodenv versions | grep -Fq "$node_version"; then
+  nodenv install -s "$node_version"
+fi
+
+nodenv global "$node_version"
+nodenv shell "$node_version"
+nodenv default-packages install --all
+

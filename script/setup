@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
 
 set -e
+set -o pipefail
 
-cd "$( dirname "${BASH_SOURCE[0]}" )/.."
+# Keep-alive: update existing `sudo` time stamp until `rcup` has finished
+sudo true; while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
+
+dotfiles_dir="$(cd "$( dirname "$0" )/.."; pwd -P)"
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
-  RCRC="$HOME/.dotfiles/rcrc" TAGS="mac" rcup
+  RCRC="$HOME/.dotfiles/rcrc" rcup -t mac
+  # TODO: ideally this would be a hook
+  "$dotfiles_dir/hooks/todo/decrypt-git"
 else
   echo "Unsupported OS"
   exit 1

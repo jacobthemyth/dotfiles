@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+set -e
+set -o pipefail
+
+if ! base16-manager list | grep -q chriskempson/base16-shell; then
+  base16-manager install chriskempson/base16-shell
+fi
+
+if ! base16-manager list | grep -q chriskempson/base16-vim; then
+  base16-manager install chriskempson/base16-vim
+fi
+
+base16-manager set eighties

@@ -1,5 +1,5 @@
 #!/bin/bash
-EXCLUDES="script/* Brewfile README.md LICENSE decryption-status"
+EXCLUDES="script/* hooks/* Brewfile README.md LICENSE decryption-status"
 DOTFILES_DIRS="$HOME/.dotfiles"
 UNDOTTED="Library"
 TAGS="encrypted"
