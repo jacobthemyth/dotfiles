@@ -5,8 +5,8 @@ set -o pipefail
 
 # TODO: hooks don't seem to support interactive commands
 
-# hooks are executed with pwd set to `hooks`
-decryption_status_path="../tag-encrypted/decryption-status"
+# hooks are executed with pwd set to dirname of file
+decryption_status_path="../../tag-encrypted/decryption-status"
 
 if [ "$(cat "$decryption_status_path")" != "1" ]; then
   read -p "1Password subdomain: " opsubdomain

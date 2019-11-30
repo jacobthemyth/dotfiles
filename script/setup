@@ -10,8 +10,11 @@ dotfiles_dir="$(cd "$( dirname "$0" )/.."; pwd -P)"
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
   RCRC="$HOME/.dotfiles/rcrc" rcup -t mac
+
   # TODO: ideally this would be a hook
-  "$dotfiles_dir/hooks/todo/decrypt-git"
+  pushd "$dotfiles_dir/hooks/todo"
+  ./decrypt-git
+  popd
 else
   echo "Unsupported OS"
   exit 1

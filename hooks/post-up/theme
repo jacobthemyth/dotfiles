@@ -3,11 +3,12 @@
 set -e
 set -o pipefail
 
-if ! base16-manager list | grep -q chriskempson/base16-shell; then
+base16_installed_templates="$(base16-manager list)"
+if ! echo "$base16_installed_templates" | grep -q chriskempson/base16-shell; then
   base16-manager install chriskempson/base16-shell
 fi
 
-if ! base16-manager list | grep -q chriskempson/base16-vim; then
+if ! echo "$base16_installed_templates" | grep -q chriskempson/base16-vim; then
   base16-manager install chriskempson/base16-vim
 fi
 
