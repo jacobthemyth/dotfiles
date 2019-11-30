@@ -1,6 +1,5 @@
 #!/bin/bash
-EXCLUDES="script Brewfile README.md LICENSE"
-SYMLINK_DIRS="Library/Scripts/AddFilesToThings.app"
+EXCLUDES="script/* Brewfile README.md LICENSE tag-encrypted/test"
 DOTFILES_DIRS="$HOME/.dotfiles"
 UNDOTTED="Library"
 TAGS="encrypted"

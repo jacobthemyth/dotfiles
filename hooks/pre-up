@@ -2,19 +2,5 @@
 
 set -e
 
-if [ ! -f "$HOME/.dotfiles/.git/git-crypt/keys/default" ]; then
-  read -p "Decrypt secrets using 1Password? (y/N) " -n 1 -r
-  echo
-  if [[ $REPLY =~ ^[Yy]$ ]]; then
-    read -p "1Password subdomain: " opsubdomain
-    read -p "1Password email: " opemail
-    op signin "$opsubdomain.1password.com" "$opemail"
-
-    keyfile=$(mktemp)
-    op get document dotfiles.key > $keyfile
-
-    pushd "$HOME/.dotfiles"
-    git crypt unlock $keyfile
-    popd
-  fi
-fi
+# Keep-alive: update existing `sudo` time stamp until `rcup` has finished
+while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
