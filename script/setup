@@ -8,6 +8,7 @@ sudo true; while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/
 dotfiles_root="$(cd "$( dirname "$0" )/.."; pwd -P)"
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
+  "$dotfiles_root"/script/bootstrap-mac
   RCRC="$HOME/.dotfiles/rcrc" rcup -t mac
 else
   echo "Unsupported OS"

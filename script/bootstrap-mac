@@ -2,9 +2,6 @@
 
 set -eo pipefail
 
-# TODO: replace with tag hooks
-[[ "$OSTYPE" == "darwin"* ]] || exit
-
 set +e
 case "$(/usr/bin/xcrun clang 2>&1)" in
   *"install"* )
