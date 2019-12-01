@@ -280,10 +280,6 @@ defaults write com.culturedcode.ThingsMac NSUserKeyEquivalents -dict '\033Items\
 # View > Appearance > Automatic
 defaults write com.culturedcode.ThingsMac PreferredTheme -bool false
 
-# Quick Entry shortcuts
-defaults write com.culturedcode.ThingsMac QuickEntryHotkeyEmpty -dict characters '⌥⌘⎵' keycode 49 keymodifiers 2304
-defaults write com.culturedcode.ThingsMac QuickEntryHotkeyAutofill -dict characters '⌃⌥⌘⎵' keycode 49 keymodifiers 6400
-
 # Don't show calendar events
 defaults write com.culturedcode.ThingsMac AppleEventsEnabled -bool false
 
