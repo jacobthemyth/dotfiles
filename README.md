@@ -1,4 +1,4 @@
-# iakobos dotfiles
+# jacobthemyth dotfiles
 
 ## Usage
 
