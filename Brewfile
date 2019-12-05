@@ -7,7 +7,7 @@ tap "homebrew/cask-drivers"
 tap "homebrew/cask-fonts"
 tap "homebrew/core"
 tap "homebrew/services"
-tap "jacobthemyth/formulae"
+tap "jacobthemyth/formulae", "git@github.com:jacobthemyth/homebrew-formulae"
 tap "koekeishiya/formulae"
 tap "nodenv/nodenv"
 tap "thoughtbot/formulae"
@@ -37,6 +37,8 @@ brew "dialog"
 brew "diff-so-fancy"
 # Load/unload environment variables based on $PWD
 brew "direnv"
+# Lightweight DNS forwarder and DHCP server
+brew "dnsmasq", restart_service: true
 # Emoji on the command-line :scream:
 brew "emojify"
 # Command-line tool to interact with exercism.io
@@ -69,6 +71,8 @@ brew "highlight"
 brew "htop"
 # Add GitHub support to git on the command-line
 brew "hub"
+# Tools and libraries to manipulate images in many formats
+brew "imagemagick"
 # Lightweight and flexible command-line JSON processor
 brew "jq"
 # The Apache Kafka C/C++ library
@@ -85,6 +89,8 @@ brew "mas"
 brew "neovim"
 # Utility for managing network connections
 brew "netcat"
+# Platform built on V8 to build network applications
+brew "node"
 # Manage multiple NodeJS versions
 brew "nodenv"
 # Terminal multiplexer
@@ -93,6 +99,8 @@ brew "tmux"
 brew "overmind"
 # Display the PID number for a given process name
 brew "pidof"
+# Object-relational database system
+brew "postgresql", restart_service: true
 # Show ps output as a tree
 brew "pstree"
 # Interpreted, interactive, object-oriented programming language
@@ -154,6 +162,7 @@ cask "airtable"
 cask "alfred"
 cask "anylist"
 cask "appcleaner"
+cask "authy"
 cask "backblaze"
 cask "bartender"
 cask "base"
@@ -185,10 +194,12 @@ cask "monodraw"
 cask "muzzle"
 cask "nightowl"
 cask "notion"
+cask "omnigraffle"
 cask "omniplan"
 cask "paw"
 cask "postico"
 cask "quitter"
+cask "rocket"
 cask "scrivener"
 cask "send-to-kindle"
 cask "sf-symbols"
@@ -201,11 +212,13 @@ cask "toggl"
 cask "tripmode"
 cask "vimr"
 cask "jacobthemyth/formulae/consider"
+cask "jacobthemyth/formulae/kinesis-smart-set"
 cask "jacobthemyth/formulae/screenflow6"
 mas "1Blocker", id: 1107421413
 mas "A Companion for SwiftUI", id: 1485436674
 mas "DaisyDisk", id: 411643860
 mas "Delicious Library", id: 635124250
+mas "Deliveries", id: 924726344
 mas "Drafts", id: 1435957248
 mas "Fantastical", id: 975937182
 mas "GarageBand", id: 682658836
