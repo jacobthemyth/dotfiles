@@ -1,0 +1,56 @@
+#!/usr/bin/env ruby
+
+require 'bundler/inline'
+
+gemfile do
+  source 'https://rubygems.org'
+  gem "netrc"
+end
+
+require "json"
+require "uri"
+require "net/http"
+
+n = Netrc.read
+
+login, token = n["api.slack.com"]
+# If only `password` is set, netrc will return it first
+token ||= login
+
+unless token
+  $stderr.puts <<~MSG
+    The Slack API requires a token, create a token at https://api.slack.com/custom-integrations/legacy-tokens and add it to "$HOME/.netrc":
+      machine api.slack.com
+        password xoxp-api-key
+  MSG
+  exit 1
+end
+
+case ARGV[0]
+when "start"
+  duration = (ARGV[1] || 25).to_i
+  Net::HTTP.get(URI("https://slack.com/api/dnd.setSnooze?token=#{token}&num_minutes=#{duration}"))
+  Net::HTTP.post(URI("https://slack.com/api/users.profile.set"), {
+    "profile": {
+        "status_text": "Focusing...",
+        "status_emoji": ":thinking_face:",
+        "status_expiration": (Time.now + (duration * 60)).to_i
+    }
+  }.to_json, {
+    "Content-Type" => "application/json; charset=utf-8",
+    "Authorization" => "Bearer #{token}",
+  })
+when "stop"
+  Net::HTTP.get(URI("https://slack.com/api/dnd.endSnooze?token=#{token}"))
+  Net::HTTP.post(URI("https://slack.com/api/users.profile.set"), {
+    "profile": {
+        "status_text": "",
+        "status_emoji": ""
+    }
+  }.to_json, {
+    "Content-Type" => "application/json; charset=utf-8",
+    "Authorization" => "Bearer #{token}",
+  })
+else
+  puts "Usage: slack-focus <start|stop> [duration_in_minutes]"
+end
