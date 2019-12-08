@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# This script is executed by Focus.app which doesn't have the PATH set
+PATH="/usr/local/bin:$PATH"
+
+# Use FOCUS_INTERVAL if set, else use argument, else default to 25 minutes
+focus_seconds="${FOCUS_INTERVAL:-$1}"
+focus_seconds="${focus_seconds:-1500}"
+
+slack status edit --text "Focusing..." --emoji :thinking_face: --expiration $(gdate -d "$focus_seconds seconds" "+%s")
+slack snooze start "$(( focus_seconds / 60 ))"

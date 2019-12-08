@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# This script is executed by Focus.app which doesn't have the PATH set
+PATH="/usr/local/bin:$PATH"
+slack status clear
+slack snooze end

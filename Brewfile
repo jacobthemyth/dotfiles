@@ -21,6 +21,8 @@ brew "readline"
 brew "python"
 # Official Amazon AWS command-line interface
 brew "awscli"
+# TAP-compliant test framework for Bash scripts
+brew "bats"
 # Core application library for C
 brew "glib"
 # Enables you to reproduce the CircleCI environment locally
@@ -121,6 +123,7 @@ brew "reattach-to-user-namespace"
 brew "rmtrash"
 # Powerful, clean, object-oriented scripting language
 brew "ruby"
+brew "slack-cli"
 # netcat on steroids
 brew "socat"
 # Add a public key to a remote machine's authorized_keys file
@@ -173,7 +176,8 @@ cask "choosy"
 cask "chromedriver"
 cask "clickup"
 cask "colorpicker-skalacolor"
-cask "dash"
+cask "consider"
+cask "dash4"
 cask "devonthink"
 cask "docker"
 cask "dropbox"
@@ -187,6 +191,7 @@ cask "hazel"
 cask "iterm2"
 cask "kaleidoscope"
 cask "kindle"
+cask "kinesis-smart-set"
 cask "logitech-options"
 cask "marked"
 cask "miro-formerly-realtimeboard"
@@ -200,6 +205,8 @@ cask "paw"
 cask "postico"
 cask "quitter"
 cask "rocket"
+cask "screenflow6"
+cask "screens-connect"
 cask "scrivener"
 cask "send-to-kindle"
 cask "sf-symbols"
@@ -211,9 +218,6 @@ cask "tinderbox"
 cask "toggl"
 cask "tripmode"
 cask "vimr"
-cask "jacobthemyth/formulae/consider"
-cask "jacobthemyth/formulae/kinesis-smart-set"
-cask "jacobthemyth/formulae/screenflow6"
 mas "1Blocker", id: 1107421413
 mas "A Companion for SwiftUI", id: 1485436674
 mas "DaisyDisk", id: 411643860
@@ -223,6 +227,7 @@ mas "Drafts", id: 1435957248
 mas "Fantastical", id: 975937182
 mas "GarageBand", id: 682658836
 mas "iMovie", id: 408981434
+mas "Instapaper", id: 1481302432
 mas "Keynote", id: 409183694
 mas "MindNode", id: 1289197285
 mas "Numbers", id: 409203825
