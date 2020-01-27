@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -e
+
+GIT_DIR="$(git rev-parse --git-dir)"
+mkdir -p "$GIT_DIR/info"
+echo "$@" >> "$GIT_DIR/info/exclude"

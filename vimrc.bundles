@@ -6,7 +6,9 @@ call plug#begin('~/.vim/bundle')
 
 Plug 'kana/vim-textobj-user' " used by rubyblock and quote
 
+Plug 'aliou/bats.vim'
 Plug 'airblade/vim-gitgutter'
+Plug 'chr4/nginx.vim'
 Plug 'chriskempson/base16-vim'
 Plug 'christoomey/vim-tmux-navigator'
 Plug 'ctrlpvim/ctrlp.vim'
@@ -14,6 +16,7 @@ Plug 'davidoc/taskpaper.vim',                   { 'for': 'taskpaper' }
 Plug 'dhruvasagar/vim-table-mode',              { 'for': 'markdown' }
 Plug 'ecomba/vim-ruby-refactoring',             { 'for': 'ruby' }
 Plug 'fatih/vim-go',                            { 'do': ':GoUpdateBinaries' }
+Plug 'hashivim/vim-terraform'
 Plug 'janko-m/vim-test'
 Plug 'junegunn/vim-easy-align',                 { 'on': '<Plug>(EasyAlign)' }
 Plug 'keith/swift.vim',                         { 'for': 'swift' }

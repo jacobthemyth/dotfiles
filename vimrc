@@ -280,6 +280,11 @@ nmap <silent> t<C-f> :TestFile<CR>
 nmap <silent> t<C-s> :TestSuite<CR>
 nmap <silent> t<C-l> :TestLast<CR>
 nmap <silent> t<C-g> :TestVisit<CR>
+
+" vim-terraform
+let g:terraform_align=1
+let g:terraform_fmt_on_save=1
+
 " }}}
 
 " disable unsafe commands in exrc files

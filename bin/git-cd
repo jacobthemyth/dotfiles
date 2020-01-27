@@ -26,6 +26,7 @@ done
 
 WIDTH="$((max_width+12))"
 CHOICE_HEIGHT="$((i*3))"
+[[ $CHOICE_HEIGHT -le 11 ]] && CHOICE_HEIGHT="12"
 HEIGHT="$((CHOICE_HEIGHT))"
 
 CHOICE=$(dialog --keep-tite\

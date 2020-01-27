@@ -29,6 +29,8 @@ zstyle ":completion:*:descriptions" format "%B%d%b"
 
 export GOPATH="$HOME/go"
 
+# Force rbenv to always keep sources
+export RBENV_BUILD_ROOT="$HOME/.rbenv/sources"
 export PATH="$HOME/.rbenv/bin:$PATH"
 eval "$(rbenv init - --no-rehash)"
 
@@ -86,6 +88,8 @@ setopt promptsubst
 export TERM="xterm-256color-italic"
 
 eval "$(direnv hook zsh)"
+
+export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
 
 # aliases
 [[ -f ~/.aliases ]] && source ~/.aliases
