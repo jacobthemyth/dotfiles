@@ -23,6 +23,8 @@ brew "python"
 brew "awscli"
 # TAP-compliant test framework for Bash scripts
 brew "bats"
+# Interpreted, interactive, object-oriented programming language
+brew "python"
 # Core application library for C
 brew "glib"
 # Enables you to reproduce the CircleCI environment locally
@@ -67,6 +69,8 @@ brew "git-crypt"
 brew "gnu-sed"
 # Open source programming language to build simple/reliable/efficient software
 brew "go"
+# GNU grep, egrep and fgrep
+brew "grep"
 # Convert source code to formatted text with syntax highlighting
 brew "highlight"
 # Improved top (interactive process viewer)
@@ -124,10 +128,12 @@ brew "rmtrash"
 # Powerful, clean, object-oriented scripting language
 brew "ruby"
 brew "slack-cli"
-# netcat on steroids
+# SOcket CAT: netcat on steroids
 brew "socat"
 # Add a public key to a remote machine's authorized_keys file
 brew "ssh-copy-id"
+# Tool to build, change, and version infrastructure
+brew "terraform"
 # Code-search similar to ack
 brew "the_silver_searcher"
 # Text interface for Git repositories
@@ -157,6 +163,8 @@ brew "koekeishiya/formulae/skhd"
 brew "koekeishiya/formulae/yabai"
 # Auto-installs packages for Node installs
 brew "nodenv/nodenv/nodenv-default-packages"
+# Shell commands for environment parity for Heroku apps
+brew "thoughtbot/formulae/parity"
 # management suite for dotfiles
 brew "thoughtbot/formulae/rcm"
 cask "1password"
@@ -220,6 +228,7 @@ cask "tripmode"
 cask "vimr"
 mas "1Blocker", id: 1107421413
 mas "A Companion for SwiftUI", id: 1485436674
+mas "Airmail", id: 918858936
 mas "DaisyDisk", id: 411643860
 mas "Delicious Library", id: 635124250
 mas "Deliveries", id: 924726344
