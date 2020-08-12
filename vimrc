@@ -34,11 +34,6 @@ if executable('ag')
 
   " ag is fast enough that CtrlP doesn't need to cache
   let g:ctrlp_use_caching = 0
-
-  if !exists(":Ag")
-    command -nargs=+ -complete=file -bar Ag silent! grep! <args>|cwindow|redraw!
-    nnoremap \ :Ag<SPACE>
-  endif
 endif
 
 set number
@@ -121,7 +116,14 @@ endif
 set undodir=~/.vim/undo
 set undofile
 
+nnoremap \ :grep<SPACE>
 nnoremap gr :grep! "\b<cword>\b"<CR>:cw<CR><CR>
+
+augroup quickfix
+  autocmd!
+  autocmd QuickFixCmdPost [^l]* cwindow
+  autocmd QuickFixCmdPost l* lwindow
+augroup END
 
 if filereadable(expand("~/.vim/colorscheme.vim"))
   let base16colorspace=256
@@ -209,7 +211,6 @@ nnoremap <Leader>af :ALEFix<CR>
 
 " This is gross
 let g:ale_javascript_eslint_executable='/bin/sh -c "cd $(dirname %) && ~/.nodenv/shims/eslint"'
-let g:ale_fix_on_save = 1
 let g:ale_use_global_executables = 1
 
 let g:ale_linters = {
@@ -221,6 +222,7 @@ let g:ale_linters = {
 let g:ale_fixers = {
 \   'go': ['gofmt', 'goimports'],
 \   'javascript': ['eslint'],
+\   'ruby': ['rubocop'],
 \}
 
 " ctrlp
@@ -261,6 +263,9 @@ augroup netrw
   autocmd!
   autocmd FileType netrw set colorcolumn=""
 augroup END
+
+" ruby
+let g:ruby_indent_assignment_style = 'variable'
 
 " taskpaper
 augroup taskpaper

@@ -8,13 +8,12 @@ Plug 'kana/vim-textobj-user' " used by rubyblock and quote
 
 Plug 'aliou/bats.vim'
 Plug 'airblade/vim-gitgutter'
-Plug 'chr4/nginx.vim'
 Plug 'chriskempson/base16-vim'
 Plug 'christoomey/vim-tmux-navigator'
 Plug 'ctrlpvim/ctrlp.vim'
 Plug 'davidoc/taskpaper.vim',                   { 'for': 'taskpaper' }
 Plug 'dhruvasagar/vim-table-mode',              { 'for': 'markdown' }
-Plug 'ecomba/vim-ruby-refactoring',             { 'for': 'ruby' }
+Plug 'ecomba/vim-ruby-refactoring',             { 'for': 'ruby', 'branch': 'main' }
 Plug 'fatih/vim-go',                            { 'do': ':GoUpdateBinaries' }
 Plug 'hashivim/vim-terraform'
 Plug 'janko-m/vim-test'
@@ -45,6 +44,7 @@ Plug 'vim-airline/vim-airline-themes'
 Plug 'vim-ruby/vim-ruby'
 Plug 'vim-scripts/tComment'
 Plug 'w0rp/ale',                                { 'do': 'go get golang.org/x/tools/cmd/goimports' }
+Plug 'wakatime/vim-wakatime'
 Plug 'yssl/QFEnter'
 
 if has('nvim')

@@ -1,5 +1,3 @@
-UltiSnipsAddFiletypes javascript-jasmine-arrow
-
 set path=.,src
 
 function! LoadMainNodeModule(fname)

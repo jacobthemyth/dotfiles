@@ -6,7 +6,7 @@ set -eo pipefail
 [[ "$OSTYPE" == "darwin"* ]] || exit
 
 if [ ! -f "/Library/LaunchDaemons/limit.maxfiles.plist" ]; then
-  cat <<EOS | sudo tee /Library/LaunchDaemons/limit.maxproc.plist >/dev/null
+  cat <<EOS | sudo tee /Library/LaunchDaemons/limit.maxfiles.plist >/dev/null
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">

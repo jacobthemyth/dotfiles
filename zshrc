@@ -31,7 +31,6 @@ export GOPATH="$HOME/go"
 
 # Force rbenv to always keep sources
 export RBENV_BUILD_ROOT="$HOME/.rbenv/sources"
-export PATH="$HOME/.rbenv/bin:$PATH"
 eval "$(rbenv init - --no-rehash)"
 
 export PATH="$HOME/.nodenv/bin:$PATH"

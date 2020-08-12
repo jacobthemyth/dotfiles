@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-EXCLUDES="script/* fonts/* Brewfile README.md LICENSE decryption-status"
+COPY_ALWAYS="tag-mac/Library/Scripts/**/*"
 DOTFILES_DIRS="$HOME/.dotfiles"
-UNDOTTED="Library"
+EXCLUDES="script/* fonts/* Brewfile README.md LICENSE decryption-status"
 TAGS="encrypted"
+UNDOTTED="Library"
