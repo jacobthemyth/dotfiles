@@ -53,8 +53,6 @@
   prune = true
 [grep]
   lineNumber = true
-[init]
-  templatedir = ~/.config/git/template
 [merge]
   ff = true
 [mergetool]
@@ -69,3 +67,10 @@
 [github]
   user = jacobthemyth
 # vim: ft=gitconfig
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true
+[pull]
+	rebase = true

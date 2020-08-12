@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+git branch --merged master | grep -v "master" | xargs git branch -d
