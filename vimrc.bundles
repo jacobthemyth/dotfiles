@@ -44,7 +44,7 @@ Plug 'vim-airline/vim-airline-themes'
 Plug 'vim-ruby/vim-ruby'
 Plug 'vim-scripts/tComment'
 Plug 'w0rp/ale',                                { 'do': 'go get golang.org/x/tools/cmd/goimports' }
-Plug 'wakatime/vim-wakatime'
+" Plug 'wakatime/vim-wakatime'
 Plug 'yssl/QFEnter'
 
 if has('nvim')

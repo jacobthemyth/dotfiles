@@ -16,5 +16,4 @@ echo "Updating vim plugins..."
 nvim --headless -c 'PlugUpdate --sync' -c 'qa'
 
 echo "Configuring Python for NeoVim ..."
-pip2 install neovim
 pip3 install neovim

@@ -7,7 +7,7 @@ tap "homebrew/cask-drivers"
 tap "homebrew/cask-fonts"
 tap "homebrew/core"
 tap "homebrew/services"
-tap "jacobthemyth/formulae", "git@github.com:jacobthemyth/homebrew-formulae"
+tap "jacobthemyth/formulae", "https://github.com/jacobthemyth/homebrew-formulae.git"
 tap "koekeishiya/formulae"
 tap "nodenv/nodenv"
 tap "thoughtbot/formulae"
@@ -109,8 +109,6 @@ brew "pidof"
 brew "postgresql", restart_service: true
 # Show ps output as a tree
 brew "pstree"
-# Interpreted, interactive, object-oriented programming language
-brew "python@2"
 # Install various Ruby versions and implementations
 brew "ruby-build"
 # Ruby version manager
@@ -188,7 +186,6 @@ cask "devonthink"
 cask "docker"
 cask "dropbox"
 cask "encryptme"
-cask "feeder"
 cask "firefox"
 cask "focus"
 cask "font-fontawesome"
@@ -200,7 +197,7 @@ cask "kindle"
 cask "kinesis-smart-set"
 cask "logitech-options"
 cask "marked"
-cask "miro-formerly-realtimeboard"
+cask "miro"
 cask "monodraw"
 cask "muzzle"
 cask "nightowl"
@@ -248,4 +245,3 @@ mas "Things", id: 904280696
 mas "ToothFairy", id: 1191449274
 mas "Transmit", id: 403388562
 mas "Ulysses", id: 1225570693
-mas "Xcode", id: 497799835

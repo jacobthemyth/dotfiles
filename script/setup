@@ -16,9 +16,7 @@ else
 fi
 
 # TODO: ideally these would be hooks, but decrypt-git is interactive and
-# hooks don't seem to support that and mac-fonts needs to happen after
-# decryption so it has to be called manually for now
+# hooks don't seem to support that
 pushd "$dotfiles_root/hooks/todo" >/dev/null
 ./decrypt-git
-./mac-fonts
 popd >/dev/null
