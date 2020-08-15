@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+# TODO: replace with tag hooks
+[[ "$OSTYPE" == "darwin"* ]] || exit
+
+###############################################################################
+# Google Chrome
+###############################################################################
+
+# Use the system-native print preview dialog
+defaults write com.google.Chrome DisablePrintPreview -bool true
+
+# Expand the print dialog by default
+defaults write com.google.Chrome PMPrintingExpandedStateForPrint2 -bool true
+###############################################################################
+# Things
+###############################################################################
+
+# Change quick entry hotkeys
+defaults write com.culturedcode.ThingsMac QuickEntryHotkeyEmpty -dict-add keyModifiers -int 2304
+defaults write com.culturedcode.ThingsMac QuickEntryHotkeyEmpty -dict-add keyCode -int 49
+defaults write com.culturedcode.ThingsMac QuickEntryHotkeyEmpty -dict-add characters '<string>⌥⌘⎵</string>'
+defaults write com.culturedcode.ThingsMac QuickEntryHotkeyAutofill -dict-add keyModifiers -int 6400
+defaults write com.culturedcode.ThingsMac QuickEntryHotkeyAutofill -dict-add keyCode -int 49
+defaults write com.culturedcode.ThingsMac QuickEntryHotkeyAutofill -dict-add characters '<string>⌃⌥⌘⎵</string>'
+
+# Bind shift-ctrl-p to Convert to Project
+defaults write com.culturedcode.ThingsMac NSUserKeyEquivalents -dict '\033Items\033Convert to Project' '@$p'
+
+# View > Appearance > Automatic
+defaults write com.culturedcode.ThingsMac PreferredTheme -bool false
+
+# Don't show calendar events
+defaults write com.culturedcode.ThingsMac AppleEventsEnabled -bool false
+
+###############################################################################
+# Alfred
+###############################################################################
+
+defaults write com.runningwithcrayons.Alfred-Preferences syncfolder -string '~/Dropbox/.config'
+
+for app in \
+  "Alfred" \
+  "Google Chrome" \
+  "Things"
+do
+  killall "${app}" &> /dev/null
+done
