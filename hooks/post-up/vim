@@ -17,3 +17,6 @@ nvim --headless -c 'PlugUpdate --sync' -c 'qa'
 
 echo "Configuring Python for NeoVim ..."
 pip3 install neovim
+
+echo "Updating remote vim plugins..."
+nvim --headless -c 'UpdateRemotePlugins' -c 'qa'

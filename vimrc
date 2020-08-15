@@ -143,12 +143,9 @@ endif
 set termguicolors
 
 highlight link ALEError Error
-highlight htmlArg gui=italic
-highlight Comment gui=italic
-highlight Type    gui=italic
-highlight htmlArg cterm=italic
-highlight Comment cterm=italic
-highlight Type    cterm=italic
+highlight htmlArg cterm=italic gui=italic
+highlight Comment cterm=italic gui=italic
+highlight Type    cterm=italic gui=italic
 
 set tags^=./.git/tags;
 " }}}
@@ -253,6 +250,9 @@ endif
 
 " fugitive
 autocmd BufReadPost fugitive://* set bufhidden=delete
+
+" fzf
+nnoremap <silent> <C-p> :FZF<CR>
 
 " goyo
 nnoremap <leader>w :Goyo<CR>

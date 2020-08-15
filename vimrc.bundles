@@ -6,30 +6,23 @@ call plug#begin('~/.vim/bundle')
 
 Plug 'kana/vim-textobj-user' " used by rubyblock and quote
 
-Plug 'aliou/bats.vim'
 Plug 'airblade/vim-gitgutter'
 Plug 'chriskempson/base16-vim'
 Plug 'christoomey/vim-tmux-navigator'
-Plug 'ctrlpvim/ctrlp.vim'
-Plug 'davidoc/taskpaper.vim',                   { 'for': 'taskpaper' }
-Plug 'dhruvasagar/vim-table-mode',              { 'for': 'markdown' }
-Plug 'ecomba/vim-ruby-refactoring',             { 'for': 'ruby', 'branch': 'main' }
-Plug 'fatih/vim-go',                            { 'do': ':GoUpdateBinaries' }
-Plug 'hashivim/vim-terraform'
+Plug 'dhruvasagar/vim-table-mode',     { 'for': 'markdown' }
 Plug 'janko-m/vim-test'
-Plug 'junegunn/vim-easy-align',                 { 'on': '<Plug>(EasyAlign)' }
-Plug 'keith/swift.vim',                         { 'for': 'swift' }
-Plug 'mattn/emmet-vim',                         { 'for': ['eruby', 'html', 'html.handlebars', 'javascript.jsx', 'vue'] }
-Plug 'nelstrom/vim-markdown-folding',           { 'for': 'markdown' }
-Plug 'nelstrom/vim-textobj-rubyblock',          { 'for': 'ruby' }
+Plug 'junegunn/fzf',                   { 'do': { -> fzf#install() } }
+Plug 'junegunn/vim-easy-align',        { 'on': '<Plug>(EasyAlign)' }
+Plug 'nelstrom/vim-markdown-folding',  { 'for': 'markdown' }
+Plug 'nelstrom/vim-textobj-rubyblock', { 'for': 'ruby' }
 Plug 'pangloss/vim-javascript'
 Plug 'tpope/vim-abolish'
 Plug 'tpope/vim-bundler'
-Plug 'tpope/vim-dispatch',                      { 'on': 'Dispatch' }
+Plug 'tpope/vim-dispatch',             { 'on': 'Dispatch' }
 Plug 'tpope/vim-endwise'
 Plug 'tpope/vim-eunuch'
 Plug 'tpope/vim-fugitive'
-Plug 'tpope/vim-markdown',                      { 'for': 'markdown' }
+Plug 'tpope/vim-markdown',             { 'for': 'markdown' }
 Plug 'tpope/vim-projectionist'
 Plug 'tpope/vim-rails'
 Plug 'tpope/vim-rake'
@@ -43,7 +36,7 @@ Plug 'vim-airline/vim-airline'
 Plug 'vim-airline/vim-airline-themes'
 Plug 'vim-ruby/vim-ruby'
 Plug 'vim-scripts/tComment'
-Plug 'w0rp/ale',                                { 'do': 'go get golang.org/x/tools/cmd/goimports' }
+Plug 'w0rp/ale',                       { 'do': 'go get golang.org/x/tools/cmd/goimports' }
 " Plug 'wakatime/vim-wakatime'
 Plug 'yssl/QFEnter'
 

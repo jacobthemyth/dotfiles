@@ -2,10 +2,7 @@
 
 set -eo pipefail
 
-# Keep-alive: update existing `sudo` time stamp until `rcup` has finished
-sudo true; while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
-
-dotfiles_root="$(cd "$( dirname "$0" )/.."; pwd -P)"
+dotfiles_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)"
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
   "$dotfiles_root"/script/bootstrap-mac
@@ -19,4 +16,5 @@ fi
 # hooks don't seem to support that
 pushd "$dotfiles_root/hooks/todo" >/dev/null
 ./decrypt-git
+./mac-fonts
 popd >/dev/null

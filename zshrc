@@ -1,5 +1,5 @@
 autoload -U promptinit; promptinit
-prompt pure
+eval "$(starship init zsh)"
 
 for zsh_source in $HOME/.zsh/configs/*.zsh; do
   source $zsh_source
@@ -89,6 +89,8 @@ export TERM="xterm-256color-italic"
 eval "$(direnv hook zsh)"
 
 export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+
+export FZF_DEFAULT_COMMAND='rg --files'
 
 # aliases
 [[ -f ~/.aliases ]] && source ~/.aliases
