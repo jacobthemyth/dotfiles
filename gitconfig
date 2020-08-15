@@ -44,7 +44,7 @@
   pager = diff-so-fancy | less --tabs=4 -RFX
   autocrlf = input
 [credential]
-  helper = osxkeychain
+	helper = ""
 [diff]
   compactionHeuristic = true
 [difftool]
@@ -74,3 +74,9 @@
 	required = true
 [pull]
 	rebase = true
+[hub]
+	protocol = https
+[credential]
+	helper = manager-core
+[credential "https://dev.azure.com"]
+	useHttpPath = true
