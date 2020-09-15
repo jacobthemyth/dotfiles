@@ -250,6 +250,10 @@ nnoremap <silent> <C-p> :FZF<CR>
 " goyo
 nnoremap <leader>w :Goyo<CR>
 
+" markdown
+let g:markdown_folding = 1
+au FileType markdown setlocal foldlevel=99
+
 " netrw
 let g:netrw_bufsettings = 'noma nomod nu nobl nowrap ro'
 augroup netrw

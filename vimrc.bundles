@@ -14,7 +14,6 @@ Plug 'janko-m/vim-test'
 Plug 'junegunn/fzf',                   { 'do': { -> fzf#install() } }
 Plug 'junegunn/vim-easy-align',        { 'on': '<Plug>(EasyAlign)' }
 Plug 'junegunn/goyo.vim',              { 'for': 'markdown' }
-Plug 'nelstrom/vim-markdown-folding',  { 'for': 'markdown' }
 Plug 'nelstrom/vim-textobj-rubyblock', { 'for': 'ruby' }
 Plug 'pangloss/vim-javascript'
 Plug 'tpope/vim-abolish'
@@ -23,7 +22,6 @@ Plug 'tpope/vim-dispatch',             { 'on': 'Dispatch' }
 Plug 'tpope/vim-endwise'
 Plug 'tpope/vim-eunuch'
 Plug 'tpope/vim-fugitive'
-Plug 'tpope/vim-markdown',             { 'for': 'markdown' }
 Plug 'tpope/vim-projectionist'
 Plug 'tpope/vim-rails'
 Plug 'tpope/vim-rake'
