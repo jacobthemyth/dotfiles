@@ -7,6 +7,7 @@ call plug#begin('~/.vim/bundle')
 Plug 'kana/vim-textobj-user' " used by rubyblock and quote
 
 Plug 'airblade/vim-gitgutter'
+Plug 'bilalq/lite-dfm',                { 'for': ['markdown','vimwiki'] }
 Plug 'chriskempson/base16-vim'
 Plug 'christoomey/vim-tmux-navigator'
 Plug 'dhruvasagar/vim-table-mode',     { 'for': 'markdown' }
@@ -35,6 +36,8 @@ Plug 'vim-airline/vim-airline'
 Plug 'vim-airline/vim-airline-themes'
 Plug 'vim-ruby/vim-ruby'
 Plug 'vim-scripts/tComment'
+Plug 'vim-voom/VOoM'
+Plug 'vimwiki/vimwiki'
 Plug 'w0rp/ale',                       { 'do': 'go get golang.org/x/tools/cmd/goimports' }
 " Plug 'wakatime/vim-wakatime'
 Plug 'yssl/QFEnter'

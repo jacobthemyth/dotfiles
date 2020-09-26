@@ -253,6 +253,7 @@ nnoremap <leader>w :Goyo<CR>
 " markdown
 let g:markdown_folding = 1
 au FileType markdown setlocal foldlevel=99
+let g:markdown_fenced_languages = ['c', 'erb=eruby', 'diff', 'go', 'ruby', 'sh']
 
 " netrw
 let g:netrw_bufsettings = 'noma nomod nu nobl nowrap ro'
@@ -286,6 +287,10 @@ nmap <silent> t<C-g> :TestVisit<CR>
 " vim-terraform
 let g:terraform_align=1
 let g:terraform_fmt_on_save=1
+
+" vim-wiki
+let g:vimwiki_list = [{'path': '~/Dropbox/Notes', 'syntax': 'markdown', 'ext': '.wiki'}]
+let g:vimwiki_hl_headers = 1
 
 " }}}
 
