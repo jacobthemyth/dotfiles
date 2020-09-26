@@ -26,7 +26,8 @@ set list listchars=tab:»·,trail:·,nbsp:·
 set nojoinspaces
 
 if executable('rg')
-  set grepprg=rg\ --vimgrep\ --smart-case
+  set grepprg=rg\ --vimgrep\ --smart-case\ $*
+  set grepformat=%f:%l:%c:%m
 endif
 
 set number

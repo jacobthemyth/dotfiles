@@ -5,8 +5,14 @@ set -eo pipefail
 # TODO: replace with tag hooks
 [[ "$OSTYPE" == "darwin"* ]] || exit
 
-if [ ! -f "/Library/LaunchDaemons/limit.maxfiles.plist" ]; then
-  cat <<EOS | sudo tee /Library/LaunchDaemons/limit.maxfiles.plist >/dev/null
+maxfiles="$(launchctl limit maxfiles | awk '{ print $2 }')"
+maxproc="$(launchctl limit maxproc | awk '{ print $2 }')"
+
+if [[ "$maxfiles" -lt 200000 ]]; then
+  echo "Increasing open file limit (requires sudo)..."
+
+  if [ ! -f "/Library/LaunchDaemons/limit.maxfiles.plist" ]; then
+    cat <<EOS | sudo tee /Library/LaunchDaemons/limit.maxfiles.plist >/dev/null
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -18,8 +24,8 @@ if [ ! -f "/Library/LaunchDaemons/limit.maxfiles.plist" ]; then
         <string>launchctl</string>
         <string>limit</string>
         <string>maxfiles</string>
-        <string>524288</string>
-        <string>524288</string>
+        <string>200000</string>
+        <string>200000</string>
       </array>
     <key>RunAtLoad</key>
       <true/>
@@ -28,10 +34,14 @@ if [ ! -f "/Library/LaunchDaemons/limit.maxfiles.plist" ]; then
   </dict>
 </plist>
 EOS
+  fi
 fi
 
-if [ ! -f "/Library/LaunchDaemons/limit.maxproc.plist" ]; then
-  cat <<EOS | sudo tee /Library/LaunchDaemons/limit.maxproc.plist >/dev/null
+if [[ "$maxproc" -lt 2048 ]]; then
+  echo "Increasing max process limit (requires sudo)..."
+
+  if [ ! -f "/Library/LaunchDaemons/limit.maxproc.plist" ]; then
+    cat <<EOS | sudo tee /Library/LaunchDaemons/limit.maxproc.plist >/dev/null
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -53,4 +63,8 @@ if [ ! -f "/Library/LaunchDaemons/limit.maxproc.plist" ]; then
   </dict>
 </plist>
 EOS
+  fi
+
+  sudo launchctl load /Library/LaunchDaemons/limit.maxfiles.plist
+  sudo launchctl load /Library/LaunchDaemons/limit.maxproc.plist
 fi
