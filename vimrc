@@ -294,6 +294,19 @@ let g:vimwiki_list = [{'path': '~/Dropbox/Notes', 'syntax': 'markdown', 'ext': '
 let g:vimwiki_ext2syntax = {'.wiki': 'markdown'}
 let g:vimwiki_hl_headers = 1
 
+" vim-wiki overrides - for file navigation, so this disables the header
+" bingings but adds most of them back as the default.
+let g:vimwiki_key_mappings =
+  \ {
+  \ 'headers': 0,
+  \ }
+autocmd FileType vimwiki nmap <Leader>- <Plug>VimwikiRemoveHeaderLevel
+autocmd FileType vimwiki nmap <Leader>= <Plug>VimwikiAddHeaderLevel
+autocmd FileType vimwiki nmap [[ <Plug>VimwikiGoToPrevHeader
+autocmd FileType vimwiki nmap ]] <Plug>VimwikiGoToNextHeader
+autocmd FileType vimwiki nmap [= <Plug>VimwikiGoToPrevSiblingHeader
+autocmd FileType vimwiki nmap ]= <Plug>VimwikiGoToNextSiblingHeader
+autocmd FileType vimwiki nmap [u <Plug>VimwikiGoToParentHeader
 " }}}
 
 " disable unsafe commands in exrc files
