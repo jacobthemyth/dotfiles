@@ -290,6 +290,7 @@ let g:terraform_fmt_on_save=1
 
 " vim-wiki
 let g:vimwiki_list = [{'path': '~/Dropbox/Notes', 'syntax': 'markdown', 'ext': '.wiki'}]
+let g:vimwiki_ext2syntax = {'.wiki': 'markdown'}
 let g:vimwiki_hl_headers = 1
 
 " }}}
