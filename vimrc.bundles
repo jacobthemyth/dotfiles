@@ -11,6 +11,7 @@ Plug 'bilalq/lite-dfm',                { 'for': ['markdown','vimwiki'] }
 Plug 'chriskempson/base16-vim'
 Plug 'christoomey/vim-tmux-navigator'
 Plug 'dhruvasagar/vim-table-mode',     { 'for': 'markdown' }
+Plug 'hashivim/vim-terraform',         { 'for': ['hcl', 'tf', 'tfvars', 'tfstate'] }
 Plug 'janko-m/vim-test'
 Plug 'junegunn/fzf',                   { 'do': { -> fzf#install() } }
 Plug 'junegunn/vim-easy-align',        { 'on': '<Plug>(EasyAlign)' }

@@ -288,11 +288,13 @@ nmap <silent> t<C-g> :TestVisit<CR>
 " vim-terraform
 let g:terraform_align=1
 let g:terraform_fmt_on_save=1
+autocmd BufRead,BufNewFile *.hcl set filetype=terraform
 
 " vim-wiki
 let g:vimwiki_list = [{'path': '~/Dropbox/Notes', 'syntax': 'markdown', 'ext': '.wiki'}]
 let g:vimwiki_ext2syntax = {'.wiki': 'markdown'}
 let g:vimwiki_hl_headers = 1
+let g:vimwiki_folding = 'expr'
 
 " vim-wiki overrides - for file navigation, so this disables the header
 " bingings but adds most of them back as the default.

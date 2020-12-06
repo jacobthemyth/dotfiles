@@ -1,4 +1,4 @@
-# jacobthemyth dotfiles
+# systemist dotfiles
 
 ## Usage
 

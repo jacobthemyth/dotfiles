@@ -65,7 +65,7 @@
   name = Jacob Smith
   email = jacob@jacobsmith.io
 [github]
-  user = jacobthemyth
+  user = systemist
 # vim: ft=gitconfig
 [filter "lfs"]
 	clean = git-lfs clean -- %f
