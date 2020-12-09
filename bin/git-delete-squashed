@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+git list-squashed | xargs git branch -D

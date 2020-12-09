@@ -43,10 +43,10 @@
 [core]
   pager = diff-so-fancy | less --tabs=4 -RFX
   autocrlf = input
-[credential]
-	helper = ""
 [diff]
   compactionHeuristic = true
+[diff "rspec"]
+  xfuncname = "^[ \t]*((RSpec|describe|context|it|before|after|around|feature|scenario)[ \t].*)$"
 [difftool]
   prompt = false
 [fetch]

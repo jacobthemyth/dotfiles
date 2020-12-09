@@ -49,5 +49,5 @@ echo "yabai configuration loaded.."
 # yabai -m config --space 2 layout float
 
 yabai -m rule --add label=messages app='^Messages$' manage=off
-yabai -m rule --add label=fantastical app='^Fantastical$' manage=off
+yabai -m rule --add label=fantastical app='Fantastical' manage=off
 yabai -m rule --add label=tot app='^Tot$' manage=off

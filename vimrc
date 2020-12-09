@@ -140,8 +140,6 @@ highlight link ALEError Error
 highlight htmlArg cterm=italic gui=italic
 highlight Comment cterm=italic gui=italic
 highlight Type    cterm=italic gui=italic
-
-set tags^=./.git/tags;
 " }}}
 
 " Mappings {{{
@@ -171,8 +169,6 @@ nmap ga <Plug>(EasyAlign)
 nnoremap <Leader>S :Gstatus<CR>
 nnoremap dp dp:redraw!<CR>
 nnoremap do do:redraw!<CR>
-
-nnoremap <Leader>b :CtrlPBuffer<CR>
 
 nnoremap <Leader>s :%s/\<<C-r><C-w>\>//g<Left><Left>
 
@@ -216,19 +212,6 @@ let g:ale_fixers = {
 \   'ruby': ['rubocop'],
 \}
 
-" ctrlp
-" Ignore non project files
-let g:ctrlp_custom_ignore = {
-  \ 'dir':  '\v[\/](\.git|node_modules)$',
-  \ }
-
-let g:ctrlp_prompt_mappings = {
-  \ 'PrtSelectMove("j")':   ['<c-j>', '<c-n>'],
-  \ 'PrtSelectMove("k")':   ['<c-k>', '<c-p>'],
-  \ 'PrtHistory(-1)':       ['<down>'],
-  \ 'PrtHistory(1)':        ['<up>'],
-  \ }
-
 " deoplete
 let g:deoplete#enable_at_startup = 1
 let s:default_sources = ['syntax', 'tag', 'buffer', 'file']
@@ -254,7 +237,7 @@ nnoremap <leader>w :Goyo<CR>
 " markdown
 let g:markdown_folding = 1
 au FileType markdown setlocal foldlevel=99
-let g:markdown_fenced_languages = ['c', 'erb=eruby', 'diff', 'go', 'ruby', 'sh']
+let g:markdown_fenced_languages = ['c', 'erb=eruby', 'diff', 'go', 'ruby', 'sh', 'sql']
 
 " netrw
 let g:netrw_bufsettings = 'noma nomod nu nobl nowrap ro'
