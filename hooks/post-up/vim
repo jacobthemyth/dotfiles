@@ -16,7 +16,7 @@ echo "Updating vim plugins..."
 nvim --headless -c 'PlugUpdate --sync' -c 'qa'
 
 echo "Configuring Python for NeoVim ..."
-pip3 install neovim
+pip3 install --user --upgrade neovim neovim-remote
 
 echo "Updating remote vim plugins..."
 nvim --headless -c 'UpdateRemotePlugins' -c 'qa'

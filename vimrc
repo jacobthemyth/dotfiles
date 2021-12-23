@@ -204,13 +204,31 @@ let g:ale_linters = {
 \   'css': ['stylelint'],
 \   'go': ['gobuild', 'gofmt'],
 \   'javascript': ['prettier', 'eslint'],
-\   'ruby': ['rubocop'],
 \}
 let g:ale_fixers = {
 \   'go': ['gofmt', 'goimports'],
 \   'javascript': ['eslint'],
-\   'ruby': ['rubocop'],
 \}
+
+function! SetAleRubyBuffer()
+  let ruby_linters = ["ruby"]
+  let ruby_fixers = []
+
+  if filereadable(".rubocop.yml") | :call add(ruby_linters, "rubocop") | :call add(ruby_fixers, "rubocop" ) | endif
+  if filereadable("rails_best_practices.yml") | :call add(ruby_linters, "rails_best_pratices") | endif
+  if filereadable(".reek") | :call add(ruby_linters, "reek") | endif
+
+  let b:ale_linters = {
+  \   'ruby': ruby_linters,
+  \}
+  let b:ale_fixers = {
+  \   'ruby': ["rubocop"],
+  \}
+endfunction
+augroup AleGroup
+  autocmd!
+  autocmd FileType,BufEnter ruby call SetAleRubyBuffer()
+augroup END
 
 " deoplete
 let g:deoplete#enable_at_startup = 1
