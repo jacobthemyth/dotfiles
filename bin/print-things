@@ -1,29 +1,22 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
+source = ARGV[0]
+unless ["inbox", "next", "someday"].include?(source)
+  exit 1
+end
+
 require "bundler/inline"
-require "csv"
+require "yaml"
 
 gemfile do
   source "https://rubygems.org"
   gem "prawn"
   gem "pry"
-  gem "sqlite3"
 end
 
-db_path = "#{Dir.home}/Library/Group Containers/JLMPQHK86H.com.culturedcode.ThingsMac/Things Database.thingsdatabase/main.sqlite"
-db = SQLite3::Database.new(db_path)
-
-rows = db.execute <<~SQL
-SELECT title, notes
-FROM TMTask TASK
-WHERE trashed = 0 AND type = 0 AND start = 0 AND status = 0
-ORDER BY TASK.creationDate
-SQL
-
-tasks = rows.map do |(title, notes)|
-  { title: title, notes: notes }
-end
+script = File.expand_path('things-export', __dir__)
+tasks = YAML.load(`#{script} #{source}`)
 
 fonts_path = "/Users/jacob/Library/Fonts"
 

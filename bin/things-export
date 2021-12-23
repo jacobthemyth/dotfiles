@@ -1,0 +1,82 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+STATUSES = {
+  todo: 0,
+  cancelled: 2,
+  done: 3,
+}
+
+TYPES = {
+  task: 0,
+  project: 1,
+}
+
+START = {
+  inbox: 0,
+  next:1,
+  someday: 2,
+}
+
+SOURCES = {
+  inbox: "TASK.start = #{START[:inbox]}",
+  next: "TASK.start = #{START[:next]} AND TASK.project IS NULL OR PROJECT.start = #{START[:next]}",
+  someday: "TASK.start = #{START[:someday]} AND TASK.project IS NULL OR PROJECT.start = #{START[:someday]}",
+}
+
+source = ARGV[0].to_sym
+unless SOURCES.key?(source)
+  exit 1
+end
+
+format = ARGV[1] || "yaml"
+unless ["csv", "yaml", "roam"].include?(format)
+  exit 1
+end
+
+require "bundler/inline"
+require "csv"
+require "yaml"
+
+gemfile do
+  source "https://rubygems.org"
+  gem "pry"
+  gem "sqlite3"
+end
+
+db_path = "#{Dir.home}/Library/Group Containers/JLMPQHK86H.com.culturedcode.ThingsMac/Things Database.thingsdatabase/main.sqlite"
+db = SQLite3::Database.new(db_path)
+
+rows = db.execute <<~SQL
+SELECT TASK.title, TASK.notes, PROJECT.title project
+FROM TMTask TASK
+LEFT JOIN TMTask PROJECT
+ON PROJECT.type = #{TYPES[:project]} AND TASK.project = PROJECT.uuid
+WHERE TASK.trashed = 0
+AND TASK.type = #{TYPES[:task]}
+AND TASK.status = #{STATUSES[:todo]}
+AND #{SOURCES[source]}
+ORDER BY TASK.creationDate
+SQL
+
+tasks = rows.map { |(title, notes, project)|
+  { title: title, notes: notes, project: project }
+}
+
+case format
+when "roam"
+  tasks.each do |task|
+    puts "- {{[[TODO]]}} #{task[:title]}"
+    if task[:project]
+      puts "Project:: #{task[:project]}"
+    end
+
+    unless String(task[:notes]) == ""
+      puts "\t- #{task[:notes]}"
+    end
+  end
+when "csv"
+  puts tasks.map(&:values).map(&:to_csv)
+else
+  puts tasks.to_yaml
+end
