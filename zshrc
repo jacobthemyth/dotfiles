@@ -40,6 +40,7 @@ eval "$(nodenv init -)"
 export PATH="$HOME/go/bin:$PATH"
 export PATH="$HOME/.cargo/bin:$PATH"
 export PATH="$HOME/.bin:$PATH"
+export PATH="$HOME/.emacs.d/bin:$PATH"
 export PATH=".git/safe/../../bin:$PATH"
 
 export FZF_DEFAULT_OPTS="--extended --cycle"
@@ -94,3 +95,6 @@ export FZF_DEFAULT_COMMAND='rg --files'
 
 # aliases
 [[ -f ~/.aliases ]] && source ~/.aliases
+export NVM_DIR="$HOME/.nvm"
+[ -s "/usr/local/opt/nvm/nvm.sh" ] && . "/usr/local/opt/nvm/nvm.sh"  # This loads nvm
+export PATH="/usr/local/opt/postgresql@12/bin:$PATH"

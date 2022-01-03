@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-COPY_ALWAYS="tag-mac/Library/Scripts/**/*"
-DOTFILES_DIRS="$HOME/.dotfiles"
-EXCLUDES="script/* fonts/* Brewfile README.md LICENSE decryption-status"
-TAGS="encrypted"
-UNDOTTED="Library"
+export COPY_ALWAYS="tag-mac/Library/Scripts/**/*"
+export DOTFILES_DIRS="$HOME/.dotfiles"
+export EXCLUDES="script/* fonts/* Brewfile README.md LICENSE decryption-status"
+export SYMLINK_DIRS="emacs.d"
+export TAGS="encrypted"
+export UNDOTTED="Library"

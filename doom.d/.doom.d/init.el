@@ -1,0 +1,1 @@
+/Users/jacob/.dotfiles/doom.d/init.el
