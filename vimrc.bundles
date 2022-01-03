@@ -7,10 +7,17 @@ call plug#begin('~/.vim/bundle')
 Plug 'kana/vim-textobj-user' " used by rubyblock and quote
 
 Plug 'airblade/vim-gitgutter'
+Plug 'autozimu/LanguageClient-neovim', {
+    \ 'branch': 'next',
+    \ 'do': 'bash install.sh',
+    \ }
+
+Plug 'axvr/org.vim'
 Plug 'bilalq/lite-dfm',                { 'for': ['markdown','vimwiki'] }
 Plug 'chriskempson/base16-vim'
 Plug 'christoomey/vim-tmux-navigator'
-Plug 'dhruvasagar/vim-table-mode',     { 'for': 'markdown' }
+Plug 'dhruvasagar/vim-table-mode',     { 'for': ['markdown', 'org'] }
+Plug 'fatih/vim-go',                   { 'do': ':GoUpdateBinaries' }
 Plug 'hashivim/vim-terraform',         { 'for': ['hcl', 'tf', 'tfvars', 'tfstate'] }
 Plug 'janko-m/vim-test'
 Plug 'junegunn/fzf',                   { 'do': { -> fzf#install() } }
@@ -27,7 +34,7 @@ Plug 'tpope/vim-fugitive'
 Plug 'tpope/vim-markdown',             { 'for': 'markdown' }
 Plug 'tpope/vim-projectionist'
 Plug 'tpope/vim-rails'
-Plug 'tpope/vim-rake'
+" Plug 'tpope/vim-rake'
 Plug 'tpope/vim-repeat'
 Plug 'tpope/vim-rhubarb'
 Plug 'tpope/vim-rsi'

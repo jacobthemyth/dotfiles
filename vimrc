@@ -204,10 +204,13 @@ let g:ale_linters = {
 \   'css': ['stylelint'],
 \   'go': ['gobuild', 'gofmt'],
 \   'javascript': ['prettier', 'eslint'],
+\   'ruby': ['rubocop'],
+\   'c': ['cppcheck'],
 \}
 let g:ale_fixers = {
 \   'go': ['gofmt', 'goimports'],
 \   'javascript': ['eslint'],
+\   'ruby': ['rubocop'],
 \}
 
 function! SetAleRubyBuffer()
@@ -251,6 +254,36 @@ nnoremap <silent> <C-p> :FZF<CR>
 
 " goyo
 nnoremap <leader>w :Goyo<CR>
+
+" LanguageClient-neovim {{{
+let g:LanguageClient_serverCommands = {
+    \ 'rust': ['~/.cargo/bin/rustup', 'run', 'stable', 'rls'],
+    \ 'ruby': ['~/.rbenv/shims/solargraph', 'stdio'],
+    \ }
+
+" note that if you are using Plug mapping you should not use `noremap` mappings.
+nmap <leader>ls <Plug>(lcn-menu)
+nmap <leader>lsh <Plug>(lcn-hover)
+nmap <leader>lss <Plug>(lcn-symbols)
+nmap <leader>lsr <Plug>(lcn-references)
+
+" Rename - rn => rename
+noremap <leader>rn :call LanguageClient#textDocument_rename()<CR>
+
+" Rename - rc => rename camelCase
+noremap <leader>rc :call LanguageClient#textDocument_rename(
+            \ {'newName': Abolish.camelcase(expand('<cword>'))})<CR>
+
+" Rename - rs => rename snake_case
+noremap <leader>rs :call LanguageClient#textDocument_rename(
+            \ {'newName': Abolish.snakecase(expand('<cword>'))})<CR>
+
+" Rename - ru => rename UPPERCASE
+noremap <leader>ru :call LanguageClient#textDocument_rename(
+            \ {'newName': Abolish.uppercase(expand('<cword>'))})<CR>
+
+nmap <silent> gd <Plug>(lcn-definition)
+" }}}
 
 " markdown
 let g:markdown_folding = 1
