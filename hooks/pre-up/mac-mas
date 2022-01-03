@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+# TODO: replace with tag hooks
+[[ "$OSTYPE" == "darwin"* ]] || exit
+
+if ! command -v mas >/dev/null; then
+  brew install mas
+fi

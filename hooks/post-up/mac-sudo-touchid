@@ -2,6 +2,9 @@
 
 set -eo pipefail
 
+# TODO: replace with tag hooks
+[[ "$OSTYPE" == "darwin"* ]] || exit
+
 pam_rea="auth       optional       pam_reattach.so"
 pam_tid="auth       sufficient     pam_tid.so"
 

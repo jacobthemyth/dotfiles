@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+if command -v reattach-to-user-namespace > /dev/null; then
+  reattach-to-user-namespace pbcopy
+elif command -v clip.exe > /dev/null; then
+  clip.exe
+fi

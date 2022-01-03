@@ -1,3 +1,4 @@
+source ~/.profile
 autoload -U promptinit; promptinit
 eval "$(starship init zsh)"
 
@@ -38,7 +39,6 @@ eval "$(nodenv init -)"
 
 export PATH="$HOME/go/bin:$PATH"
 export PATH="$HOME/.cargo/bin:$PATH"
-export PATH="/usr/local/bin:/usr/local/sbin:$PATH"
 export PATH="$HOME/.bin:$PATH"
 export PATH=".git/safe/../../bin:$PATH"
 

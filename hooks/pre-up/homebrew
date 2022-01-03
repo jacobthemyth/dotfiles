@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+brew_bin=
+if command -v /home/linuxbrew/.linuxbrew/bin/brew > /dev/null; then
+  brew_bin="/home/linuxbrew/.linuxbrew/bin/brew"
+else
+  brew_bin="/usr/local/bin/brew"
+fi
+
+if ! command -v $brew_bin >/dev/null; then
+  echo "Installing Homebrew ..."
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
+fi
+
+if [[ -z "$HOMEBREW_PREFIX" ]]; then
+  echo "eval \"\$($brew_bin shellenv)\"" >> "$HOME/.profile"
+  eval "$($brew_bin shellenv)"
+fi
+
+echo "Updating Homebrew formulae ..."
+brew update
+brew bundle --file=$HOME/.dotfiles/Brewfile --no-lock

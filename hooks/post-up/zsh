@@ -2,4 +2,9 @@
 
 set -eo pipefail
 
-compaudit | xargs chmod g-w
+if ! [[ "$SHELL" == "$(which zsh)" ]]; then
+  chsh -s "$(which zsh)"
+fi
+
+compaudit_files="$(zsh -c "autoload -Uz compinit && compinit && compaudit")"
+[[ -n "$compaudit_files" ]] && echo "$compaudit_files" | xargs chmod g-w || :

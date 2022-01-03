@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+brew bundle --file=$HOME/.Brewfile.local --no-lock
+
+echo "Cleaning up old Homebrew formulae ..."
+brew cleanup
