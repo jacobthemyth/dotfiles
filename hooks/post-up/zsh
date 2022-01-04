@@ -3,7 +3,7 @@
 set -eo pipefail
 
 if ! [[ "$SHELL" == "$(which zsh)" ]]; then
-  chsh -s "$(which zsh)"
+  sudo chsh -s "$(which zsh)"
 fi
 
 compaudit_files="$(zsh -c "autoload -Uz compinit && compinit && compaudit")"

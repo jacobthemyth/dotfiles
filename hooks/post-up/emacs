@@ -2,4 +2,4 @@
 
 set -eo pipefail
 
-doom sync
+~/.emacs.d/bin/doom sync

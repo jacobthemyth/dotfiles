@@ -2,7 +2,7 @@
 
 set -eo pipefail
 
-brew bundle --file=$HOME/.Brewfile.local --no-lock
+[[ -f "$HOME/.Brewfile.platform" ]] && brew bundle --file=$HOME/.Brewfile.platform --no-lock
 
 echo "Cleaning up old Homebrew formulae ..."
 brew cleanup
