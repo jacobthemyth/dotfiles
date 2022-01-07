@@ -1,1 +1,0 @@
-/Users/jacob/.dotfiles/doom.d/config.el
