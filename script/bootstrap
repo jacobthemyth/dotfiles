@@ -12,12 +12,19 @@ fi
 if ! command -v $brew_bin >/dev/null; then
   echo "Installing Homebrew ..."
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
+  if command -v /home/linuxbrew/.linuxbrew/bin/brew > /dev/null; then
+    brew_bin="/home/linuxbrew/.linuxbrew/bin/brew"
+  else
+    brew_bin="/usr/local/bin/brew"
+  fi
 fi
 
-if [[ -z "$HOMEBREW_PREFIX" ]]; then
+if ! grep -q "$brew_bin shellenv" "$HOME/.profile"; then
   echo "eval \"\$($brew_bin shellenv)\"" >> "$HOME/.profile"
   eval "$($brew_bin shellenv)"
 fi
+
+source "$HOME/.profile"
 
 echo "Updating Homebrew formulae ..."
 brew update

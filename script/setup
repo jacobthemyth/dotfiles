@@ -8,7 +8,7 @@ dotfiles_os=
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
   dotfiles_os="mac"
-elif grep -qi microsoft /proc/version && [[ "$WSL_DISTRO_NAME" == "Ubuntu" ]]; then
+elif grep -q UBUNTU_CODENAME /etc/os-release || (grep -qi microsoft /proc/version && [[ "$WSL_DISTRO_NAME" == "Ubuntu" ]]); then
   dotfiles_os="ubuntu"
   if ! dpkg -s build-essential >/dev/null; then
     sudo apt-get update && sudo apt-get install build-essential zsh
@@ -19,6 +19,7 @@ else
 fi
 
 "$dotfiles_root/script/bootstrap"
+source $HOME/.profile
 RCRC="$HOME/.dotfiles/rcrc" rcup -t "$dotfiles_os"
 
 # TODO: ideally these would be hooks, but decrypt-git is interactive and
