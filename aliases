@@ -34,3 +34,5 @@ alias awsume=". awsume"
 alias tg="terragrunt"
 alias pr="hub pull-request --draft -op -b main"
 alias heroku="env TERM=vt100 heroku"
+
+alias em="emacsclient -t -a ''"

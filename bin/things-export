@@ -83,16 +83,16 @@ when "roam"
   end
 when "org"
   tasks.each do |task|
-    puts "* #{task[:title]}"
+    puts "* TODO #{task[:title]}"
     if task[:project]
-      puts "\t:PROPERTIES:"
-      puts "\t:Project:\t#{task[:project]}"
-      puts "\t:END:"
+      puts ":PROPERTIES:"
+      puts ":Project:\t#{task[:project]}"
+      puts ":END:"
     end
 
     unless String(task[:notes]) == ""
       puts "\n" if task[:project]
-      puts task[:notes].indent(1, "\t")
+      puts task[:notes].gsub(/^\*/, "-")
     end
   end
 when "csv"
