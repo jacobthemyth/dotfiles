@@ -18,19 +18,21 @@ START = {
   someday: 2,
 }
 
-SOURCES = {
-  inbox: "TASK.start = #{START[:inbox]}",
-  next: "TASK.start = #{START[:next]} AND TASK.project IS NULL OR PROJECT.start = #{START[:next]}",
-  someday: "TASK.start = #{START[:someday]} AND TASK.project IS NULL OR PROJECT.start = #{START[:someday]}",
-}
-
-source = ARGV[0].to_sym
-unless SOURCES.key?(source)
+source = case ARGV[0].chomp
+when "inbox"
+  "TASK.start = #{START[:inbox]}"
+when "next"
+  "TASK.start = #{START[:next]} AND TASK.project IS NULL OR PROJECT.start = #{START[:next]}"
+when "someday"
+  "TASK.start = #{START[:someday]} AND TASK.project IS NULL OR PROJECT.start = #{START[:someday]}"
+when /\Athings:\/\/\/show\?id=(\w+)\z/
+  "PROJECT.uuid = '#{$1}'"
+else
   exit 1
 end
 
 format = ARGV[1] || "yaml"
-unless ["csv", "yaml", "roam"].include?(format)
+unless ["csv", "yaml", "org", "roam"].include?(format)
   exit 1
 end
 
@@ -42,7 +44,11 @@ gemfile do
   source "https://rubygems.org"
   gem "pry"
   gem "sqlite3"
+  gem "activesupport"
 end
+
+require "active_support"
+require "active_support/core_ext"
 
 db_path = "#{Dir.home}/Library/Group Containers/JLMPQHK86H.com.culturedcode.ThingsMac/Things Database.thingsdatabase/main.sqlite"
 db = SQLite3::Database.new(db_path)
@@ -55,7 +61,7 @@ ON PROJECT.type = #{TYPES[:project]} AND TASK.project = PROJECT.uuid
 WHERE TASK.trashed = 0
 AND TASK.type = #{TYPES[:task]}
 AND TASK.status = #{STATUSES[:todo]}
-AND #{SOURCES[source]}
+AND #{source}
 ORDER BY TASK.creationDate
 SQL
 
@@ -73,6 +79,20 @@ when "roam"
 
     unless String(task[:notes]) == ""
       puts "\t- #{task[:notes]}"
+    end
+  end
+when "org"
+  tasks.each do |task|
+    puts "* #{task[:title]}"
+    if task[:project]
+      puts "\t:PROPERTIES:"
+      puts "\t:Project:\t#{task[:project]}"
+      puts "\t:END:"
+    end
+
+    unless String(task[:notes]) == ""
+      puts "\n" if task[:project]
+      puts task[:notes].indent(1, "\t")
     end
   end
 when "csv"

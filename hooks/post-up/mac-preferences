@@ -6,13 +6,6 @@ set -eo pipefail
 [[ "$OSTYPE" == "darwin"* ]] || exit
 
 ###############################################################################
-# Choosy
-###############################################################################
-
-defaults write com.choosyosx.Choosy displayMenuBarItem -bool NO
-defaults write com.choosyosx.Choosy launchAtLogin -bool YES
-
-###############################################################################
 # Google Chrome
 ###############################################################################
 
@@ -42,14 +35,7 @@ defaults write com.culturedcode.ThingsMac PreferredTheme -bool false
 # Don't show calendar events
 defaults write com.culturedcode.ThingsMac AppleEventsEnabled -bool false
 
-###############################################################################
-# Alfred
-###############################################################################
-
-defaults write com.runningwithcrayons.Alfred-Preferences syncfolder -string '~/Dropbox/.config'
-
 for app in \
-  "Alfred" \
   "Google Chrome" \
   "Things"
 do
