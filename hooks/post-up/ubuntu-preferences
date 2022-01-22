@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+# TODO: replace with tag hooks
+[[ "$OSTYPE" == "linux-gnu"* ]] || exit
+
+/usr/bin/xcape -e 'Caps_Lock=Escape'
+
+# gsettings should be preferred, but it doesn't seem to work
+# gsettings set org.gnome.desktop.input-sources xkb-options "['caps:ctrl_modifier']"
+dconf write /org/gnome/desktop/interface/font-name 'Fira Sans Semi-Light 11'
+dconf write /org/gnome/desktop/interface/gtk-key-theme 'Emacs'
+dconf write /org/gnome/desktop/input-sources/xkb-options "['caps:ctrl_modifier']"

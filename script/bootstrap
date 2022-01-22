@@ -19,13 +19,6 @@ if ! command -v $brew_bin >/dev/null; then
   fi
 fi
 
-if ! grep -q "$brew_bin shellenv" "$HOME/.profile"; then
-  echo "eval \"\$($brew_bin shellenv)\"" >> "$HOME/.profile"
-  eval "$($brew_bin shellenv)"
-fi
-
-source "$HOME/.profile"
-
 echo "Updating Homebrew formulae ..."
 brew update
 brew bundle --file=$HOME/.dotfiles/Brewfile --no-lock

@@ -2,6 +2,9 @@
 
 set -eo pipefail
 
+# TODO: replace with tag hooks
+[[ "$OSTYPE" == "darwin"* ]] || exit
+
 brew services start skhd >/dev/null 2>&1
 brew services start yabai >/dev/null 2>&1
 brew services cleanup >/dev/null 2>&1
