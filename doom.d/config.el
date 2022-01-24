@@ -56,5 +56,46 @@
 ;; they are implemented.
 
 (setq org-capture-templates
-      (quote (("t" "todo" entry (file "~/org/Inbox.org")
+      (quote (("t" "todo" entry (file "~/Dropbox/org/Inbox.org")
                "* TODO %?\n%a\n"))))
+
+; (add-to-list 'org-roam-capture-templates
+;     '("m" "Markdown" plain "" :target
+;         (file+head "%<%Y-%m-%dT%H%M%S>.md"
+; "---\ntitle: ${title}\nid: %<%Y-%m-%dT%H%M%S>\ncategory: \n---\n")
+;     :unnarrowed t))
+
+(after! 'org-roam
+   ; md-roam-mode needs to be active before org-roam-db-sync
+  (md-roam-mode 1))
+
+(setq org-roam-file-extensions '("org" "md")) ; enable Org-roam for a markdown extension
+
+(defun systemist/copy-as-rtf ()
+  "Export region to RTF and copy it to the clipboard."
+  (interactive)
+  (save-window-excursion
+    (let* ((buf (org-export-to-buffer 'html "*Formatted Copy*" nil nil t t))
+           (html (with-current-buffer buf (buffer-string))))
+      (with-current-buffer buf
+        (shell-command-on-region
+         (point-min)
+         (point-max)
+         "textutil -stdin -format html -convert rtf -stdout | pbcopy"))
+      (kill-buffer buf))))
+
+(add-hook 'markdown-mode-hook #'systemist/markdown-mode-hook)
+(defun systemist/markdown-mode-hook ()
+  "Custom `markdown-mode` behaviors."
+  (critic-minor-mode))
+
+(add-hook 'org-mode-hook #'systemist/org-mode-hook)
+(defun systemist/org-mode-hook ()
+  "Custom `org-mode` behaviors."
+  (critic-minor-mode))
+
+(add-hook 'dired-mode-hook 'dired-hide-details-mode)
+
+(setq +org-roam-open-buffer-on-find-file nil)
+
+(map! :nv "gx" #'browse-url-at-point)
