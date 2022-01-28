@@ -16,9 +16,6 @@
 ;; https://github.com/raxod502/straight.el#the-recipe-format
 ;(package! another-package
 ;  :recipe (:host github :repo "username/repo"))
-(package! md-roam
- :recipe (:host github :repo "nobiot/md-roam"))
-
 (package! critic
  :recipe (:host github :repo "Kungsgeten/critic.el"))
 

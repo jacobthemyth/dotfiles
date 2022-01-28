@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+for f in ~/Dropbox/org/Readwise/**/*.md; do
+  cat "$f" \
+    | sed -e '1!b' -e '/^#.*\(highlights\)$/!d' \
+    | sed -e '1!b' -e '/^\s*$/d' \
+    | sed -r 's/^(\s*)\* /\1- /' \
+    | sed -e 's/^### Highlights$/* Highlights/' \
+    > "${f%.md}.org"
+done

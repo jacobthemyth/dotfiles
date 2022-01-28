@@ -59,18 +59,6 @@
       (quote (("t" "todo" entry (file "~/Dropbox/org/Inbox.org")
                "* TODO %?\n%a\n"))))
 
-; (add-to-list 'org-roam-capture-templates
-;     '("m" "Markdown" plain "" :target
-;         (file+head "%<%Y-%m-%dT%H%M%S>.md"
-; "---\ntitle: ${title}\nid: %<%Y-%m-%dT%H%M%S>\ncategory: \n---\n")
-;     :unnarrowed t))
-
-(after! 'org-roam
-   ; md-roam-mode needs to be active before org-roam-db-sync
-  (md-roam-mode 1))
-
-(setq org-roam-file-extensions '("org" "md")) ; enable Org-roam for a markdown extension
-
 (defun systemist/copy-as-rtf ()
   "Export region to RTF and copy it to the clipboard."
   (interactive)
@@ -99,3 +87,10 @@
 (setq +org-roam-open-buffer-on-find-file nil)
 
 (map! :nv "gx" #'browse-url-at-point)
+
+(setq org-image-actual-width 400)
+
+(map! :n "M-RET" #'toggle-frame-fullscreen)
+
+(setq org-link-descriptive nil)
+(setq org-roam-link-auto-replace nil)
