@@ -10,14 +10,14 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
   dotfiles_os="mac"
 elif grep -q UBUNTU_CODENAME /etc/os-release || (grep -qi microsoft /proc/version && [[ "$WSL_DISTRO_NAME" == "Ubuntu" ]]); then
   dotfiles_os="ubuntu"
-  if ! dpkg -s build-essential >/dev/null; then
-    sudo apt-get update && sudo apt-get install build-essential
+  if ! dpkg -s build-essential >/dev/null 2>&1; then
+    sudo apt-get update && sudo apt-get install build-essential -y
   fi
-  if ! dpkg -s xcape >/dev/null; then
-    sudo apt-get update && sudo apt-get install xcape
+  if ! dpkg -s xcape >/dev/null 2>&1; then
+    sudo apt-get update && sudo apt-get install xcape -y
   fi
-  if ! dpkg -s zsh >/dev/null; then
-    sudo apt-get update && sudo apt-get install zsh
+  if ! dpkg -s zsh >/dev/null 2>&1; then
+    sudo apt-get update && sudo apt-get install zsh -y
   fi
 else
   echo "Unsupported OS $OSTYPE"

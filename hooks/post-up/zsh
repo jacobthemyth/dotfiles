@@ -3,7 +3,6 @@
 set -eo pipefail
 
 if ! [[ "$SHELL" == "$(which zsh)" ]]; then
-  echo "$(which zsh)" | sudo tee -a /etc/shells
   sudo chsh -s "$(which zsh)" "$(whoami)"
 fi
 

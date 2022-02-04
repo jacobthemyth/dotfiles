@@ -4,8 +4,8 @@ Description=Emacs Daemon
 [Service]
 Type=notify
 Type=notify
-ExecStart=/home/linuxbrew/.linuxbrew/bin/emacs --fg=daemon
-ExecStop=/home/linuxbrew/.linuxbrew/bin/emacsclient --eval "(kill-emacs)"
+ExecStart=emacs --fg-daemon
+ExecStop=emacsclient --eval "(kill-emacs)"
 Restart=on-failure
 
 [Install]
