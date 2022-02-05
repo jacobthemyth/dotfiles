@@ -1,0 +1,3 @@
+ulimit -Sn 10000
+imagemagick
+git-credential-manager-core
