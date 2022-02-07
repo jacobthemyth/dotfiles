@@ -31,6 +31,9 @@
 ;; change `org-directory'. It must be set before org loads!
 (setq org-directory "~/Dropbox/org/")
 (setq org-roam-directory "~/Dropbox/org/")
+(setq org-archive-location "~/Dropbox/org/.archive/%s_archive::")
+(setq org-jira-working-dir "~/Dropbox/org/.jira")
+(setq jiralib-url "https://kajabi.atlassian.net")
 
 ;; This determines the style of line numbers in effect. If set to `nil', line
 ;; numbers are disabled. For relative line numbers, set this to `relative'.
