@@ -19,4 +19,3 @@ fi
 nodenv global "$node_version"
 nodenv shell "$node_version"
 nodenv default-packages install --all
-

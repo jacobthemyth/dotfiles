@@ -20,8 +20,3 @@ fi
 if [ -d "$HOME/.local/bin" ] ; then
     PATH="$HOME/.local/bin:$PATH"
 fi
-
-# If the user has a platform-specific profile script, source it
-if [ -f "$HOME/.profile.platform" ] ; then
-  . "$HOME/.profile.platform"
-fi

@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-
-set -eo pipefail
-
-[[ -f "$HOME/.Brewfile.platform" ]] && brew bundle --file=$HOME/.Brewfile.platform --no-lock
-
-echo "Cleaning up old Homebrew formulae ..."
-brew cleanup

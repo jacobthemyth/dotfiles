@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+# TODO: replace with tag hooks
+[[ "$OSTYPE" == "darwin"* ]] || exit
+
+set -eo pipefail
+
+if ! command -v brew >/dev/null; then
+  echo "Installing Homebrew ..."
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
+fi
+
+echo "Updating Homebrew formulae ..."
+brew update
+brew bundle --file=$HOME/.dotfiles/Brewfile --no-lock
+
+echo "Cleaning up old Homebrew formulae ..."
+brew cleanup
