@@ -5,11 +5,8 @@ set -eo pipefail
 PATH="$HOME/.rbenv/bin:$PATH"
 
 echo "Configuring Ruby ..."
-find_latest_ruby() {
-  rbenv install -l | grep -v - | tail -1 | sed -e 's/^ *//'
-}
 
-ruby_version="$(find_latest_ruby)"
+ruby_version="$(cat "$HOME/.ruby-version")"
 eval "$(rbenv init -)"
 
 if ! rbenv versions | grep -Fq "$ruby_version"; then

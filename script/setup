@@ -13,7 +13,7 @@ else
   exit 1
 fi
 
-RCRC="$HOME/.dotfiles/rcrc" rcup -t "$TAGS"
+RCRC="$HOME/.dotfiles/rcrc" rcup -t "$TAGS" -t "encrypted"
 
 # TODO: ideally these would be hooks, but decrypt-git is interactive and
 # hooks don't seem to support that

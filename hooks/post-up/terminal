@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-
-set -eo pipefail
-
-tic -xe alacritty,alacritty-direct ~/.config/terminfo/alacritty.terminfo -o "$HOME/.terminfo"
-tic -x ~/.config/terminfo/tmux-256color-italic.terminfo -o "$HOME/.terminfo"
-tic -x ~/.config/terminfo/xterm-256color-italic.terminfo -o "$HOME/.terminfo"

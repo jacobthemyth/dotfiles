@@ -2,7 +2,7 @@
 
 set -eo pipefail
 
-for f in ~/Dropbox/org/Readwise/**/*.md; do
+for f in ~/Dropbox/org/ReadingNotes/Readwise/**/*.md; do
   cat "$f" \
     | sed -e '1!b' -e '/^#.*\(highlights\)$/!d' \
     | sed -e '1!b' -e '/^\s*$/d' \

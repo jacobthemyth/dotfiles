@@ -32,7 +32,7 @@
 (setq org-directory "~/Dropbox/org/")
 (setq org-roam-directory "~/Dropbox/org/")
 (setq org-archive-location "~/Dropbox/org/.archive/%s_archive::")
-(setq org-jira-working-dir "~/Dropbox/org/.jira")
+(setq org-jira-working-dir "~/Dropbox/org-jira")
 (setq jiralib-url "https://kajabi.atlassian.net")
 
 ;; This determines the style of line numbers in effect. If set to `nil', line
@@ -59,7 +59,7 @@
 ;; they are implemented.
 
 (setq org-capture-templates
-      (quote (("t" "todo" entry (file "~/Dropbox/org/Inbox.org")
+      (quote (("t" "todo" entry (file "~/Dropbox/org/todo.org")
                "* TODO %?\n%a\n"))))
 
 (defun systemist/copy-as-rtf ()
@@ -91,9 +91,54 @@
 
 (map! :nv "gx" #'browse-url-at-point)
 
-(setq org-image-actual-width 400)
-
 (map! :n "M-RET" #'toggle-frame-fullscreen)
 
-(setq org-link-descriptive nil)
 (setq org-roam-link-auto-replace nil)
+
+(defun systemist/resize-org-images (&rest _)
+  (setq org-image-actual-width (list (round (* 0.8 (window-body-width nil t)))))
+  (unless org-inline-image-overlays
+    (org-redisplay-inline-images)))
+
+(add-hook 'window-size-change-functions 'systemist/resize-org-images)
+
+(setq ob-mermaid-cli-path "/usr/local/bin/mmdc")
+
+(org-babel-do-load-languages
+    'org-babel-load-languages
+    '((mermaid . t)
+      (elisp . t)))
+
+;; (defconst org-jira-progress-issue-flow
+;;   '(
+;;     ("To Do" . "In Progress"
+;;     ("In Progress" . "Done"))))
+
+(setq org-jira-custom-jqls
+  '(
+    (:jql "project IN (STANDARD, PROD) and status IN ('To Do', 'In Progress') and issuetype IN ('Task', 'Project')"
+     :limit 50
+     :filename "my-work")
+    ))
+
+(setq jiralib-update-issue-fields-exclude-list '(priority components))
+
+(setq format-all-formatters
+      '(("SQL" pgformatter)))
+
+(add-hook 'sql-mode-hook #'format-all-mode)
+
+(eval-after-load "org-present"
+  '(progn
+     (add-hook 'org-present-mode-hook
+               (lambda ()
+                 ;; (org-present-big)
+                 (org-display-inline-images)
+                 (org-present-hide-cursor)
+                 (org-present-read-only)))
+     (add-hook 'org-present-mode-quit-hook
+               (lambda ()
+                 ;; (org-present-small)
+                 (org-remove-inline-images)
+                 (org-present-show-cursor)
+                 (org-present-read-write)))))
