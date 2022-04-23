@@ -2,9 +2,5 @@
 
 set -eo pipefail
 
-if ! [[ "$SHELL" == "$(which zsh)" ]]; then
-  sudo chsh -s "$(which zsh)" "$(whoami)"
-fi
-
 compaudit_files="$(zsh -c "autoload -Uz compinit && compinit && compaudit")"
 [[ -n "$compaudit_files" ]] && echo "$compaudit_files" | xargs chmod g-w || :

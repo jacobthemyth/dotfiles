@@ -1,3 +1,2 @@
 [global]
-skip_dotenv = true
 strict_env = true

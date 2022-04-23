@@ -85,8 +85,6 @@ unsetopt nomatch
 
 setopt promptsubst
 
-export TERM="xterm-256color-italic"
-
 eval "$(direnv hook zsh)"
 
 export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES

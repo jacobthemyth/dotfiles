@@ -14,7 +14,7 @@ fi
 
 echo "Updating Homebrew formulae ..."
 brew update
-brew bundle --file=$HOME/.dotfiles/Brewfile --no-lock
+brew bundle --file=$HOME/.dotfiles/tag-mac/Brewfile --no-lock
 
 echo "Cleaning up old Homebrew formulae ..."
 brew cleanup
