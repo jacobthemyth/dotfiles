@@ -12,7 +12,6 @@ Plug 'autozimu/LanguageClient-neovim', {
     \ 'do': 'bash install.sh',
     \ }
 
-Plug 'axvr/org.vim'
 Plug 'bilalq/lite-dfm',                { 'for': ['markdown','vimwiki'] }
 Plug 'chriskempson/base16-vim'
 Plug 'christoomey/vim-tmux-navigator'
@@ -23,10 +22,14 @@ Plug 'janko-m/vim-test'
 Plug 'junegunn/fzf',                   { 'do': { -> fzf#install() } }
 Plug 'junegunn/vim-easy-align',        { 'on': '<Plug>(EasyAlign)' }
 Plug 'junegunn/goyo.vim',              { 'for': ['markdown', 'vimwiki'] }
+Plug 'kristijanhusak/vim-dadbod-completion'
+Plug 'kristijanhusak/vim-dadbod-ui'
+Plug 'lifepillar/pgsql.vim'
 Plug 'nelstrom/vim-textobj-rubyblock', { 'for': 'ruby' }
 Plug 'pangloss/vim-javascript'
 Plug 'tpope/vim-abolish'
 Plug 'tpope/vim-bundler'
+Plug 'tpope/vim-dadbod'
 Plug 'tpope/vim-dispatch',             { 'on': 'Dispatch' }
 Plug 'tpope/vim-endwise'
 Plug 'tpope/vim-eunuch'
@@ -45,8 +48,8 @@ Plug 'vim-airline/vim-airline'
 Plug 'vim-airline/vim-airline-themes'
 Plug 'vim-ruby/vim-ruby'
 Plug 'vim-scripts/tComment'
+Plug 'vim-scripts/SyntaxRange'
 Plug 'vim-voom/VOoM'
-Plug 'vimwiki/vimwiki'
 Plug 'w0rp/ale',                       { 'do': 'go get golang.org/x/tools/cmd/goimports' }
 " Plug 'wakatime/vim-wakatime'
 Plug 'yssl/QFEnter'
@@ -56,10 +59,13 @@ if has('nvim')
   Plug 'Shougo/denite.nvim'
   Plug 'Shougo/neco-syntax' " Syntax source for deoplete
   Plug 'zchee/deoplete-go', { 'do': 'make; go get -u github.com/mdempsky/gocode' }
+  Plug 'nvim-treesitter/nvim-treesitter'
+  Plug 'nvim-orgmode/orgmode'
 else
   " Sensible defaults
   " needs to be last
   Plug 'tpope/vim-sensible'
+  Plug 'axvr/org.vim'
 endif
 
 call plug#end()

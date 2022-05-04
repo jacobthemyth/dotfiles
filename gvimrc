@@ -1,1 +1,1 @@
-set guifont=Operator\ Mono\ Ssm\ for\ Powerline:h16
+set guifont=OperatorMonoSSm\ Nerd\ Font\ Mono

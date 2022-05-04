@@ -93,6 +93,5 @@ export FZF_DEFAULT_COMMAND='rg --files'
 
 # aliases
 [[ -f ~/.aliases ]] && source ~/.aliases
-export NVM_DIR="$HOME/.nvm"
-[ -s "/usr/local/opt/nvm/nvm.sh" ] && . "/usr/local/opt/nvm/nvm.sh"  # This loads nvm
 export PATH="/usr/local/opt/postgresql@12/bin:$PATH"
+export PATH="$HOME/.rbenv/bin:$PATH"

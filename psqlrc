@@ -1,0 +1,18 @@
+\set QUIET 1
+\pset pager always
+\set VERBOSITY verbose
+\pset null '(null)'
+\set COMP_KEYWORD_CASE upper
+\pset linestyle unicode
+\pset unicode_border_linestyle single
+\pset unicode_column_linestyle single
+\pset unicode_header_linestyle double
+\pset border 2
+\set PROMPT1 '%/[%p][%l]%x%R%# '
+\set PROMPT2 '%/[%p][%l]%x%R%# '
+\set PROMPT3 'c:%/[%p][%l]%x%R%# '
+\set HISTCONTROL ignoredups
+\set HISTSIZE 100000
+\timing on
+\x auto
+\set QUIET 0

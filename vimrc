@@ -1,4 +1,4 @@
-let mapleader = " "
+let mapleader = "\<Space>"
 
 syntax on
 
@@ -99,7 +99,6 @@ cnoremap %% <C-R>=fnameescape(expand('%:h')).'/'<cr>
 
 " automatically rebalance windows on vim resize
 autocmd VimResized * wincmd =
-set foldmethod=indent
 set nofoldenable       " don't fold by default
 
 " Persistent undo
@@ -166,7 +165,6 @@ xmap ga <Plug>(EasyAlign)
 nmap ga <Plug>(EasyAlign)
 
 " Fugitive
-nnoremap <Leader>S :Gstatus<CR>
 nnoremap dp dp:redraw!<CR>
 nnoremap do do:redraw!<CR>
 
@@ -211,6 +209,7 @@ let g:ale_fixers = {
 \   'go': ['gofmt', 'goimports'],
 \   'javascript': ['eslint'],
 \   'ruby': ['rubocop'],
+\   'sql': ['pgformatter'],
 \}
 
 function! SetAleRubyBuffer()
@@ -344,6 +343,53 @@ autocmd FileType vimwiki nmap [= <Plug>VimwikiGoToPrevSiblingHeader
 autocmd FileType vimwiki nmap ]= <Plug>VimwikiGoToNextSiblingHeader
 autocmd FileType vimwiki nmap [u <Plug>VimwikiGoToParentHeader
 " }}}
+
+let g:db_ui_use_nerd_fonts = 1
+let g:db_ui_save_location = "~/Dropbox/sql"
+let &t_ut=''
+" adds a line of <
+nmap <leader>al :normal 20i<<CR>
+" makes Ascii art font
+nmap <leader>aF :.!toilet -w 200 -f standard<CR>
+nmap <leader>af :.!toilet -w 200 -f small<CR>
+" makes Ascii border
+nmap <leader>ab :.!toilet -w 200 -f term -F border<CR>
+
+" presentation mode
+nmap <F2> :call DisplayPresentationBoundaries()<CR>
+nmap <F3> :call FindExecuteCommand()<CR>
+
+let g:presentationBoundsDisplayed = 0
+function! DisplayPresentationBoundaries()
+  if g:presentationBoundsDisplayed
+    match
+    set colorcolumn=0
+    let g:presentationBoundsDisplayed = 0
+  else
+    highlight lastoflines ctermbg=darkred guibg=darkred
+    match lastoflines /\%23l/
+    set colorcolumn=80
+    let g:presentationBoundsDisplayed = 1
+  endif
+endfunction
+
+function! FindExecuteCommand()
+  let line = search('\S*!'.'!:.*')
+  if line > 0
+    let command = substitute(getline(line), "\S*!"."!:*", "", "")
+    execute "silent !". command
+    execute "normal gg0"
+    redraw
+  endif
+endfunction
+
+set conceallevel=3
+
+function! MarkdownConcealLinks()
+  syn region markdownLink matchgroup=markdownLinkDelimiter start="(" end=")" contains=markdownUrl keepend contained conceal cchar=→
+endfunction
+
+let g:sql_type_default = 'pgsql'
 
 " disable unsafe commands in exrc files
 set secure
