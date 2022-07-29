@@ -6,6 +6,7 @@ dotfiles_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
   TAGS="mac"
+  "$dotfiles_root"/hooks/pre-up/00-mac-homebrew
 elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
   TAGS="linux"
 else
@@ -13,7 +14,7 @@ else
   exit 1
 fi
 
-RCRC="$HOME/.dotfiles/rcrc" rcup -t "$TAGS" -t "encrypted"
+RCRC="$dotfiles_root/rcrc" rcup -t "$TAGS" -t "encrypted"
 
 # TODO: ideally these would be hooks, but decrypt-git is interactive and
 # hooks don't seem to support that
