@@ -7,11 +7,7 @@ call plug#begin('~/.vim/bundle')
 Plug 'kana/vim-textobj-user' " used by rubyblock and quote
 
 Plug 'airblade/vim-gitgutter'
-Plug 'autozimu/LanguageClient-neovim', {
-    \ 'branch': 'next',
-    \ 'do': 'bash install.sh',
-    \ }
-
+Plug 'axvr/org.vim'
 Plug 'bilalq/lite-dfm',                { 'for': ['markdown','vimwiki'] }
 Plug 'chriskempson/base16-vim'
 Plug 'christoomey/vim-tmux-navigator'

@@ -1,11 +1,6 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-source = ARGV[0]
-unless ["inbox", "next", "someday"].include?(source)
-  exit 1
-end
-
 require "bundler/inline"
 require "yaml"
 
@@ -16,9 +11,9 @@ gemfile do
 end
 
 script = File.expand_path('things-export', __dir__)
-tasks = YAML.load(`#{script} #{source}`)
+tasks = YAML.load(`#{script} #{ARGV[0]}`)
 
-fonts_path = "/Users/jacob/Library/Fonts"
+fonts_path = "#{Dir.home}/Library/Fonts"
 
 A4 = [595, 842].freeze
 A5 = [420, 595].freeze

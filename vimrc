@@ -155,7 +155,7 @@ nnoremap <Leader>y "+y
 nnoremap <Leader>p "+p
 nnoremap <Leader>P "+P
 
-nnoremap <Leader>m :!open -a Marked\ 2.app %<CR><CR>
+nnoremap <Leader>m :!open -a Marked\ 2.app "%"<CR><CR>
 
 " EasyAlign
 " Start interactive EasyAlign in visual mode (e.g. vipga)

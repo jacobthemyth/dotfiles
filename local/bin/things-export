@@ -18,7 +18,7 @@ START = {
   someday: 2,
 }
 
-source = case ARGV[0].chomp
+source = case ARGV.fetch(0, "").chomp
 when "inbox"
   "TASK.start = #{START[:inbox]}"
 when "next"
@@ -28,6 +28,7 @@ when "someday"
 when /\Athings:\/\/\/show\?id=(\w+)\z/
   "PROJECT.uuid = '#{$1}'"
 else
+  puts "Usage: things-export <inbox|next|someday|URI> <yaml|csv|org|roam>"
   exit 1
 end
 
