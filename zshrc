@@ -28,23 +28,21 @@ zstyle ":completion:*:descriptions" format "%B%d%b"
 [ -f $HOME/.config/digitalocean ] && source $HOME/.config/digitalocean
 [ -f $HOME/.config/homebrew ] && source $HOME/.config/homebrew
 
-export GOPATH="$HOME/go"
-
 # Force rbenv to always keep sources
 export RBENV_BUILD_ROOT="$HOME/.rbenv/sources"
+export PATH="$HOME/.rbenv/bin:$PATH"
 eval "$(rbenv init - --no-rehash)"
 
 export PATH="$HOME/.nodenv/bin:$PATH"
 eval "$(nodenv init -)"
 
 export PATH="$HOME/go/bin:$PATH"
+export GOPATH="$HOME/go"
+
 export PATH="$HOME/.cargo/bin:$PATH"
 export PATH="$HOME/.bin:$PATH"
 export PATH="$HOME/.emacs.d/bin:$PATH"
 export PATH=".git/safe/../../bin:$PATH"
-export PATH="$HOME/.rbenv/bin:$PATH"
-export PATH="/opt/homebrew/bin/:$PATH"
-eval "$(brew shellenv)"
 
 export FZF_DEFAULT_OPTS="--extended --cycle"
 
