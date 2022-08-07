@@ -6,7 +6,10 @@ dotfiles_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
   TAGS="mac"
-  . "$dotfiles_root"/hooks/pre-up/00-mac-homebrew
+  if ! command -v brew >/dev/null; then
+    # shellcheck disable=SC1091
+    . "$dotfiles_root"/hooks/pre-up/00-mac-homebrew
+  fi
 elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
   TAGS="linux"
 else
