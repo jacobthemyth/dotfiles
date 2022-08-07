@@ -209,7 +209,7 @@ let g:ale_fixers = {
 \   'go': ['gofmt', 'goimports'],
 \   'javascript': ['eslint'],
 \   'ruby': ['rubocop'],
-\   'sql': ['pgformatter'],
+\   'sql': ['sqlfmt'],
 \}
 
 function! SetAleRubyBuffer()

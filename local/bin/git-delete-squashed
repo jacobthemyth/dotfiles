@@ -1,2 +1,7 @@
 #!/usr/bin/env bash
-git list-squashed | xargs git branch -D
+squashed=$(git list-squashed)
+echo "$squashed"
+read -p "Delete these local branches? (yN) " -n 1 -r
+if [[ "$REPLY" =~ ^[Yy]$ ]]; then
+  echo "$squashed" | xargs git branch -D
+fi

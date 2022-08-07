@@ -1,5 +1,4 @@
 \set QUIET 1
-\pset pager always
 \set VERBOSITY verbose
 \pset null '(null)'
 \set COMP_KEYWORD_CASE upper
@@ -13,6 +12,5 @@
 \set PROMPT3 'c:%/[%p][%l]%x%R%# '
 \set HISTCONTROL ignoredups
 \set HISTSIZE 100000
-\timing on
 \x auto
 \set QUIET 0
