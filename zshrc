@@ -42,6 +42,9 @@ export PATH="$HOME/.cargo/bin:$PATH"
 export PATH="$HOME/.bin:$PATH"
 export PATH="$HOME/.emacs.d/bin:$PATH"
 export PATH=".git/safe/../../bin:$PATH"
+export PATH="$HOME/.rbenv/bin:$PATH"
+export PATH="/opt/homebrew/bin/:$PATH"
+eval "$(brew shellenv)"
 
 export FZF_DEFAULT_OPTS="--extended --cycle"
 
@@ -93,5 +96,3 @@ export FZF_DEFAULT_COMMAND='rg --files'
 
 # aliases
 [[ -f ~/.aliases ]] && source ~/.aliases
-export PATH="/usr/local/opt/postgresql@12/bin:$PATH"
-export PATH="$HOME/.rbenv/bin:$PATH"

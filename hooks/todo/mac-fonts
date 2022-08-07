@@ -10,4 +10,7 @@ dotfiles_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." >/dev/null 2>&1 && pw
 mkdir -p ~/Library/Fonts
 if [ "$(cat "$dotfiles_root/tag-encrypted/decryption-status")" == "1" ]; then
   cp "$HOME/.local/share/fonts/*" ~/Library/Fonts
+else
+  echo "Fonts are not decrypted." >&2
+  exit 1
 fi

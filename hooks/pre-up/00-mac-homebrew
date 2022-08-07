@@ -5,16 +5,22 @@ set -eo pipefail
 # TODO: replace with tag hooks
 [[ "$OSTYPE" == "darwin"* ]] || exit
 
-set -eo pipefail
+if [[ "$(arch)" == "arm64" ]]; then
+  brew_path="/opt/homebrew/bin/brew"
+else
+  brew_path="/usr/local/bin/brew"
+fi
 
-if ! command -v brew >/dev/null; then
+if ! command -v "$brew_path" >/dev/null; then
   echo "Installing Homebrew ..."
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
 fi
 
+eval "$($brew_path shellenv)"
+
 echo "Updating Homebrew formulae ..."
 brew update
-brew bundle --file=$HOME/.dotfiles/tag-mac/Brewfile --no-lock
+brew bundle --file="$HOME/.dotfiles/tag-mac/Brewfile" --no-lock
 
 echo "Cleaning up old Homebrew formulae ..."
 brew cleanup

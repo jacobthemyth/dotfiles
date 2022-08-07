@@ -6,12 +6,10 @@ set -eo pipefail
 decryption_status_path="../../tag-encrypted/decryption-status"
 
 if [ "$(cat "$decryption_status_path")" != "1" ]; then
-  printf "%s " "dotfiles.key: "
-  read -s dotfiles_key
-  keyfile=$(mktemp)
-  echo "$dotfiles_key" > $keyfile
+  printf "\n%s" "path to dotfiles.key: "
+  read -r keyfile
 
   pushd "$HOME/.dotfiles"
-  git crypt unlock $keyfile
+  git crypt unlock "$keyfile"
   popd
 fi
