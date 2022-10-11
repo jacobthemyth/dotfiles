@@ -36,6 +36,8 @@ eval "$(rbenv init - --no-rehash)"
 export PATH="$HOME/.nodenv/bin:$PATH"
 eval "$(nodenv init -)"
 
+eval "$(pyenv init -)"
+
 export PATH="$HOME/go/bin:$PATH"
 export GOPATH="$HOME/go"
 

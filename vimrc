@@ -84,11 +84,7 @@ set smartcase   " ... unless they contain at least one capital letter
 set infercase   " Use the correct case when autocompleting
 set mouse=a " Enable mouse in all modes
 set updatetime=100
-if has("nvim")
-  set fillchars=eob:\ ,stl:─,vert:│
-else
-  set fillchars=stl:─,vert:│
-end
+set fillchars=eob:\ ,stl:─,vert:│
 
 " fix & command to preserve flags
 nnoremap & :&&<CR>
@@ -155,8 +151,6 @@ nnoremap <Leader>y "+y
 nnoremap <Leader>p "+p
 nnoremap <Leader>P "+P
 
-nnoremap <Leader>m :!open -a Marked\ 2.app "%"<CR><CR>
-
 " EasyAlign
 " Start interactive EasyAlign in visual mode (e.g. vipga)
 xmap ga <Plug>(EasyAlign)
@@ -182,12 +176,11 @@ endfunc
 " Plugins {{{
 " airline
 let g:airline_theme = 'base16_eighties'
+let g:airline#extensions#scrollbar#enabled = 1
 let g:airline#extensions#tabline#enabled = 1
-let g:airline#extensions#tabline#tab_min_count = 2
 let g:airline#extensions#tabline#show_buffers = 0
 let g:airline#extensions#tabline#show_tab_type = 0
 let g:airline#extensions#tabline#show_close_button = 0
-let g:airline_section_y = ""       " remove fileencoding[fileformat]
 let g:airline_powerline_fonts = 1
 
 " ale
@@ -232,18 +225,10 @@ augroup AleGroup
   autocmd FileType,BufEnter ruby call SetAleRubyBuffer()
 augroup END
 
-" deoplete
-let g:deoplete#enable_at_startup = 1
-let s:default_sources = ['syntax', 'tag', 'buffer', 'file']
-if (exists('g:deoplete_loaded') && g:deoplete_loaded)
-  call deoplete#custom#option('sources', {
-  \ '_': s:default_sources,
-  \ 'go': ['go'] + s:default_sources,
-  \})
-
-  " https://github.com/Shougo/deoplete.nvim/issues/761
-  call deoplete#custom#option('num_processes', 1)
-endif
+" asyncomplete
+inoremap <expr> <Tab>   pumvisible() ? "\<C-n>" : "\<Tab>"
+inoremap <expr> <S-Tab> pumvisible() ? "\<C-p>" : "\<S-Tab>"
+inoremap <expr> <cr>    pumvisible() ? asyncomplete#close_popup() : "\<cr>"
 
 " fugitive
 autocmd BufReadPost fugitive://* set bufhidden=delete
@@ -253,36 +238,6 @@ nnoremap <silent> <C-p> :FZF<CR>
 
 " goyo
 nnoremap <leader>w :Goyo<CR>
-
-" LanguageClient-neovim {{{
-let g:LanguageClient_serverCommands = {
-    \ 'rust': ['~/.cargo/bin/rustup', 'run', 'stable', 'rls'],
-    \ 'ruby': ['~/.rbenv/shims/solargraph', 'stdio'],
-    \ }
-
-" note that if you are using Plug mapping you should not use `noremap` mappings.
-nmap <leader>ls <Plug>(lcn-menu)
-nmap <leader>lsh <Plug>(lcn-hover)
-nmap <leader>lss <Plug>(lcn-symbols)
-nmap <leader>lsr <Plug>(lcn-references)
-
-" Rename - rn => rename
-noremap <leader>rn :call LanguageClient#textDocument_rename()<CR>
-
-" Rename - rc => rename camelCase
-noremap <leader>rc :call LanguageClient#textDocument_rename(
-            \ {'newName': Abolish.camelcase(expand('<cword>'))})<CR>
-
-" Rename - rs => rename snake_case
-noremap <leader>rs :call LanguageClient#textDocument_rename(
-            \ {'newName': Abolish.snakecase(expand('<cword>'))})<CR>
-
-" Rename - ru => rename UPPERCASE
-noremap <leader>ru :call LanguageClient#textDocument_rename(
-            \ {'newName': Abolish.uppercase(expand('<cword>'))})<CR>
-
-nmap <silent> gd <Plug>(lcn-definition)
-" }}}
 
 " markdown
 let g:markdown_folding = 1
@@ -298,13 +253,6 @@ augroup END
 
 " ruby
 let g:ruby_indent_assignment_style = 'variable'
-
-" taskpaper
-augroup taskpaper
-  autocmd!
-  autocmd BufRead,BufNewFile *.taskpaper set filetype=taskpaper
-  autocmd FileType taskpaper setlocal noexpandtab
-augroup END
 
 " vim-rust
 let g:rustfmt_autosave = 1
@@ -324,13 +272,13 @@ let g:terraform_fmt_on_save=1
 autocmd BufRead,BufNewFile *.hcl set filetype=terraform
 
 " vim-wiki
-let g:vimwiki_list = [{'path': '~/Dropbox/Notes', 'syntax': 'markdown', 'ext': '.wiki'}]
+let g:vimwiki_list = [{'path': '~/Documents/Notes', 'syntax': 'markdown', 'ext': '.wiki'}]
 let g:vimwiki_ext2syntax = {'.wiki': 'markdown'}
 let g:vimwiki_hl_headers = 1
 let g:vimwiki_folding = 'expr'
 
 " vim-wiki overrides - for file navigation, so this disables the header
-" bingings but adds most of them back as the default.
+" bindings but adds most of them back as the default.
 let g:vimwiki_key_mappings =
   \ {
   \ 'headers': 0,
@@ -343,51 +291,6 @@ autocmd FileType vimwiki nmap [= <Plug>VimwikiGoToPrevSiblingHeader
 autocmd FileType vimwiki nmap ]= <Plug>VimwikiGoToNextSiblingHeader
 autocmd FileType vimwiki nmap [u <Plug>VimwikiGoToParentHeader
 " }}}
-
-let g:db_ui_use_nerd_fonts = 1
-let g:db_ui_save_location = "~/Dropbox/sql"
-let &t_ut=''
-" adds a line of <
-nmap <leader>al :normal 20i<<CR>
-" makes Ascii art font
-nmap <leader>aF :.!toilet -w 200 -f standard<CR>
-nmap <leader>af :.!toilet -w 200 -f small<CR>
-" makes Ascii border
-nmap <leader>ab :.!toilet -w 200 -f term -F border<CR>
-
-" presentation mode
-nmap <F2> :call DisplayPresentationBoundaries()<CR>
-nmap <F3> :call FindExecuteCommand()<CR>
-
-let g:presentationBoundsDisplayed = 0
-function! DisplayPresentationBoundaries()
-  if g:presentationBoundsDisplayed
-    match
-    set colorcolumn=0
-    let g:presentationBoundsDisplayed = 0
-  else
-    highlight lastoflines ctermbg=darkred guibg=darkred
-    match lastoflines /\%23l/
-    set colorcolumn=80
-    let g:presentationBoundsDisplayed = 1
-  endif
-endfunction
-
-function! FindExecuteCommand()
-  let line = search('\S*!'.'!:.*')
-  if line > 0
-    let command = substitute(getline(line), "\S*!"."!:*", "", "")
-    execute "silent !". command
-    execute "normal gg0"
-    redraw
-  endif
-endfunction
-
-set conceallevel=3
-
-function! MarkdownConcealLinks()
-  syn region markdownLink matchgroup=markdownLinkDelimiter start="(" end=")" contains=markdownUrl keepend contained conceal cchar=→
-endfunction
 
 let g:sql_type_default = 'pgsql'
 

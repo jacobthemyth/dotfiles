@@ -7,7 +7,6 @@ call plug#begin('~/.vim/bundle')
 Plug 'kana/vim-textobj-user' " used by rubyblock and quote
 
 Plug 'airblade/vim-gitgutter'
-Plug 'axvr/org.vim'
 Plug 'bilalq/lite-dfm',                { 'for': ['markdown','vimwiki'] }
 Plug 'chriskempson/base16-vim'
 Plug 'christoomey/vim-tmux-navigator'
@@ -18,14 +17,16 @@ Plug 'janko-m/vim-test'
 Plug 'junegunn/fzf',                   { 'do': { -> fzf#install() } }
 Plug 'junegunn/vim-easy-align',        { 'on': '<Plug>(EasyAlign)' }
 Plug 'junegunn/goyo.vim',              { 'for': ['markdown', 'vimwiki'] }
-Plug 'kristijanhusak/vim-dadbod-completion'
-Plug 'kristijanhusak/vim-dadbod-ui'
 Plug 'lifepillar/pgsql.vim'
+Plug 'mattn/vim-lsp-settings'
 Plug 'nelstrom/vim-textobj-rubyblock', { 'for': 'ruby' }
 Plug 'pangloss/vim-javascript'
+Plug 'prabirshrestha/asyncomplete-lsp.vim'
+Plug 'prabirshrestha/asyncomplete.vim'
+Plug 'prabirshrestha/vim-lsp'
+Plug 'ryanoasis/vim-devicons'
 Plug 'tpope/vim-abolish'
 Plug 'tpope/vim-bundler'
-Plug 'tpope/vim-dadbod'
 Plug 'tpope/vim-dispatch',             { 'on': 'Dispatch' }
 Plug 'tpope/vim-endwise'
 Plug 'tpope/vim-eunuch'
@@ -33,7 +34,6 @@ Plug 'tpope/vim-fugitive'
 Plug 'tpope/vim-markdown',             { 'for': 'markdown' }
 Plug 'tpope/vim-projectionist'
 Plug 'tpope/vim-rails'
-" Plug 'tpope/vim-rake'
 Plug 'tpope/vim-repeat'
 Plug 'tpope/vim-rhubarb'
 Plug 'tpope/vim-rsi'
@@ -51,17 +51,11 @@ Plug 'w0rp/ale',                       { 'do': 'go install golang.org/x/tools/cm
 Plug 'yssl/QFEnter'
 
 if has('nvim')
-  Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
-  Plug 'Shougo/denite.nvim'
-  Plug 'Shougo/neco-syntax' " Syntax source for deoplete
-  Plug 'zchee/deoplete-go', { 'do': 'make; go install github.com/mdempsky/gocode@latest' }
   Plug 'nvim-treesitter/nvim-treesitter'
-  Plug 'nvim-orgmode/orgmode'
 else
   " Sensible defaults
   " needs to be last
   Plug 'tpope/vim-sensible'
-  Plug 'axvr/org.vim'
 endif
 
 call plug#end()
