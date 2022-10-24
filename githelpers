@@ -32,8 +32,6 @@ show_git_head() {
 
 pretty_git_log() {
     git log --graph --pretty="tformat:${FORMAT}" --abbrev-commit $* |
-        # Translate emoji placeholders
-        emojify |
         # Page only if we're asked to.
         if [ -n "$GIT_NO_PAGER" ]; then
             cat

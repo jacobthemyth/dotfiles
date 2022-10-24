@@ -77,6 +77,7 @@ cask "git-credential-manager-core"
 cask "google-chrome"
 cask "icanhazshortcut"
 cask "kaleidoscope"
+cask "karabiner-elements"
 cask "kitty"
 cask "logseq"
 cask "marked"
@@ -96,6 +97,7 @@ mas "A Companion for SwiftUI", id: 1485436674
 mas "DaisyDisk", id: 411643860
 mas "Fantastical", id: 975937182
 mas "Instapaper Save", id: 1481302432
+mas "MindNode", id: 1289197285
 mas "Muse", id: 1501563902
 mas "Pins", id: 1547106997
 mas "ReadKit", id: 1615798039
