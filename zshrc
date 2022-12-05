@@ -46,6 +46,9 @@ export PATH="$HOME/.bin:$PATH"
 export PATH="$HOME/.emacs.d/bin:$PATH"
 export PATH=".git/safe/../../bin:$PATH"
 
+eval "$(nodenv init -)"
+eval "$(pyenv init -)"
+
 export FZF_DEFAULT_OPTS="--extended --cycle"
 
 # Enable Ctrl-x-e to edit command line

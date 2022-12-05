@@ -74,9 +74,10 @@ case format
 when "logseq"
   tasks.each do |task|
     puts "- #{task[:title]}"
-
     unless String(task[:notes]) == ""
-      puts "\t- #{task[:notes]}"
+      task[:notes].split("\n").each do |l|
+        puts "\t- #{l}"
+      end
     end
   end
 when "org"

@@ -93,6 +93,8 @@
 
 (map! :n "M-RET" #'toggle-frame-fullscreen)
 
+(map! :n "-" #'dired-jump)
+
 (setq org-roam-link-auto-replace nil)
 
 (defun systemist/resize-org-images (&rest _)
@@ -116,7 +118,7 @@
 
 (setq org-jira-custom-jqls
   '(
-    (:jql "project IN (STANDARD, PROD) and status IN ('To Do', 'In Progress') and issuetype IN ('Task', 'Project')"
+    (:jql "status IN ('Backlog', 'To Do', 'In Progress', 'Work in progress', 'Open', 'Specify') AND assignee = 'Jake Smith'"
      :limit 50
      :filename "my-work")
     ))

@@ -52,6 +52,7 @@ Plug 'yssl/QFEnter'
 
 if has('nvim')
   Plug 'nvim-treesitter/nvim-treesitter'
+  Plug 'nvim-orgmode/orgmode'
 else
   " Sensible defaults
   " needs to be last
