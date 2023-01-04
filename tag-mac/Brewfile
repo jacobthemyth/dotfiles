@@ -113,7 +113,6 @@ mas "ScanSnap Cloud", id: 1211119808
 mas "Sequence Diagram", id: 1195426709
 mas "Spectrum", id: 518156125
 mas "Things", id: 904280696
-mas "Xcode", id: 497799835
 tap "homebrew/bundle"
 tap "homebrew/cask"
 tap "homebrew/cask-drivers"
