@@ -953,6 +953,25 @@ defaults write com.culturedcode.ThingsMac QuickEntryHotkeyAutofill \
         <integer>6912</integer>
     </dict>'
 
+# ---
+
+
+defaults write com.marcoarment.quitter rules \
+    '<array>
+      <dict>
+          <key>bundleIdentifier</key>
+          <string>com.tinyspeck.slackmacgap</string>
+          <key>bundlePath</key>
+          <string>/Applications/Slack.app</string>
+          <key>inactiveHideInterval</key>
+          <integer>0</integer>
+          <key>inactiveQuitInterval</key>
+          <integer>600</integer>
+          <key>quitIfHiddenInterval</key>
+          <integer>0</integer>
+      </dict>
+    </array>'
+
 ###############################################################################
 # Keyboard Shortcuts
 ###############################################################################
@@ -1020,7 +1039,7 @@ defaults write com.culturedcode.ThingsMac QuickEntryHotkeyAutofill \
 osascript <<EOS
 tell application "System Events"
   set loginNames to the name of every login item
-  repeat with appName in {"Alfred 5", "Fantastical"}
+  repeat with appName in {"Alfred 5", "Fantastical", "Quitter"}
     if loginNames does not contain appName then
       make login item at end with properties {path: "/Applications/" & appName & ".app", name: appName, hidden: false}
     end if
