@@ -2,4 +2,8 @@
 
 set -eo pipefail
 
+if ! [ -d "/Applications/Emacs.app" ]; then
+  cp -R "$(brew --prefix emacs-mac)/Emacs.app" /Applications/
+fi
+
 ~/.emacs.d/bin/doom sync
