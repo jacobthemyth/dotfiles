@@ -1,4 +1,3 @@
-brew "chrokh/tap/base16-manager"
 brew "coreutils"
 brew "diff-so-fancy"
 brew "direnv"

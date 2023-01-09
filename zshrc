@@ -19,8 +19,8 @@ colors
 export CLICOLOR=1
 
 # Base16 Shell
-BASE16_SHELL="$HOME/.base16-manager/chriskempson/base16-shell"
-[ -n "$PS1" ] && [ -s "$BASE16_SHELL/profile_helper.sh" ] && eval "$("$BASE16_SHELL/profile_helper.sh")"
+BASE16_DEFAULT_THEME="eighties"
+source "$HOME/.config/base16-shell/base16-shell.plugin.zsh"
 
 # Show description in completion menu
 zstyle ":completion:*:descriptions" format "%B%d%b"

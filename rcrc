@@ -2,6 +2,6 @@
 export COPY_ALWAYS="tag-mac/Library/Scripts/**/*"
 export DOTFILES_DIRS="$HOME/.dotfiles"
 export EXCLUDES="script/* Brewfile README.md LICENSE decryption-status"
-export SYMLINK_DIRS="emacs.d"
+export SYMLINK_DIRS="emacs.d config/base16-shell"
 export TAGS="encrypted"
 export UNDOTTED="Library"
