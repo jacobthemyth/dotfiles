@@ -3,6 +3,7 @@
 ;; Place your private configuration here! Remember, you do not need to run 'doom
 ;; sync' after modifying this file!
 
+;;; Code:
 
 ;; Some functionality uses this to identify you, e.g. GPG configuration, email
 ;; clients, file templates and snippets.
@@ -21,19 +22,79 @@
 ;; font string. You generally only need these two:
 ;; (setq doom-font (font-spec :family "Operator Mono SSm for Powerline" :size 16)
 ;;       doom-variable-pitch-font (font-spec :family "sans" :size 13))
+(setq doom-font (font-spec :family "OperatorMonoSSm Nerd Font Mono" :size 16))
 
 ;; There are two ways to load a theme. Both assume the theme is installed and
 ;; available. You can either set `doom-theme' or manually load a theme with the
 ;; `load-theme' function. This is the default:
 (setq doom-theme 'doom-one)
 
-;; If you use `org' and don't want your org files in the default location below,
-;; change `org-directory'. It must be set before org loads!
 (setq org-directory "~/Dropbox/org/")
-(setq org-roam-directory "~/Dropbox/org/")
 (setq org-archive-location "~/Dropbox/org/.archive/%s_archive::")
+(setq org-agenda-files '("~/Dropbox/org/things.org"
+                         "~/Dropbox/org/kajabi.org"
+                         "~/Dropbox/org-jira"))
+
+(setq org-default-notes-file "~/Dropbox/org/inbox.org")
+(after! org
+  (setq org-startup-folded t)
+  (setq org-log-done 'time)
+  (setq org-tag-alist '(("@work" . ?w) ("@home" . ?h) ("@computer" . ?c))))
+
+(setq org-todo-keywords
+      '((sequence "TODO(t)" "STARTED(s)" "WAITING(w)" "|" "DONE(d)" "CANCELLED(c) DEFERRED(f)")))
+
+(setq org-refile-targets '(("things.org" :maxlevel . 1)
+                           ("inbox.org" :level . 1)
+                           ("kajabi.org" :level . 1)
+                           ("kajabisomeday.org" :level . 2)
+                           ("someday.org" :level . 2)))
+
+
+;; Capture templates for: TODO tasks, Notes, appointments, phone calls, meetings, and org-protocol
+;; (setq org-capture-templates
+;;       (quote (("t" "todo" entry (file "~/git/org/refile.org")
+;;                "* TODO %?\n%U\n%a\n" :clock-in t :clock-resume t)
+;;               ("r" "respond" entry (file "~/git/org/refile.org")
+;;                "* NEXT Respond to %:from on %:subject\nSCHEDULED: %t\n%U\n%a\n" :clock-in t :clock-resume t :immediate-finish t)
+;;               ("n" "note" entry (file "~/git/org/refile.org")
+;;                "* %? :NOTE:\n%U\n%a\n" :clock-in t :clock-resume t)
+;;               ("j" "Journal" entry (file+datetree "~/git/org/diary.org")
+;;                "* %?\n%U\n" :clock-in t :clock-resume t)
+;;               ("w" "org-protocol" entry (file "~/git/org/refile.org")
+;;                "* TODO Review %c\n%U\n" :immediate-finish t)
+;;               ("m" "Meeting" entry (file "~/git/org/refile.org")
+;;                "* MEETING with %? :MEETING:\n%U" :clock-in t :clock-resume t)
+;;               ("p" "Phone call" entry (file "~/git/org/refile.org")
+;;                "* PHONE %? :PHONE:\n%U" :clock-in t :clock-resume t)
+;;               ("h" "Habit" entry (file "~/git/org/refile.org")
+;;                "* NEXT %?\n%U\n%a\nSCHEDULED: %(format-time-string \"%<<%Y-%m-%d %a .+1d/3d>>\")\n:PROPERTIES:\n:STYLE: habit\n:REPEAT_TO_STATE: NEXT\n:END:\n"))))
+
+(setq org-agenda-custom-commands
+      `(
+        ("P" "Plan The Day" ((agenda)
+                             (tags-todo "OFFICE")
+                             (tags-todo "HOME")
+                             (tags-todo "COMPUTER")))
+        ("T" "Today" ((agenda "" ((org-agenda-ndays 1)
+                                  (org-agenda-sorting-strategy
+                                   (quote ((agenda time-up priority-down tag-up) )))
+                                  (org-deadline-warning-days 0)
+                                  ))))
+        ))
+
+;; Remove empty LOGBOOK drawers on clock out
+(defun bh/remove-empty-drawer-on-clock-out ()
+  (interactive)
+  (save-excursion
+    (beginning-of-line 0)
+    (org-remove-empty-drawer-at "LOGBOOK" (point))))
+
+(add-hook 'org-clock-out-hook 'bh/remove-empty-drawer-on-clock-out 'append)
+
 (setq org-jira-working-dir "~/Dropbox/org-jira")
 (setq jiralib-url "https://kajabi.atlassian.net")
+(setq org-roam-directory "~/Dropbox/org/")
 
 ;; This determines the style of line numbers in effect. If set to `nil', line
 ;; numbers are disabled. For relative line numbers, set this to `relative'.

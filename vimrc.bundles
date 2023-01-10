@@ -51,12 +51,18 @@ Plug 'w0rp/ale',                       { 'do': 'go install golang.org/x/tools/cm
 Plug 'yssl/QFEnter'
 
 if has('nvim')
+  Plug 'akinsho/org-bullets.nvim'
+  Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
+  Plug 'Shougo/denite.nvim'
+  Plug 'Shougo/neco-syntax' " Syntax source for deoplete
+  Plug 'zchee/deoplete-go', { 'do': 'make; go install github.com/mdempsky/gocode@latest' }
   Plug 'nvim-treesitter/nvim-treesitter'
   Plug 'nvim-orgmode/orgmode'
 else
   " Sensible defaults
   " needs to be last
   Plug 'tpope/vim-sensible'
+  Plug 'axvr/org.vim'
 endif
 
 call plug#end()
