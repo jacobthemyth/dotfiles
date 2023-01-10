@@ -48,17 +48,16 @@
 
 (after! org
   (setq org-agenda-custom-commands `(("P" "Plan The Day" ((agenda)
-                                                          (tags-todo "OFFICE")
-                                                          (tags-todo "HOME")
-                                                          (tags-todo "COMPUTER")))
-                                     ("T" "Today" ((agenda "" ((org-agenda-ndays 1)
-                                                               (org-agenda-sorting-strategy
-                                                                '((agenda time-up priority-down tag-up) ))
+                                                          (tags-todo "@office")
+                                                          (tags-todo "@home")
+                                                          (tags-todo "@computer")))
+                                     ("T" "Today" ((agenda "" ((org-agenda-span 'day)
+                                                               (org-agenda-start-day "+0d")
                                                                (org-deadline-warning-days 0)
                                                                ))))))
   (setq org-agenda-files '("~/Dropbox/org/next.org"
                            "~/Dropbox/org/projects.org"
-                           "~/Dropbox/org-jira"))
+                           "~/Dropbox/org-jira/assigned.org"))
   (setq org-archive-location "~/Dropbox/org/.archive/%s_archive::")
   (setq org-capture-templates
         '(("t" "todo" entry (file "~/Dropbox/org/inbox.org")
@@ -88,9 +87,9 @@
   (setq jiralib-url "https://kajabi.atlassian.net")
   (setq org-jira-custom-jqls
         '(
-          (:jql "status IN ('Backlog', 'To Do', 'In Progress', 'Work in progress', 'Open', 'Specify') AND assignee = 'Jake Smith'"
-           :limit 50
-           :filename "my-work")
+          (:jql "resolved IS NULL AND status NOT IN ('Done', 'Archived') AND assignee = currentUser()"
+           :limit 100
+           :filename "assigned")
           ))
   (setq org-jira-working-dir "~/Dropbox/org-jira"))
 
