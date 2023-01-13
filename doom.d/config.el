@@ -22,7 +22,8 @@
 ;; font string. You generally only need these two:
 ;; (setq doom-font (font-spec :family "Operator Mono SSm for Powerline" :size 16)
 ;;       doom-variable-pitch-font (font-spec :family "sans" :size 13))
-(setq doom-font (font-spec :family "OperatorMonoSSm Nerd Font Mono" :size 16))
+(setq doom-font (font-spec :family "OperatorMonoSSm Nerd Font Mono" :size 14)
+        doom-variable-pitch-font (font-spec :family "EtBembo" :size 14))
 
 ;; There are two ways to load a theme. Both assume the theme is installed and
 ;; available. You can either set `doom-theme' or manually load a theme with the
@@ -50,33 +51,35 @@
   (setq org-agenda-custom-commands `(("P" "Plan The Day" ((agenda)
                                                           (tags-todo "@office")
                                                           (tags-todo "@home")
-                                                          (tags-todo "@computer")))
+                                                          (tags-todo "@computer")
+                                                          (tags "PROJECT")))
                                      ("T" "Today" ((agenda "" ((org-agenda-span 'day)
                                                                (org-agenda-start-day "+0d")
                                                                (org-deadline-warning-days 0)
                                                                ))))))
-  (setq org-agenda-files '("~/Dropbox/org/next.org"
-                           "~/Dropbox/org/projects.org"
+  (add-to-list 'org-tags-exclude-from-inheritance "PROJECT")
+  (setq org-agenda-files '("~/Dropbox/org/GTD/next.org"
+                           "~/Dropbox/org/GTD/projects.org"
                            "~/Dropbox/org-jira/assigned.org"))
   (setq org-archive-location "~/Dropbox/org/.archive/%s_archive::")
   (setq org-capture-templates
-        '(("t" "todo" entry (file "~/Dropbox/org/inbox.org")
+        '(("t" "todo" entry (file "~/Dropbox/org/GTD/inbox.org")
            "* TODO %?\n%U\n%a\n" :clock-in t :clock-resume t)
-          ("r" "respond" entry (file "~/Dropbox/org/inbox.org")
+          ("r" "respond" entry (file "~/Dropbox/org/GTD/inbox.org")
            "* TODO Respond to %:from on %:subject\nSCHEDULED: %t\n%U\n%a\n" :clock-in t :clock-resume t :immediate-finish t)
-          ("n" "note" entry (file "~/Dropbox/org/inbox.org")
+          ("n" "note" entry (file "~/Dropbox/org/GTD/inbox.org")
            "* %? :NOTE:\n%U\n%a\n" :clock-in t :clock-resume t)
-          ("w" "org-protocol" entry (file "~/Dropbox/org/inbox.org")
+          ("w" "org-protocol" entry (file "~/Dropbox/org/GTD/inbox.org")
            "* TODO Review %c\n%U\n" :immediate-finish t)
-          ("p" "Phone call" entry (file "~/Dropbox/org/inbox.org")
+          ("p" "Phone call" entry (file "~/Dropbox/org/GTD/inbox.org")
            "* TODO %? :PHONE:\n%U" :clock-in t :clock-resume t)))
-  (setq org-default-notes-file "~/Dropbox/org/inbox.org")
+  (setq org-default-notes-file "~/Dropbox/org/GTD/inbox.org")
   (setq org-directory "~/Dropbox/org/")
   (setq org-log-done 'time)
-  (setq org-refile-targets '(("~/Dropbox/org/inbox.org" :level . 0)
-                             ("~/Dropbox/org/next.org" :level . 0)
-                             ("~/Dropbox/org/projects.org" :maxlevel . 1)
-                             ("~/Dropbox/org/someday.org" :maxlevel . 2)))
+  (setq org-refile-targets '(("~/Dropbox/org/GTD/inbox.org" :maxlevel . 1)
+                             ("~/Dropbox/org/GTD/next.org" :maxlevel . 1)
+                             ("~/Dropbox/org/GTD/projects.org" :maxlevel . 2)
+                             ("~/Dropbox/org/GTD/someday.org" :maxlevel . 2)))
   (setq org-startup-folded t)
   (setq org-tag-alist '(("@work" . ?w) ("@home" . ?h) ("@computer" . ?c)))
   (setq org-todo-keywords
@@ -96,7 +99,7 @@
 (after! org-roam
   (setq +org-roam-open-buffer-on-find-file nil)
   (setq org-roam-link-auto-replace nil)
-  (setq org-roam-directory "~/Dropbox/org-roam/"))
+  (setq org-roam-directory "~/Dropbox/org/Notes"))
 
 ;; This determines the style of line numbers in effect. If set to `nil', line
 ;; numbers are disabled. For relative line numbers, set this to `relative'.
@@ -129,11 +132,14 @@
 
 (add-hook 'dired-mode-hook 'dired-hide-details-mode)
 
-(map! :nv "gx" #'browse-url-at-point)
+(map!
+ :nv "gx" #'browse-url-at-point
+ :n "-" #'dired-jump
+ :n "s-RET" #'toggle-frame-fullscreen)
 
-(map! :n "M-RET" #'toggle-frame-fullscreen)
+(map! :map dired-mode-map
+      :n "%" 'dired-create-empty-file)
 
-(map! :n "-" #'dired-jump)
 
 (defun systemist/resize-org-images (&rest _)
   (setq org-image-actual-width (list (round (* 0.8 (window-body-width nil t)))))
