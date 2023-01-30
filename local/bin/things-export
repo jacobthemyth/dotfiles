@@ -81,14 +81,9 @@ when "logseq"
     end
   end
 when "org"
+  puts "* Things export #{Time.now}"
   tasks.each do |task|
-    puts "* TODO #{task[:title]}"
-    if task[:project]
-      puts ":PROPERTIES:"
-      puts ":Project:\t#{task[:project]}"
-      puts ":END:"
-    end
-
+    puts "** TODO #{task[:title]}"
     unless String(task[:notes]) == ""
       puts "\n" if task[:project]
       puts task[:notes].gsub(/^\*/, "-")

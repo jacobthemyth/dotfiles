@@ -49,51 +49,47 @@
 
 (after! org
   (setq org-agenda-custom-commands `(("P" "Plan The Day" ((agenda)
+                                                          (tags-todo "FILE={org-jira}")
                                                           (tags-todo "@office")
                                                           (tags-todo "@home")
                                                           (tags-todo "@computer")
-                                                          (tags "PROJECT")))
+                                                          (tags-todo "@phone")
+                                                          (tags-todo "PROJECT")))
                                      ("T" "Today" ((agenda "" ((org-agenda-span 'day)
                                                                (org-agenda-start-day "+0d")
                                                                (org-deadline-warning-days 0)
                                                                ))))))
-  (add-to-list 'org-tags-exclude-from-inheritance "PROJECT")
-  (setq org-agenda-files '("~/Dropbox/org/GTD/next.org"
-                           "~/Dropbox/org/GTD/projects.org"
-                           "~/Dropbox/org-jira/assigned.org"))
+  (setq org-agenda-files '("~/Dropbox/org/"
+                           "~/Dropbox/org-jira/"))
   (setq org-archive-location "~/Dropbox/org/.archive/%s_archive::")
   (setq org-capture-templates
-        '(("t" "todo" entry (file "~/Dropbox/org/GTD/inbox.org")
+        '(("t" "todo" entry (file "~/Dropbox/org/inbox.org")
            "* TODO %?\n%U\n%a\n" :clock-in t :clock-resume t)
-          ("r" "respond" entry (file "~/Dropbox/org/GTD/inbox.org")
+          ("r" "respond" entry (file "~/Dropbox/org/inbox.org")
            "* TODO Respond to %:from on %:subject\nSCHEDULED: %t\n%U\n%a\n" :clock-in t :clock-resume t :immediate-finish t)
-          ("n" "note" entry (file "~/Dropbox/org/GTD/inbox.org")
+          ("n" "note" entry (file "~/Dropbox/org/inbox.org")
            "* %? :NOTE:\n%U\n%a\n" :clock-in t :clock-resume t)
-          ("w" "org-protocol" entry (file "~/Dropbox/org/GTD/inbox.org")
+          ("w" "org-protocol" entry (file "~/Dropbox/org/inbox.org")
            "* TODO Review %c\n%U\n" :immediate-finish t)
-          ("p" "Phone call" entry (file "~/Dropbox/org/GTD/inbox.org")
+          ("p" "Phone call" entry (file "~/Dropbox/org/inbox.org")
            "* TODO %? :PHONE:\n%U" :clock-in t :clock-resume t)))
-  (setq org-default-notes-file "~/Dropbox/org/GTD/inbox.org")
+  (setq org-default-notes-file "~/Dropbox/org/inbox.org")
   (setq org-directory "~/Dropbox/org/")
   (setq org-log-done 'time)
-  (setq org-refile-targets '(("~/Dropbox/org/GTD/inbox.org" :maxlevel . 1)
-                             ("~/Dropbox/org/GTD/next.org" :maxlevel . 1)
-                             ("~/Dropbox/org/GTD/projects.org" :maxlevel . 2)
-                             ("~/Dropbox/org/GTD/someday.org" :maxlevel . 2)))
+  (setq org-refile-targets '((org-agenda-files :maxlevel . 1)
+                             ("~/Dropbox/org/projects.org" :maxlevel . 2)
+                             ("~/Dropbox/org/reference.org" :maxlevel . 2)))
   (setq org-startup-folded t)
   (setq org-tag-alist '(("@work" . ?w) ("@home" . ?h) ("@computer" . ?c)))
   (setq org-todo-keywords
-        '((sequence "TODO(t)" "STARTED(s)" "WAITING(w)" "|" "DONE(d)" "CANCELLED(c) DEFERRED(f)"))))
+        '((sequence "TODO(t)" "STARTED(s)" "WAITING(w)" "|" "DONE(d)" "CANCELLED(c) DEFERRED(f)")))
+  (map!
+   :n "gj" #'evil-next-visual-line
+   :n "gk" #'evil-previous-visual-line))
 
 (after! org-jira
   (setq jiralib-update-issue-fields-exclude-list '(priority components))
   (setq jiralib-url "https://kajabi.atlassian.net")
-  (setq org-jira-custom-jqls
-        '(
-          (:jql "resolved IS NULL AND status NOT IN ('Done', 'Archived') AND assignee = currentUser()"
-           :limit 100
-           :filename "assigned")
-          ))
   (setq org-jira-working-dir "~/Dropbox/org-jira"))
 
 (after! org-roam
@@ -174,3 +170,6 @@
                  (org-remove-inline-images)
                  (org-present-show-cursor)
                  (org-present-read-write)))))
+
+
+(setq auth-sources '("~/.authinfo.gpg"))
