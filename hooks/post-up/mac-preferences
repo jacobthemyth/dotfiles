@@ -1039,7 +1039,7 @@ defaults write com.marcoarment.quitter rules \
 osascript <<EOS
 tell application "System Events"
   set loginNames to the name of every login item
-  repeat with appName in {"Alfred 5", "Fantastical", "Quitter"}
+  repeat with appName in {"Alfred 5", "Quitter"}
     if loginNames does not contain appName then
       make login item at end with properties {path: "/Applications/" & appName & ".app", name: appName, hidden: false}
     end if

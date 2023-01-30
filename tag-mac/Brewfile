@@ -23,7 +23,6 @@ brew "koekeishiya/formulae/skhd"
 brew "koekeishiya/formulae/yabai"
 brew "launchdns"
 brew "mas"
-brew "mermaid-cli"
 brew "moreutils"
 brew "neovim"
 brew "netcat"
@@ -100,21 +99,13 @@ cask "zotero"
 mas "1Password for Safari", id: 1569813296
 mas "A Companion for SwiftUI", id: 1485436674
 mas "DaisyDisk", id: 411643860
-mas "Drafts", id: 1435957248
-mas "Fantastical", id: 975937182
-mas "Instapaper Save", id: 1481302432
-mas "Instapaper", id: 288545208
 mas "MindNode", id: 1289197285
 mas "Muse", id: 1501563902
 mas "Pins", id: 1547106997
-mas "ReadKit", id: 1615798039
-mas "ScanSnap Cloud", id: 1211119808
 mas "Sequence Diagram", id: 1195426709
-mas "Spectrum", id: 518156125
 mas "Things", id: 904280696
 tap "homebrew/bundle"
 tap "homebrew/cask"
-tap "homebrew/cask-drivers"
 tap "homebrew/cask-fonts"
 tap "homebrew/core"
 tap "homebrew/services"
