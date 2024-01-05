@@ -297,6 +297,8 @@ autocmd FileType vimwiki nmap [u <Plug>VimwikiGoToParentHeader
 
 let g:sql_type_default = 'pgsql'
 
+let g:loaded_perl_provider = 0
+
 " disable unsafe commands in exrc files
 set secure
 " vim: set foldmethod=marker:

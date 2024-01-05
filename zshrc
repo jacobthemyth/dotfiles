@@ -99,3 +99,5 @@ export FZF_DEFAULT_COMMAND='rg --files'
 
 # aliases
 [[ -f ~/.aliases ]] && source ~/.aliases
+
+[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh

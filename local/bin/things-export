@@ -51,7 +51,7 @@ end
 require "active_support"
 require "active_support/core_ext"
 
-db_path = "#{Dir.home}/Library/Group Containers/JLMPQHK86H.com.culturedcode.ThingsMac/Things Database.thingsdatabase/main.sqlite"
+db_path = "#{Dir.home}/Library/Group Containers/JLMPQHK86H.com.culturedcode.ThingsMac/ThingsData-A57N3/Things Database.thingsdatabase/main.sqlite"
 db = SQLite3::Database.new(db_path)
 
 rows = db.execute <<~SQL
@@ -85,7 +85,6 @@ when "org"
   tasks.each do |task|
     puts "** TODO #{task[:title]}"
     unless String(task[:notes]) == ""
-      puts "\n" if task[:project]
       puts task[:notes].gsub(/^\*/, "-")
     end
   end

@@ -4,27 +4,33 @@ end
 
 call plug#begin('~/.vim/bundle')
 
-Plug 'kana/vim-textobj-user' " used by rubyblock and quote
-
-Plug 'airblade/vim-gitgutter'
+Plug 'airblade/vim-gitgutter',         { 'branch': 'main' }
 Plug 'bilalq/lite-dfm',                { 'for': ['markdown','vimwiki'] }
 Plug 'chriskempson/base16-vim'
 Plug 'christoomey/vim-tmux-navigator'
 Plug 'dhruvasagar/vim-table-mode',     { 'for': ['markdown', 'org'] }
 Plug 'fatih/vim-go',                   { 'do': ':GoUpdateBinaries' }
+" Plug 'github/copilot.vim'
 Plug 'hashivim/vim-terraform',         { 'for': ['hcl', 'tf', 'tfvars', 'tfstate'] }
+Plug 'hrsh7th/vim-vsnip'
+Plug 'hrsh7th/vim-vsnip-integ'
+Plug 'jackguo380/vim-lsp-cxx-highlight'
 Plug 'janko-m/vim-test'
 Plug 'junegunn/fzf',                   { 'do': { -> fzf#install() } }
 Plug 'junegunn/vim-easy-align',        { 'on': '<Plug>(EasyAlign)' }
 Plug 'junegunn/goyo.vim',              { 'for': ['markdown', 'vimwiki'] }
+Plug 'kana/vim-textobj-user' " used by rubyblock and quote
 Plug 'lifepillar/pgsql.vim'
-Plug 'mattn/vim-lsp-settings'
+Plug 'm-pilia/vim-ccls'
+Plug 'mattn/emmet-vim'
 Plug 'nelstrom/vim-textobj-rubyblock', { 'for': 'ruby' }
 Plug 'pangloss/vim-javascript'
-Plug 'prabirshrestha/asyncomplete-lsp.vim'
 Plug 'prabirshrestha/asyncomplete.vim'
+Plug 'prabirshrestha/asyncomplete-lsp.vim'
 Plug 'prabirshrestha/vim-lsp'
+Plug 'rafamadriz/friendly-snippets'
 Plug 'ryanoasis/vim-devicons'
+Plug 'tmhedberg/matchit'
 Plug 'tpope/vim-abolish'
 Plug 'tpope/vim-bundler'
 Plug 'tpope/vim-dispatch',             { 'on': 'Dispatch' }

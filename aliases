@@ -2,9 +2,7 @@
 alias sudo='sudo '
 
 alias f='fzf | pbcopy'
-alias ip="dig +short myip.opendns.com @resolver1.opendns.com"
 alias la='ls -lAFh'
-alias localip="ipconfig getifaddr en0"
 alias mux="tmuxinator"
 alias r="ranger"
 alias today="date +%Y-%m-%d"
