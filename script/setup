@@ -17,6 +17,11 @@ else
   exit 1
 fi
 
+if ! command -v rcup >/dev/null; then
+  brew tap thoughtbot/formulae
+  brew install rcm
+fi
+
 RCRC="$dotfiles_root/rcrc" rcup -t "$TAGS" -t "encrypted"
 
 # TODO: ideally these would be hooks, but decrypt-git is interactive and

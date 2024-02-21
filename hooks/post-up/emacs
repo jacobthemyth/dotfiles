@@ -2,4 +2,5 @@
 
 set -eo pipefail
 
-~/.config/emacs/bin/doom sync
+# TODO: Why is this preventing other hooks?
+# ~/.config/emacs/bin/doom sync
