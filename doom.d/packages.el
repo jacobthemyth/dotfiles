@@ -9,12 +9,11 @@
 ;; To install SOME-PACKAGE from MELPA, ELPA or emacsmirror:
 ;(package! some-package)
 (package! evil-tabs)
-(package! org-jira)
-(package! nov)
-(package! mermaid-mode)
-(package! ob-mermaid)
-(package! org-present)
 (package! format-all)
+(package! mermaid-mode)
+(package! nov)
+(package! ob-mermaid)
+(package! org-noter)
 
 ;; To install a package directly from a remote git repo, you must specify a
 ;; `:recipe'. You'll find documentation on what `:recipe' accepts here:

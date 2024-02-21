@@ -43,7 +43,7 @@ export GOPATH="$HOME/go"
 
 export PATH="$HOME/.cargo/bin:$PATH"
 export PATH="$HOME/.bin:$PATH"
-export PATH="$HOME/.emacs.d/bin:$PATH"
+export PATH="$HOME/.config/emacs/bin:$PATH"
 export PATH=".git/safe/../../bin:$PATH"
 
 eval "$(nodenv init -)"
