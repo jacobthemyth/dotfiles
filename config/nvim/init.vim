@@ -20,8 +20,8 @@ require'nvim-treesitter.configs'.setup {
 }
 
 require('orgmode').setup({
-  org_agenda_files = {'~/Dropbox/org/*', '~/Dropbox/org-jira/*'},
-  org_default_notes_file = '~/Dropbox/org/inbox.org',
+  org_agenda_files = {'~/org/*'},
+  org_default_notes_file = '~/org/Inbox.org',
 })
 
 require('org-bullets').setup()

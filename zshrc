@@ -20,23 +20,23 @@ export CLICOLOR=1
 
 # Base16 Shell
 BASE16_DEFAULT_THEME="eighties"
-source "$HOME/.config/base16-shell/base16-shell.plugin.zsh"
+[ -n "$PS1" ] && source "$HOME/.config/base16-shell/base16-shell.plugin.zsh"
 
 # Show description in completion menu
 zstyle ":completion:*:descriptions" format "%B%d%b"
 
-[ -f $HOME/.config/digitalocean ] && source $HOME/.config/digitalocean
-[ -f $HOME/.config/homebrew ] && source $HOME/.config/homebrew
-
-# Force rbenv to always keep sources
-export RBENV_BUILD_ROOT="$HOME/.rbenv/sources"
-export PATH="$HOME/.rbenv/bin:$PATH"
-eval "$(rbenv init - --no-rehash)"
+export RBENV_BUILD_ROOT="$HOME/.rbenv/sources" # Force rbenv to always keep sources
+[ -z "$RBENV_SHELL" ] && eval "$(rbenv init - --no-rehash)"
+FPATH="$FPATH:~/.zsh/functions"
 
 export PATH="$HOME/.nodenv/bin:$PATH"
-eval "$(nodenv init -)"
+[ -z "$NODENV_SHELL" ] && eval "$(nodenv init - --no-rehash)"
 
-eval "$(pyenv init -)"
+[ -z "$PYENV_SHELL" ] && eval "$(pyenv init - --no-rehash)"
+
+if ! type _direnv_hook >/dev/null 2>&1; then
+  eval "$(direnv hook zsh)"
+fi
 
 export PATH="$HOME/go/bin:$PATH"
 export GOPATH="$HOME/go"
@@ -45,9 +45,6 @@ export PATH="$HOME/.cargo/bin:$PATH"
 export PATH="$HOME/.bin:$PATH"
 export PATH="$HOME/.config/emacs/bin:$PATH"
 export PATH=".git/safe/../../bin:$PATH"
-
-eval "$(nodenv init -)"
-eval "$(pyenv init -)"
 
 export FZF_DEFAULT_OPTS="--extended --cycle"
 
@@ -90,8 +87,6 @@ setopt extendedglob
 unsetopt nomatch
 
 setopt promptsubst
-
-eval "$(direnv hook zsh)"
 
 export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
 
