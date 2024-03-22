@@ -160,20 +160,6 @@ xmap ga <Plug>(EasyAlign)
 
 " Start interactive EasyAlign for a motion/text object (e.g. gaip)
 nmap ga <Plug>(EasyAlign)
-
-" Fugitive
-nnoremap dp dp:redraw!<CR>
-nnoremap do do:redraw!<CR>
-
-nnoremap <Leader>s :%s/\<<C-r><C-w>\>//g<Left><Left>
-
-nmap <leader>hi :call <SID>SynStack()<CR>
-function! <SID>SynStack()
-  if !exists("*synstack")
-    return
-  endif
-  echo map(synstack(line('.'), col('.')), 'synIDattr(v:val, "name")')
-endfunc
 " }}}
 
 " Plugins {{{
@@ -190,48 +176,14 @@ let g:airline_powerline_fonts = 1
 let g:ale_statusline_format = ['⨉ %d', '⚠ %d', '']
 nnoremap <Leader>af :ALEFix<CR>
 
-" This is gross
-let g:ale_javascript_eslint_executable='/bin/sh -c "cd $(dirname %) && ~/.nodenv/shims/eslint"'
-let g:ale_use_global_executables = 1
-
 let g:ale_linters = {
-\   'css': ['stylelint'],
 \   'go': ['gobuild', 'gofmt'],
-\   'javascript': ['prettier', 'eslint'],
 \   'ruby': ['rubocop'],
-\   'c': ['cppcheck'],
 \}
 let g:ale_fixers = {
 \   'go': ['gofmt', 'goimports'],
-\   'javascript': ['eslint'],
 \   'ruby': ['rubocop'],
-\   'sql': ['pgformatter'],
 \}
-
-function! SetAleRubyBuffer()
-  let ruby_linters = ["ruby"]
-  let ruby_fixers = []
-
-  if filereadable(".rubocop.yml") | :call add(ruby_linters, "rubocop") | :call add(ruby_fixers, "rubocop" ) | endif
-  if filereadable("rails_best_practices.yml") | :call add(ruby_linters, "rails_best_pratices") | endif
-  if filereadable(".reek") | :call add(ruby_linters, "reek") | endif
-
-  let b:ale_linters = {
-  \   'ruby': ruby_linters,
-  \}
-  let b:ale_fixers = {
-  \   'ruby': ["rubocop"],
-  \}
-endfunction
-augroup AleGroup
-  autocmd!
-  autocmd FileType,BufEnter ruby call SetAleRubyBuffer()
-augroup END
-
-" asyncomplete
-inoremap <expr> <Tab>   pumvisible() ? "\<C-n>" : "\<Tab>"
-inoremap <expr> <S-Tab> pumvisible() ? "\<C-p>" : "\<S-Tab>"
-inoremap <expr> <cr>    pumvisible() ? asyncomplete#close_popup() : "\<cr>"
 
 " fugitive
 autocmd BufReadPost fugitive://* set bufhidden=delete
@@ -243,8 +195,6 @@ nnoremap <silent> <C-p> :FZF<CR>
 nnoremap <leader>w :Goyo<CR>
 
 " markdown
-let g:markdown_folding = 1
-au FileType markdown setlocal foldlevel=99
 let g:markdown_fenced_languages = ['c', 'erb=eruby', 'diff', 'go', 'ruby', 'sh', 'sql']
 
 " netrw
@@ -254,50 +204,15 @@ augroup netrw
   autocmd FileType netrw set colorcolumn=""
 augroup END
 
-" ruby
-let g:ruby_indent_assignment_style = 'variable'
-
-" vim-rust
-let g:rustfmt_autosave = 1
-
 " vim-test
 let g:test#strategy = 'dispatch'
 
-nmap <silent> t<C-n> :TestNearest<CR>
-nmap <silent> t<C-f> :TestFile<CR>
-nmap <silent> t<C-s> :TestSuite<CR>
-nmap <silent> t<C-l> :TestLast<CR>
-nmap <silent> t<C-g> :TestVisit<CR>
-
-" vim-terraform
-let g:terraform_align=1
-let g:terraform_fmt_on_save=1
-autocmd BufRead,BufNewFile *.hcl set filetype=terraform
-
-" vim-wiki
-let g:vimwiki_list = [{'path': '~/Documents/Notes', 'syntax': 'markdown', 'ext': '.wiki'}]
-let g:vimwiki_ext2syntax = {'.wiki': 'markdown'}
-let g:vimwiki_hl_headers = 1
-let g:vimwiki_folding = 'expr'
-
-" vim-wiki overrides - for file navigation, so this disables the header
-" bindings but adds most of them back as the default.
-let g:vimwiki_key_mappings =
-  \ {
-  \ 'headers': 0,
-  \ }
-autocmd FileType vimwiki nmap <Leader>- <Plug>VimwikiRemoveHeaderLevel
-autocmd FileType vimwiki nmap <Leader>= <Plug>VimwikiAddHeaderLevel
-autocmd FileType vimwiki nmap [[ <Plug>VimwikiGoToPrevHeader
-autocmd FileType vimwiki nmap ]] <Plug>VimwikiGoToNextHeader
-autocmd FileType vimwiki nmap [= <Plug>VimwikiGoToPrevSiblingHeader
-autocmd FileType vimwiki nmap ]= <Plug>VimwikiGoToNextSiblingHeader
-autocmd FileType vimwiki nmap [u <Plug>VimwikiGoToParentHeader
+nmap <silent> <leader>tn :TestNearest<CR>
+nmap <silent> <leader>tf :TestFile<CR>
+nmap <silent> <leader>ts :TestSuite<CR>
+nmap <silent> <leader>tl :TestLast<CR>
+nmap <silent> <leader>tg :TestVisit<CR>
 " }}}
-
-let g:sql_type_default = 'pgsql'
-
-let g:loaded_perl_provider = 0
 
 " disable unsafe commands in exrc files
 set secure
