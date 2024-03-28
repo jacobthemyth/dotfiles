@@ -2,3 +2,4 @@ eslint
 neovim
 prettier
 typescript
+vim-language-server

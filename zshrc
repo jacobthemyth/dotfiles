@@ -26,17 +26,15 @@ BASE16_DEFAULT_THEME="eighties"
 zstyle ":completion:*:descriptions" format "%B%d%b"
 
 export RBENV_BUILD_ROOT="$HOME/.rbenv/sources" # Force rbenv to always keep sources
-[ -z "$RBENV_SHELL" ] && eval "$(rbenv init - --no-rehash)"
+eval "$(rbenv init - --no-rehash)"
 FPATH="$FPATH:~/.zsh/functions"
 
 export PATH="$HOME/.nodenv/bin:$PATH"
-[ -z "$NODENV_SHELL" ] && eval "$(nodenv init - --no-rehash)"
+eval "$(nodenv init - --no-rehash)"
 
-[ -z "$PYENV_SHELL" ] && eval "$(pyenv init - --no-rehash)"
+eval "$(pyenv init - --no-rehash)"
 
-if ! type _direnv_hook >/dev/null 2>&1; then
-  eval "$(direnv hook zsh)"
-fi
+eval "$(direnv hook zsh)"
 
 export PATH="$HOME/go/bin:$PATH"
 export GOPATH="$HOME/go"

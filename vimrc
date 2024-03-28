@@ -176,14 +176,36 @@ let g:airline_powerline_fonts = 1
 let g:ale_statusline_format = ['⨉ %d', '⚠ %d', '']
 nnoremap <Leader>af :ALEFix<CR>
 
+let g:ale_completion_enabled = 1
+
+function! SmartInsertCompletion() abort
+  " Use the default CTRL-N in completion menus
+  if pumvisible()
+    return "\<C-n>"
+  endif
+
+  " Exit and re-enter insert mode, and use insert completion
+  return "\<C-c>a\<C-n>"
+endfunction
+
+inoremap <silent> <C-n> <C-R>=SmartInsertCompletion()<CR>
+
+set omnifunc=ale#completion#OmniFunc
+
 let g:ale_linters = {
 \   'go': ['gobuild', 'gofmt'],
-\   'ruby': ['rubocop'],
+\   'proto': ['protolint'],
+\   'ruby': ['rubocop', 'sorbet'],
+\   'vim': ['vimls'],
 \}
 let g:ale_fixers = {
 \   'go': ['gofmt', 'goimports'],
-\   'ruby': ['rubocop'],
+\   'proto': ['protolint'],
+\   'ruby': ['rubocop', 'sorbet'],
 \}
+
+let g:ale_ruby_sorbet_enable_watchman = 1
+let g:ale_vim_vimls_use_global = 1
 
 " fugitive
 autocmd BufReadPost fugitive://* set bufhidden=delete
