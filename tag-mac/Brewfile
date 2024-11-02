@@ -1,5 +1,4 @@
 tap "homebrew/bundle"
-tap "homebrew/cask-fonts"
 tap "homebrew/services"
 tap "microsoft/git"
 tap "nodenv/nodenv"
@@ -29,7 +28,6 @@ brew "highlight"
 brew "htop"
 brew "imagemagick" # emacs-mac
 brew "jq"
-brew "launchdns"
 brew "moreutils"
 brew "neovim"
 brew "netcat"
@@ -45,7 +43,14 @@ brew "poppler"
 brew "protolint" # ale.vim
 brew "pstree"
 brew "pyenv"
-brew "railwaycat/emacsmacport/emacs-mac", args: ["with-native-comp", "with-imagemagick", "with-librsvg", "with-emacs-big-sur-icon", "with-glib", "with-mac-metal", "with-unlimited-select", "with-xwidgets"]
+brew "railwaycat/emacsmacport/emacs-mac", args: [
+  "with-glib",
+  "with-imagemagick",
+  "with-librsvg",
+  "with-native-compilation",
+  "with-unlimited-select",
+  "with-xwidgets",
+]
 brew "rbenv"
 brew "rbenv-bundler"
 brew "rbenv-ctags"
@@ -53,8 +58,9 @@ brew "rbenv-default-gems"
 brew "ripgrep"
 brew "ruby-build"
 brew "ruby-install"
-brew "rustup-init"
+brew "rustup"
 brew "shellcheck"
+brew "skhd"
 brew "socat"
 brew "starship"
 brew "tinted-theming/tinted/tinty"
@@ -64,6 +70,7 @@ brew "tree"
 brew "vim"
 brew "watchman" # sorbet
 brew "wget"
+brew "yabai"
 brew "zsh"
 cask "1password-cli"
 cask "font-fira-code"

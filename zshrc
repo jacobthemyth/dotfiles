@@ -42,33 +42,30 @@ export PATH=".git/safe/../../bin:$PATH"
 
 export FZF_DEFAULT_OPTS="--extended --cycle"
 
+export VISUAL=nvim
+export EDITOR=$VISUAL
+
+# Set main key map to viins
+bindkey -v
+
+# Enable bash-style shortcuts in viins mode
+bindkey -M viins "^A" beginning-of-line
+bindkey -M viins "^E" end-of-line
+bindkey -M viins "^K" kill-line
+bindkey -M viins "^R" history-incremental-search-backward
+bindkey -M viins "^P" history-search-backward
+bindkey -M viins "^N" history-search-forward
+
 # Enable Ctrl-x-e to edit command line
 autoload -U edit-command-line
 zle -N edit-command-line
 bindkey '^xe' edit-command-line
 bindkey '^x^e' edit-command-line
 
-export VISUAL=nvim
-export EDITOR=$VISUAL
-
 setopt hist_ignore_all_dups inc_append_history
 HISTFILE=~/.zhistory
 HISTSIZE=4096
 SAVEHIST=4096
-
-# vi mode
-bindkey -v
-bindkey "^F" vi-cmd-mode
-
-# handy keybindings
-bindkey "^A" beginning-of-line
-bindkey "^E" end-of-line
-bindkey "^K" kill-line
-bindkey "^R" history-incremental-search-backward
-bindkey "^P" history-search-backward
-bindkey "^N" history-search-forward
-bindkey "^Y" accept-and-hold
-bindkey "^Q" push-line-or-edit
 
 # awesome cd movements from zshkit
 setopt autocd autopushd pushdminus pushdsilent pushdtohome cdablevars

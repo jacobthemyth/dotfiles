@@ -25,7 +25,7 @@ set list listchars=tab:»·,trail:·,nbsp:·
 set nojoinspaces
 
 if executable('rg')
-  set grepprg=rg\ --vimgrep\ --smart-case\ $*
+  set grepprg=rg\ --glob=!.git\ --hidden\ --vimgrep\ --smart-case\ $*
   set grepformat=%f:%l:%c:%m
 endif
 
@@ -115,7 +115,6 @@ augroup END
 
 hi VertSplit guibg=NONE
 
-highlight link ALEError Error
 highlight htmlArg cterm=italic gui=italic
 highlight Comment cterm=italic gui=italic
 highlight Type    cterm=italic gui=italic
@@ -174,39 +173,104 @@ let g:airline#extensions#tabline#show_close_button = 0
 let g:airline_powerline_fonts = 1
 
 " ale
-let g:ale_statusline_format = ['⨉ %d', '⚠ %d', '']
+let g:ale_completion_autoimport = 1
+let g:ale_completion_enabled = 1
+let g:ale_echo_msg_error_str = ''
+let g:ale_echo_msg_format = '[%linter%] %s [%severity%]'
+let g:ale_echo_msg_warning_str = ''
+let g:ale_floating_preview = 1
+let g:ale_floating_window_border = ['│', '─', '╭', '╮', '╯', '╰']
+let g:ale_hover_cursor = 0
+let g:ale_linters_explicit = 1
+
+let g:ale_ruby_sorbet_enable_watchman = 1
+let g:ale_vim_vimls_use_global = 1
+
+highlight link ALEError Error
+
 nnoremap <Leader>af :ALEFix<CR>
 
-let g:ale_completion_enabled = 1
-
-function! SmartInsertCompletion() abort
-  " Use the default CTRL-N in completion menus
-  if pumvisible()
-    return "\<C-n>"
+function ALETagFunc(pattern, flags, info) abort
+  if a:flags != "c"
+    return v:null
   endif
 
-  " Exit and re-enter insert mode, and use insert completion
-  return "\<C-c>a\<C-n>"
+  let l:current_tag = expand("<cWORD>")
+
+  " execute("call CocAction('jumpDefinition')")
+  " let filename = expand('%:p')
+  " let cursor_pos = getpos(".")
+  " let cmd = '/\%'.cursor_pos[1].'l\%'.cursor_pos[2].'c/'
+  " execute("normal \<C-o>")
+  " return [ { 'name': name, 'filename': filename, 'cmd': cmd } ]
+  return []
 endfunction
 
-inoremap <silent> <C-n> <C-R>=SmartInsertCompletion()<CR>
+" function! s:gotoDefinition() abort
+"   let l:current_tag = expand('<cWORD>')
+"
+"   let l:current_position    = getcurpos()
+"   let l:current_position[0] = bufnr()
+"
+"   let l:current_tag_stack = gettagstack()
+"   let l:current_tag_index = l:current_tag_stack['curidx']
+"   let l:current_tag_items = l:current_tag_stack['items']
+"
+"   if CocAction('jumpDefinition')
+"     let l:new_tag_index = l:current_tag_index + 1
+"     let l:new_tag_item = [#{tagname: l:current_tag, from: l:current_position}]
+"     let l:new_tag_items = l:current_tag_items[:]
+"     if l:current_tag_index <= len(l:current_tag_items)
+"       call remove(l:new_tag_items, l:current_tag_index - 1, -1)
+"     endif
+"     let l:new_tag_items += l:new_tag_item
+"
+"     call settagstack(winnr(), #{curidx: l:new_tag_index, items: l:new_tag_items}, 'r')
+"   endif
+" endfunction
 
-set omnifunc=ale#completion#OmniFunc
+" function! ErlangTag(pattern, flags, info)
+"   let l:funcname = expand("<cword>")
+"   let l:line = getline(".")
+"   let l:match_res = matchlist(line, "[a-zA-Z0-9'_]*:" . l:funcname)
+"   if len(l:match_res) > 0
+"     let [l:mod, l:fun] = split(l:match_res[0], ":")
+"     return filter(taglist(a:pattern), 'get(v:val, "module", "") ==# l:mod')
+"   else
+"     return taglist(a:pattern)
+"   endif
+" endfunction
+
+function! OnALELSPStarted() abort
+    setlocal omnifunc=ale#completion#OmniFunc
+    setlocal signcolumn=yes
+    if exists('+tagfunc') | setlocal tagfunc=ALETagFunc | endif
+    nmap <buffer> gd <plug>(ale_go_to_definition)
+    nmap <buffer><silent> gs :ALESymbolSearch <cword><CR>
+    nmap <buffer> gr <plug>(ale_find_references)
+    nmap <buffer> gi <plug>(ale_go_to_implementation)
+    " nmap <buffer> gt <plug>(ale_go_to_type_definition)
+    nmap <buffer> <leader>rn :ALERename<CR>
+    nmap <buffer> K <plug>(ale_hover)
+endfunction
+
+augroup ale
+  autocmd!
+  autocmd User ALELSPStarted call OnALELSPStarted()
+augroup END
 
 let g:ale_linters = {
 \   'go': ['gobuild', 'gofmt'],
 \   'proto': ['protolint'],
-\   'ruby': ['rubocop', 'sorbet'],
+\   'ruby': ['standardrb', 'sorbet'],
 \   'vim': ['vimls'],
 \}
+
 let g:ale_fixers = {
 \   'go': ['gofmt', 'goimports'],
 \   'proto': ['protolint'],
-\   'ruby': ['rubocop', 'sorbet'],
+\   'ruby': ['standardrb', 'sorbet'],
 \}
-
-let g:ale_ruby_sorbet_enable_watchman = 1
-let g:ale_vim_vimls_use_global = 1
 
 " fugitive
 autocmd BufReadPost fugitive://* set bufhidden=delete

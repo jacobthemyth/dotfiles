@@ -10,7 +10,6 @@ Plug 'dhruvasagar/vim-table-mode',     { 'for': ['markdown', 'org'] }
 Plug 'github/copilot.vim'
 Plug 'hashivim/vim-terraform',         { 'for': ['hcl', 'tf', 'tfvars', 'tfstate'] }
 Plug 'janko-m/vim-test'
-Plug 'jceb/vim-orgmode'
 Plug 'junegunn/fzf',                   { 'do': { -> fzf#install() } }
 Plug 'junegunn/vim-easy-align',        { 'on': '<Plug>(EasyAlign)' }
 Plug 'junegunn/goyo.vim',              { 'for': ['markdown', 'vimwiki'] }
@@ -40,6 +39,9 @@ if !has('nvim')
   " Sensible defaults
   " needs to be last
   Plug 'tpope/vim-sensible'
+  Plug 'jceb/vim-orgmode'
+else
+  Plug 'nvim-orgmode/orgmode'
 endif
 
 call plug#end()
