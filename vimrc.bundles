@@ -5,7 +5,6 @@ end
 call plug#begin('~/.vim/bundle')
 
 Plug 'airblade/vim-gitgutter',         { 'branch': 'main' }
-Plug 'chriskempson/base16-vim'
 Plug 'christoomey/vim-tmux-navigator'
 Plug 'dhruvasagar/vim-table-mode',     { 'for': ['markdown', 'org'] }
 Plug 'github/copilot.vim'

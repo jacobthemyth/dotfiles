@@ -1,0 +1,11 @@
+[[items]]
+name = "tinted-shell"
+path = "https://github.com/tinted-theming/tinted-shell"
+themes-dir = "scripts"
+hook = "source %f"
+
+[[items]]
+name = "base16-vim"
+path = "https://github.com/tinted-theming/base16-vim"
+themes-dir = "colors"
+supported-systems = ["base16"]

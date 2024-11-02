@@ -18,10 +18,6 @@ colors
 # enable colored output from ls, etc. on FreeBSD-based systems
 export CLICOLOR=1
 
-# Base16 Shell
-BASE16_DEFAULT_THEME="eighties"
-[ -n "$PS1" ] && source "$HOME/.config/base16-shell/base16-shell.plugin.zsh"
-
 # Show description in completion menu
 zstyle ":completion:*:descriptions" format "%B%d%b"
 

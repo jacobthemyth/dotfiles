@@ -114,14 +114,6 @@ augroup quickfix
   autocmd QuickFixCmdPost l* lwindow
 augroup END
 
-let base16colorspace=256
-if exists('$BASE16_THEME')
-      \ && (!exists('g:colors_name') || g:colors_name != 'base16-$BASE16_THEME')
-  colorscheme base16-$BASE16_THEME
-else
-  colorscheme base16-tomorrow-night
-endif
-
 hi VertSplit guibg=NONE
 
 set t_ZH=[3m
@@ -132,12 +124,30 @@ if &term =~# '^tmux'
   let &t_8f = "\<Esc>[38;2;%lu;%lu;%lum"
   let &t_8b = "\<Esc>[48;2;%lu;%lu;%lum"
 endif
-set termguicolors
 
 highlight link ALEError Error
 highlight htmlArg cterm=italic gui=italic
 highlight Comment cterm=italic gui=italic
 highlight Type    cterm=italic gui=italic
+
+let theme_script_path = expand("~/.local/share/tinted-theming/tinty/base16-vim-colors-file.vim")
+
+function! FileExists(file_path)
+  return filereadable(a:file_path) == 1
+endfunction
+
+function! HandleFocusGained()
+  if FileExists(g:theme_script_path)
+    execute 'source ' . g:theme_script_path
+  endif
+endfunction
+
+if FileExists(theme_script_path)
+  set termguicolors
+  let g:tinted_colorspace = 256
+  execute 'source ' . theme_script_path
+  autocmd FocusGained * call HandleFocusGained()
+endif
 " }}}
 
 " Mappings {{{
