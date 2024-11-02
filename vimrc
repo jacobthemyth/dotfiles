@@ -1,12 +1,11 @@
 let mapleader = "\<Space>"
 
-syntax on
-
 " Load matchit.vim, but only if the user hasn't installed a newer version.
 if !exists('g:loaded_matchit') && findfile('plugin/matchit.vim', &rtp) ==# ''
   runtime! macros/matchit.vim
 endif
 
+syntax on
 filetype plugin indent on
 
 " When the type of shell script is /bin/sh, assume a POSIX-compatible
@@ -116,15 +115,6 @@ augroup END
 
 hi VertSplit guibg=NONE
 
-set t_ZH=[3m
-set t_ZR=[23m
-
-" :h xterm-true-color
-if &term =~# '^tmux'
-  let &t_8f = "\<Esc>[38;2;%lu;%lu;%lum"
-  let &t_8b = "\<Esc>[48;2;%lu;%lu;%lum"
-endif
-
 highlight link ALEError Error
 highlight htmlArg cterm=italic gui=italic
 highlight Comment cterm=italic gui=italic
@@ -146,7 +136,8 @@ if FileExists(theme_script_path)
   set termguicolors
   let g:tinted_colorspace = 256
   execute 'source ' . theme_script_path
-  autocmd FocusGained * call HandleFocusGained()
+  " TODO: tmux isn't handling this correctly
+  " autocmd FocusGained * call HandleFocusGained()
 endif
 " }}}
 
