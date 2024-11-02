@@ -2,7 +2,6 @@
 
 set -eo pipefail
 
-# TODO: replace with tag hooks
 [[ "$OSTYPE" == "darwin"* ]] || exit
 
 mkdir -p ~/Library/Fonts

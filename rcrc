@@ -1,5 +1,19 @@
-#!/usr/bin/env bash
+#!/bin/sh
+
+case "$OSTYPE" in
+  "darwin"*)
+    RCM_OS_TAG="mac"
+    ;;
+  "linux-gnu"*)
+    RCM_OS_TAG="linux"
+    ;;
+  *)
+    echo "Unsupported OS $OSTYPE" >&2
+    exit 1
+    ;;
+esac
+
 export DOTFILES_DIRS="$HOME/.dotfiles"
 export EXCLUDES="script/* Brewfile README.md LICENSE decryption-status"
 export SYMLINK_DIRS="config/emacs"
-export TAGS="encrypted"
+export TAGS="$RCM_OS_TAG"
