@@ -83,6 +83,8 @@ export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
 
 export FZF_DEFAULT_COMMAND='rg --files'
 
+setopt HIST_IGNORE_SPACE
+
 # aliases
 [[ -f ~/.aliases ]] && source ~/.aliases
 

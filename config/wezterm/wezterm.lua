@@ -10,7 +10,6 @@ config.color_scheme = 'Eighties (base16)'
 config.font = wezterm.font({ family = 'Operator Mono SSM', weight = 'Book' })
 config.font_size = 16
 
-config.hide_tab_bar_if_only_one_tab = true
 config.window_decorations = 'RESIZE|INTEGRATED_BUTTONS'
 config.window_frame = {
   font = wezterm.font({ family = 'Operator Mono SSM', weight = 'Bold' }),
