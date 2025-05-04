@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+pipx install \
+  files-to-prompt \
+  llm

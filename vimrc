@@ -35,10 +35,6 @@ set number
 set splitbelow
 set splitright
 
-if filereadable(expand("~/.vimrc.bundles"))
-  source ~/.vimrc.bundles
-endif
-
 " Core {{{
 
 " Allow project specific vimrc
@@ -153,18 +149,11 @@ vnoremap <Leader>p "+p
 nnoremap <Leader>y "+y
 nnoremap <Leader>p "+p
 nnoremap <Leader>P "+P
-
-" EasyAlign
-" Start interactive EasyAlign in visual mode (e.g. vipga)
-xmap ga <Plug>(EasyAlign)
-
-" Start interactive EasyAlign for a motion/text object (e.g. gaip)
-nmap ga <Plug>(EasyAlign)
 " }}}
 
 " Plugins {{{
 " airline
-let g:airline_theme = 'base16_eighties'
+let g:airline_theme = 'base16_ocean'
 let g:airline#extensions#scrollbar#enabled = 1
 let g:airline#extensions#tabline#enabled = 1
 let g:airline#extensions#tabline#show_buffers = 0
@@ -275,9 +264,6 @@ let g:ale_fixers = {
 " fugitive
 autocmd BufReadPost fugitive://* set bufhidden=delete
 
-" fzf
-nnoremap <silent> <C-p> :FZF<CR>
-
 " goyo
 nnoremap <leader>w :Goyo<CR>
 
@@ -290,6 +276,9 @@ augroup netrw
   autocmd!
   autocmd FileType netrw set colorcolumn=""
 augroup END
+
+" telescope
+nnoremap <silent> <C-p> <cmd>Telescope find_files<cr>
 
 " vim-test
 let g:test#strategy = 'dispatch'

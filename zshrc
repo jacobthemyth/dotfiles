@@ -21,9 +21,10 @@ export CLICOLOR=1
 # Show description in completion menu
 zstyle ":completion:*:descriptions" format "%B%d%b"
 
+FPATH="$FPATH:~/.zsh/functions"
+
 export RBENV_BUILD_ROOT="$HOME/.rbenv/sources" # Force rbenv to always keep sources
 eval "$(rbenv init - --no-rehash)"
-FPATH="$FPATH:~/.zsh/functions"
 
 export PATH="$HOME/.nodenv/bin:$PATH"
 eval "$(nodenv init - --no-rehash)"
@@ -39,8 +40,6 @@ export PATH="$HOME/.cargo/bin:$PATH"
 export PATH="$HOME/.bin:$PATH"
 export PATH="$HOME/.config/emacs/bin:$PATH"
 export PATH=".git/safe/../../bin:$PATH"
-
-export FZF_DEFAULT_OPTS="--extended --cycle"
 
 export VISUAL=nvim
 export EDITOR=$VISUAL
@@ -67,11 +66,10 @@ HISTFILE=~/.zhistory
 HISTSIZE=4096
 SAVEHIST=4096
 
-# awesome cd movements from zshkit
+# cd movements from zshkit
 setopt autocd autopushd pushdminus pushdsilent pushdtohome cdablevars
 DIRSTACKSIZE=5
 
-# Enable extended globbing
 setopt extendedglob
 
 # Allow [ or ] whereever you want
@@ -81,11 +79,14 @@ setopt promptsubst
 
 export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
 
-export FZF_DEFAULT_COMMAND='rg --files'
-
 setopt HIST_IGNORE_SPACE
+
+# fzf
+export FZF_DEFAULT_OPTS="--extended --cycle"
+export FZF_DEFAULT_COMMAND='rg --files'
+[[ -f ~/.fzf.zsh ]] && source ~/.fzf.zsh
 
 # aliases
 [[ -f ~/.aliases ]] && source ~/.aliases
 
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+export XDG_DATA_DIRS="$XDG_DATA_DIRS:/opt/homebrew/share"

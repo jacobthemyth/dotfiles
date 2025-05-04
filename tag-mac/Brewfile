@@ -2,12 +2,14 @@ tap "homebrew/bundle"
 tap "homebrew/services"
 tap "microsoft/git"
 tap "nodenv/nodenv"
-tap "railwaycat/emacsmacport"
 tap "tinted-theming/tinted"
+brew "autoconf"
+brew "cloudflared"
+brew "cmake"
 brew "coreutils"
 brew "diff-so-fancy"
 brew "direnv"
-brew "fd" # emacs-mac
+brew "ffmpeg"
 brew "findutils"
 brew "fzf"
 brew "gawk"
@@ -19,16 +21,21 @@ brew "git-crypt"
 brew "gnu-sed"
 brew "gnu-tar"
 brew "gnupg"
-brew "gnuplot" # emacs org-mode
 brew "go"
 brew "goles/battery/battery"
-brew "graphviz" # emacs org-mode
 brew "grep"
 brew "highlight"
 brew "htop"
-brew "imagemagick" # emacs-mac
+brew "hub"
 brew "jq"
+brew "koekeishiya/formulae/skhd"
+brew "koekeishiya/formulae/yabai"
+brew "lua@5.1" # lazy.vim
+brew "luarocks" # lazy.vim
+brew "make"
+brew "monolith"
 brew "moreutils"
+brew "mosh"
 brew "neovim"
 brew "netcat"
 brew "node-build"
@@ -38,19 +45,13 @@ brew "nodenv/nodenv/nodenv-package-json-engine"
 brew "pandoc"
 brew "pgformatter" # ale.vim
 brew "pidof"
-brew "pngpaste" # emacs org-mode
+brew "pipx"
 brew "poppler"
 brew "protolint" # ale.vim
 brew "pstree"
+brew "pv"
 brew "pyenv"
-brew "railwaycat/emacsmacport/emacs-mac", args: [
-  "with-glib",
-  "with-imagemagick",
-  "with-librsvg",
-  "with-native-compilation",
-  "with-unlimited-select",
-  "with-xwidgets",
-]
+brew "qemu"
 brew "rbenv"
 brew "rbenv-bundler"
 brew "rbenv-ctags"
@@ -60,17 +61,21 @@ brew "ruby-build"
 brew "ruby-install"
 brew "rustup"
 brew "shellcheck"
-brew "skhd"
 brew "socat"
+brew "sqlc"
+brew "sqlfmt"
 brew "starship"
-brew "tinted-theming/tinted/tinty"
+brew "tfenv"
 brew "tig"
+brew "tinted-theming/tinted/tinty"
 brew "tmux"
+brew "trash"
 brew "tree"
 brew "vim"
+brew "watch"
 brew "watchman" # sorbet
 brew "wget"
-brew "yabai"
+brew "youtube-dl"
 brew "zsh"
 cask "1password-cli"
 cask "font-fira-code"

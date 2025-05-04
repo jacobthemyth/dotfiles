@@ -1,15 +1,11 @@
 # Enable aliases to be sudo’ed
 alias sudo='sudo '
 
-alias f='fzf | pbcopy'
 alias la='ls -lAFh'
-alias mux="tmuxinator"
-alias r="ranger"
 alias today="date +%Y-%m-%d"
 alias ts="tig status"
 
 alias less="less -R"
-alias socat="socat -d -d"
 alias ssh='TERM=xterm-256color ssh'
 alias vim="nvim"
 alias vimdiff="nvim -d"
@@ -17,21 +13,3 @@ alias vimdiff="nvim -d"
 # ruby
 alias b='if ! bundle check >/dev/null; then; bundle install; fi; bundle'
 alias be="b exec"
-
-# Applications
-alias marked="open -a Marked\ 2.app"
-
-# Docker
-alias dc="docker-compose"
-alias dvm="docker run --rm -it -v /:/vm-root alpine:edge $@"
-
-# macOS
-alias fin="osascript -e 'display notification \"fin\" with title \"./fin\"'"
-
-alias awsume=". awsume"
-alias tg="terragrunt"
-alias pr="hub pull-request --draft -op -b main"
-alias heroku="env TERM=vt100 heroku"
-
-alias em="emacsclient -t -a ''"
-alias icat="kitty +kitten icat"

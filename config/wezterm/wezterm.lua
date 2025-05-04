@@ -6,7 +6,7 @@ local config = wezterm.config_builder()
 
 config.term = "wezterm"
 
-config.color_scheme = 'Eighties (base16)'
+config.color_scheme = 'Ocean (base16)'
 config.font = wezterm.font({ family = 'Operator Mono SSM', weight = 'Book' })
 config.font_size = 16
 

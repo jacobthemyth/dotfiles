@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-
-set -eo pipefail
-
-# TODO: Why is this preventing other hooks?
-# ~/.config/emacs/bin/doom sync

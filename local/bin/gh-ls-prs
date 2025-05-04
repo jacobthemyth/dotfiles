@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-
-gh pr view --json author,body,number,title $url | jq '(.title) + " by " + (.author.login) + " - Pull Request #" + (.number | tostring) + " - Kajabi/kajabi-products\n" + (.body)' --raw-output | sed 's/\r//' | sed 's/\n\+/\n/'
