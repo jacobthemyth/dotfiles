@@ -15,5 +15,5 @@ esac
 
 export DOTFILES_DIRS="$HOME/.dotfiles"
 export EXCLUDES="script/* Brewfile README.md LICENSE decryption-status"
-export SYMLINK_DIRS="config/emacs config/nvim config/wezterm"
+export SYMLINK_DIRS="config/emacs config/nvim"
 export TAGS="$RCM_OS_TAG"
