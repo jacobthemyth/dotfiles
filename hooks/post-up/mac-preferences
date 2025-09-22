@@ -927,7 +927,7 @@ defaults -currentHost write com.apple.ImageCapture disableHotPlug -bool true
 # Alfred
 ###############################################################################
 
-defaults write com.runningwithcrayons.Alfred-Preferences syncfolder -string '~/Dropbox/.config'
+defaults write com.runningwithcrayons.Alfred-Preferences syncfolder -string '~/Library/CloudStorage/Dropbox/AppData'
 
 ###############################################################################
 # Keyboard Shortcuts

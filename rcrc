@@ -3,6 +3,7 @@
 case "$OSTYPE" in
   "darwin"*)
     RCM_OS_TAG="mac"
+    export UNDOTTED="Library"
     ;;
   "linux-gnu"*)
     RCM_OS_TAG="linux"

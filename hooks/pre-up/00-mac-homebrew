@@ -20,7 +20,7 @@ eval "$($brew_path shellenv)"
 
 echo "Updating Homebrew formulae ..."
 brew update
-brew bundle --file="$HOME/.dotfiles/tag-mac/Brewfile" --no-lock
+brew bundle --file="$HOME/.dotfiles/tag-mac/Brewfile"
 
 echo "Cleaning up old Homebrew formulae ..."
 brew cleanup

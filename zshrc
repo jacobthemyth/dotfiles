@@ -36,7 +36,8 @@ eval "$(direnv hook zsh)"
 export PATH="$HOME/go/bin:$PATH"
 export GOPATH="$HOME/go"
 
-export PATH="$HOME/.cargo/bin:$PATH"
+source "$HOME/.cargo/env"
+
 export PATH="$HOME/.bin:$PATH"
 export PATH="$HOME/.config/emacs/bin:$PATH"
 export PATH=".git/safe/../../bin:$PATH"
