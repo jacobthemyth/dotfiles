@@ -26,4 +26,6 @@ if ! command -v rcup >/dev/null; then
   fi
 fi
 
+export PATH="$PATH:$HOME/.local/bin/"
+
 RCRC="$dotfiles_root/rcrc" rcup
