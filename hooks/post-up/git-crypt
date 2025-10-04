@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+# Check if git-crypt is installed
+if ! command -v git-crypt >/dev/null; then
+  echo "git-crypt not found. Install it with: brew install git-crypt"
+  exit 1
+fi
+
+# Check if repository is already unlocked
+if git-crypt status >/dev/null 2>&1 && ! git-crypt status | grep -q "not encrypted"; then
+  cd "$HOME/.dotfiles"
+
+  # Check if already unlocked
+  if git-crypt status 2>&1 | grep -q "unlocked"; then
+    echo "git-crypt already unlocked"
+    exit 0
+  fi
+
+  echo "Unlocking git-crypt encrypted files..."
+
+  # Get the key from 1password
+  if ! command -v op >/dev/null; then
+    echo "1Password CLI not found. Install it with: brew install 1password-cli"
+    exit 1
+  fi
+
+  # Create a temporary file for the key
+  KEY_FILE=$(mktemp)
+  trap "rm -f $KEY_FILE" EXIT
+
+  # Retrieve the key from 1password
+  OP_KEY_PATH="op://Private/dotfiles.key"
+  op read "$OP_KEY_PATH" > "$KEY_FILE" 2>/dev/null || {
+    echo "Failed to retrieve git-crypt key from 1Password"
+    echo "Make sure you're signed in: op signin"
+    echo "And that the item exists at: $OP_KEY_PATH"
+    exit 1
+  }
+
+  # Unlock the repository
+  git-crypt unlock "$KEY_FILE"
+
+  echo "git-crypt unlocked successfully"
+fi

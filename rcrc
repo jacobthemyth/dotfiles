@@ -15,6 +15,5 @@ case "$OSTYPE" in
 esac
 
 export DOTFILES_DIRS="$HOME/.dotfiles"
-export EXCLUDES="script/* Brewfile README.md LICENSE decryption-status"
-export SYMLINK_DIRS="config/emacs config/nvim"
+export EXCLUDES="script/* README.md LICENSE"
 export TAGS="$RCM_OS_TAG"

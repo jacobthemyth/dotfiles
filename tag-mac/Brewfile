@@ -43,6 +43,7 @@ brew "node-build"
 brew "nodenv"
 brew "nodenv/nodenv/nodenv-default-packages"
 brew "nodenv/nodenv/nodenv-package-json-engine"
+brew "nodenv/nodenv/nodenv-nvmrc"
 brew "pandoc"
 brew "pgformatter" # ale.vim
 brew "pidof"
