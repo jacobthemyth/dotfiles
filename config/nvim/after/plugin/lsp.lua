@@ -1,24 +1,51 @@
 -- Set up lspconfig.
 require("mason").setup()
 
+-- Get capabilities for cmp
+local capabilities = require('cmp_nvim_lsp').default_capabilities()
+
 -- https://github.com/williamboman/mason-lspconfig.nvim?tab=readme-ov-file#available-lsp-servers
 require("mason-lspconfig").setup({
-  automatic_enable = true,
   automatic_installation = false,
   ensure_installed = {
     "lua_ls",
     "gopls",
   },
+  handlers = {
+    -- Default handler for servers without custom config
+    function(server_name)
+      require("lspconfig")[server_name].setup({
+        capabilities = capabilities,
+      })
+    end,
+    -- Custom handler for lua_ls
+    lua_ls = function()
+      require("lspconfig").lua_ls.setup({
+        capabilities = capabilities,
+        settings = {
+          Lua = {
+            runtime = {
+              -- Tell the language server which version of Lua you're using (most likely LuaJIT in the case of Neovim)
+              version = "LuaJIT",
+            },
+            diagnostics = {
+              -- Get the language server to recognize the `vim` global
+              globals = { "vim" },
+            },
+            workspace = {
+              -- Make the server aware of Neovim runtime files
+              library = vim.api.nvim_get_runtime_file("", true),
+            },
+            -- Do not send telemetry data containing a randomized but unique identifier
+            telemetry = {
+              enable = false,
+            },
+          }
+        }
+      })
+    end,
+  }
 })
-
--- Add cmp_nvim_lsp capabilities settings to lspconfig
--- This should be executed before you configure any language server
-local lspconfig_defaults = require('lspconfig').util.default_config
-lspconfig_defaults.capabilities = vim.tbl_deep_extend(
-  'force',
-  lspconfig_defaults.capabilities,
-  require('cmp_nvim_lsp').default_capabilities()
-)
 
 vim.api.nvim_create_autocmd('LspAttach', {
   desc = 'LSP actions',
@@ -37,27 +64,3 @@ vim.api.nvim_create_autocmd('LspAttach', {
     vim.keymap.set('n', '<F4>', '<cmd>lua vim.lsp.buf.code_action()<cr>', opts)
   end,
 })
-
-require("lspconfig").lua_ls.setup {
-  settings = {
-    Lua = {
-      runtime = {
-        -- Tell the language server which version of Lua you're using (most likely LuaJIT in the case of Neovim)
-        version = "LuaJIT",
-      },
-      diagnostics = {
-        -- Get the language server to recognize the `vim` global
-        globals = { "vim" },
-      },
-      workspace = {
-        -- Make the server aware of Neovim runtime files
-        library = vim.api.nvim_get_runtime_file("", true),
-      },
-      -- Do not send telemetry data containing a randomized but unique identifier
-      telemetry = {
-        enable = false,
-      },
-    }
-  }
-}
-require("lspconfig").gopls.setup {}

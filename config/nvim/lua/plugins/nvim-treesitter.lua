@@ -8,8 +8,12 @@ return {
       ensure_installed = {
         "c",
         "go",
+        "javascript",
+        "jsdoc",
         "lua",
         "ruby",
+        "tsx",
+        "typescript",
         "vim",
         "vimdoc",
       },

@@ -6,10 +6,12 @@ return {
   { "fatih/vim-go", ft = {"go", "gohtmltmpl"} },
   { "hashivim/vim-terraform", ft = {"hcl", "tf", "tfvars", "tfstate"} },
   { "janko-m/vim-test", lazy = true },
+  "junegunn/fzf",
   "neovim/nvim-lspconfig",
   { "nvim-orgmode/orgmode", ft = {"org"} },
   { "nvim-tree/nvim-web-devicons", lazy = true },
   "nvim-treesitter/nvim-treesitter",
+  "nvim-treesitter/nvim-treesitter-context",
   "tmhedberg/matchit",
   "tpope/vim-abolish",
   "tpope/vim-bundler",
@@ -32,4 +34,27 @@ return {
   "williamboman/mason-lspconfig.nvim",
   "williamboman/mason.nvim",
   "yssl/QFEnter",
+
+  -- Completion
+  "hrsh7th/nvim-cmp",
+  "hrsh7th/cmp-nvim-lsp",
+  "hrsh7th/cmp-buffer",
+  "hrsh7th/cmp-path",
+  "L3MON4D3/LuaSnip",
+  "saadparwaiz1/cmp_luasnip",
+
+  -- TypeScript
+  "nvim-lua/plenary.nvim",
+  {
+    "pmizio/typescript-tools.nvim",
+    dependencies = { "nvim-lua/plenary.nvim", "neovim/nvim-lspconfig" },
+    ft = { "typescript", "javascript" },
+  },
+  {
+    "dmmulroy/ts-error-translator.nvim",
+    ft = { "typescript", "javascript" },
+  },
+
+  -- Formatting
+  "stevearc/conform.nvim",
 }
