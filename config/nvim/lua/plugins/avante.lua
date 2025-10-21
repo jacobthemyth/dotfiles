@@ -9,6 +9,9 @@ return {
         api_key_name = "cmd:llm keys get anthropic", -- the shell command must be prefixed with `^cmd:(.*)`
       }
     },
+    selection = {
+      hint_display = 'none',
+    },
   },
   -- if you want to build from source then do `make BUILD_FROM_SOURCE=true`
   build = "make",
