@@ -75,3 +75,6 @@
       :n "TAB" 'dired-hide-details-mode)  ; Toggle details
 
 (setq auth-sources '("~/.authinfo.gpg"))
+
+(setq
+    org-superstar-headline-bullets-list '("⁖" "◉" "○" "✸" "✿"))

@@ -1,3 +1,4 @@
+# vim: ft=gitconfig
 [alias]
   aa = add --all
   ap = add --patch
@@ -67,7 +68,6 @@
   email = jacob@jacobsmith.io
 [github]
   user = systemist
-# vim: ft=gitconfig
 [filter "lfs"]
 	clean = git-lfs clean -- %f
 	smudge = git-lfs smudge -- %f
@@ -80,7 +80,8 @@
 [init]
 	defaultBranch = main
 [credential]
-	helper = 
 	helper = /usr/local/share/gcm-core/git-credential-manager
 [credential "https://dev.azure.com"]
 	useHttpPath = true
+[include]
+	path = ~/.config/git/config.local
