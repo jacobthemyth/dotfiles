@@ -6,8 +6,10 @@ return {
 
     configs.setup({
       ensure_installed = {
+        "bash",
         "c",
         "go",
+        "hcl",
         "javascript",
         "jsdoc",
         "lua",
