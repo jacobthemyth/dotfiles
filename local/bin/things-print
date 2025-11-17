@@ -1,0 +1,244 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# things-print
+#
+# Generates PDF index cards from Things tasks in YAML format.
+#
+# USAGE:
+#   things-print FILE.yaml [OPTIONS]
+#   things-print - [OPTIONS]  # read from stdin
+#
+# OPTIONS:
+#   -o, --output PATH    Output PDF path (default: things-TIMESTAMP.pdf)
+#   --page-size SIZE     Card size: 3x5, 4x6, a6, a7 (default: 3x5)
+#   --no-open           Don't auto-open PDF after generation
+#   -h, --help          Show this help
+#
+# EXAMPLES:
+#   # Export from Things and print using process substitution
+#   things-print <(things-export inbox)
+#   things-print <(things-export next) -o next-actions.pdf
+#
+#   # Save export first, then print
+#   things-export inbox > tasks.yaml
+#   things-print tasks.yaml
+#
+#   # Use stdin
+#   things-export someday | things-print -
+#
+#   # Custom page size
+#   things-print tasks.yaml --page-size 4x6
+#
+#   # Don't auto-open
+#   things-print tasks.yaml --no-open
+
+require "bundler/inline"
+require "optparse"
+require "yaml"
+require "time"
+
+gemfile do
+  source "https://rubygems.org"
+  gem "prawn"
+end
+
+module ThingsPrint
+  FONTS_PATH = "#{Dir.home}/Library/Fonts"
+
+  REQUIRED_FONTS = {
+    bold: "OperatorMonoSSm-Bold.ttf",
+    italic: "OperatorMonoSSm-BookItalic.ttf",
+    bold_italic: "OperatorMonoSSm-BoldItalic.ttf",
+    normal: "OperatorMonoSSm-Book.ttf"
+  }.freeze
+
+  PAGE_SIZES = {
+    "3x5" => [216, 360],
+    "4x6" => [288, 432],
+    "a6" => [298, 420],
+    "a7" => [210, 298]
+  }.freeze
+
+  class CLI
+    def initialize(args)
+      @options = {
+        page_size: "3x5",
+        open: true,
+        margin: 12,
+        title_size: 12,
+        notes_size: 10
+      }
+      @args = args
+      parse_options!
+    end
+
+    def run
+      check_fonts!
+      tasks = load_tasks
+      output_path = determine_output_path
+      generate_pdf(tasks, output_path)
+      open_pdf(output_path) if @options[:open]
+    end
+
+    private
+
+    def parse_options!
+      parser = OptionParser.new do |opts|
+        opts.banner = "Usage: things-print FILE.yaml [OPTIONS]\n" \
+                      "       things-print - [OPTIONS]  # read from stdin"
+
+        opts.on("-o", "--output PATH", "Output PDF path (default: things-TIMESTAMP.pdf)") do |path|
+          @options[:output] = path
+        end
+
+        opts.on("--page-size SIZE", PAGE_SIZES.keys, "Card size: #{PAGE_SIZES.keys.join(', ')} (default: 3x5)") do |size|
+          @options[:page_size] = size
+        end
+
+        opts.on("--no-open", "Don't auto-open PDF after generation") do
+          @options[:open] = false
+        end
+
+        opts.on("-h", "--help", "Show this help") do
+          puts opts
+          puts
+          puts "EXAMPLES:"
+          puts "  # Export from Things and print using process substitution"
+          puts "  things-print <(things-export inbox)"
+          puts "  things-print <(things-export next) -o next-actions.pdf"
+          puts
+          puts "  # Save export first, then print"
+          puts "  things-export inbox > tasks.yaml"
+          puts "  things-print tasks.yaml"
+          puts
+          puts "  # Use stdin"
+          puts "  things-export someday | things-print -"
+          puts
+          puts "  # Custom page size"
+          puts "  things-print tasks.yaml --page-size 4x6"
+          puts
+          puts "  # Don't auto-open"
+          puts "  things-print tasks.yaml --no-open"
+          exit
+        end
+      end
+
+      parser.parse!(@args)
+
+      if @args.empty?
+        puts parser
+        exit 1
+      end
+
+      @input_path = @args[0]
+    end
+
+    def check_fonts!
+      missing = REQUIRED_FONTS.values.reject do |font|
+        File.exist?(File.join(FONTS_PATH, font))
+      end
+
+      return if missing.empty?
+
+      abort <<~ERROR
+        Error: OperatorMono fonts not found in #{FONTS_PATH}/
+
+        Required files:
+          #{missing.map { |f| "- #{f}" }.join("\n  ")}
+
+        Please install OperatorMono fonts or ensure they are in the correct location.
+      ERROR
+    end
+
+    def load_tasks
+      yaml_content = if @input_path == "-"
+        if $stdin.tty?
+          abort "Error: No input provided on stdin. Use '-' only when piping data."
+        end
+        $stdin.read
+      else
+        unless File.exist?(@input_path)
+          abort "Error: File not found: #{@input_path}"
+        end
+        File.read(@input_path)
+      end
+
+      if yaml_content.strip.empty?
+        abort "Error: Input is empty"
+      end
+
+      begin
+        tasks = YAML.load(yaml_content)
+      rescue Psych::SyntaxError => e
+        abort "Error: Invalid YAML syntax: #{e.message}"
+      end
+
+      unless tasks.is_a?(Array)
+        abort "Error: YAML must contain an array of tasks, got #{tasks.class}"
+      end
+
+      if tasks.empty?
+        abort "Error: Task list is empty"
+      end
+
+      # Validate task structure
+      tasks.each_with_index do |task, i|
+        unless task.is_a?(Hash)
+          abort "Error: Task at index #{i} must be a hash, got #{task.class}"
+        end
+
+        unless task.key?(:title) || task.key?("title")
+          abort "Error: Task at index #{i} is missing :title key"
+        end
+      end
+
+      # Normalize keys to symbols
+      tasks.map do |task|
+        task.is_a?(Hash) && task.keys.first.is_a?(String) ? task.transform_keys(&:to_sym) : task
+      end
+    end
+
+    def determine_output_path
+      return @options[:output] if @options[:output]
+
+      timestamp = Time.now.strftime("%Y-%m-%d-%H%M%S")
+      "things-#{timestamp}.pdf"
+    end
+
+    def generate_pdf(tasks, output_path)
+      page_size = PAGE_SIZES[@options[:page_size]]
+
+      Prawn::Document.generate(output_path, page_size: page_size, margin: @options[:margin]) do
+        font_families.update("OperatorMono" => {
+          bold: "#{FONTS_PATH}/#{REQUIRED_FONTS[:bold]}",
+          italic: "#{FONTS_PATH}/#{REQUIRED_FONTS[:italic]}",
+          bold_italic: "#{FONTS_PATH}/#{REQUIRED_FONTS[:bold_italic]}",
+          normal: "#{FONTS_PATH}/#{REQUIRED_FONTS[:normal]}"
+        })
+
+        tasks.each_with_index do |task, i|
+          start_new_page unless i.zero?
+
+          font("OperatorMono", size: @options[:title_size], style: :bold)
+          text task[:title]
+
+          next unless task[:notes]
+
+          move_down 20
+
+          font("OperatorMono", size: @options[:notes_size])
+          text task[:notes]
+        end
+      end
+
+      puts "Generated: #{output_path}"
+    end
+
+    def open_pdf(path)
+      system("open", path)
+    end
+  end
+end
+
+ThingsPrint::CLI.new(ARGV).run
