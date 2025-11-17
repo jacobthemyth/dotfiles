@@ -1,0 +1,511 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# things-pdf-matcher
+#
+# Extracts bold text (task titles) from scanned PDF index cards and matches them
+# against tasks in the Things database using fuzzy matching.
+#
+# REQUIREMENTS:
+#   - Ruby 3.x
+#   - poppler-utils (for pdftoppm and pdfinfo)
+#   - llm CLI (https://llm.datasette.io) with a vision model configured
+#
+# INSTALLATION:
+#   brew install poppler
+#   pip install llm
+#   llm install llm-gpt4  # or your preferred vision model
+#   llm keys set openai   # configure API keys
+#
+# USAGE:
+#   # Production mode (requires Things database and llm CLI)
+#   things-pdf-matcher scanned-cards.pdf
+#   things-pdf-matcher --verbose --threshold 0.7 cards.pdf
+#
+#   # Test mode (uses embedded test data, no external dependencies)
+#   things-pdf-matcher --test
+#   things-pdf-matcher --test --verbose
+#
+# OPTIONS:
+#   --test              Run in test mode with sample data
+#   --threshold FLOAT   Fuzzy match threshold (0-1, default: 0.8)
+#   --verbose          Show matching details and extraction progress
+#   --model MODEL      LLM model to use (default: gpt-4o)
+#   --max-candidates N  Max candidates to show (default: 5)
+#   -h, --help         Show help message
+#
+# OUTPUT:
+#   Single high-confidence match:
+#     things:///show?id=abc123
+#
+#   Multiple high-confidence matches:
+#     Multiple high-confidence matches:
+#       things:///show?id=abc123 (95% - "Task title")
+#       things:///show?id=def456 (87% - "Similar task")
+#
+#   No high-confidence matches:
+#     No high-confidence matches. Top candidates:
+#       things:///show?id=abc123 (65% - "Possible match")
+#       things:///show?id=def456 (52% - "Another option")
+
+require "bundler/inline"
+require "optparse"
+require "tempfile"
+require "yaml"
+
+gemfile do
+  source "https://rubygems.org"
+  gem "sqlite3"
+  gem "pry"
+end
+
+module ThingsPdfMatcher
+  # Converts PDF pages to images and extracts bold text using llm CLI
+  module PdfExtractor
+    PROMPT = "Extract only the bold text from this image. Ignore any non-bold or regular weight text. Return only the bold text exactly as it appears, with no additional commentary or formatting."
+
+    def self.extract_titles(pdf_path, model: "gpt-4o")
+      unless File.exist?(pdf_path)
+        raise ArgumentError, "PDF file not found: #{pdf_path}"
+      end
+
+      # Get page count
+      page_count = `pdfinfo "#{pdf_path}" 2>/dev/null | grep "Pages:" | awk '{print $2}'`.strip.to_i
+
+      if page_count.zero?
+        raise "Unable to determine page count for #{pdf_path}. Is poppler-utils installed?"
+      end
+
+      titles = []
+
+      # Convert each page to PNG and extract text
+      Dir.mktmpdir do |tmpdir|
+        # pdftoppm outputs files like: output-1.png, output-2.png, etc.
+        system("pdftoppm", "-png", pdf_path, "#{tmpdir}/page", exception: true)
+
+        (1..page_count).each do |page_num|
+          image_path = "#{tmpdir}/page-#{page_num}.png"
+
+          unless File.exist?(image_path)
+            warn "Warning: Expected image not found: #{image_path}"
+            next
+          end
+
+          # Call llm CLI to extract bold text
+          result = `llm "#{PROMPT}" -a "#{image_path}" -m #{model} 2>&1`.strip
+
+          unless $?.success?
+            warn "Warning: llm command failed for page #{page_num}: #{result}"
+            next
+          end
+
+          # Clean up the extracted text
+          cleaned = clean_text(result)
+          titles << cleaned unless cleaned.empty?
+        end
+      end
+
+      titles
+    end
+
+    def self.clean_text(text)
+      # Remove common LLM response artifacts
+      text = text.gsub(/^(Here is the|The) bold text.*?:/i, "")
+      text = text.gsub(/^["']|["']$/, "") # Remove surrounding quotes
+      text = text.strip
+      text
+    end
+  end
+
+  # Fuzzy matching using Levenshtein distance
+  module ThingsMatcher
+    Match = Struct.new(:uuid, :title, :score, :distance)
+
+    def self.find_matches(query, tasks, threshold: 0.8, max_candidates: 5)
+      return [] if query.nil? || query.empty?
+
+      # Normalize query for better matching
+      normalized_query = normalize(query)
+
+      # Calculate distances for all tasks
+      matches = tasks.map do |task|
+        normalized_title = normalize(task[:title])
+
+        # Levenshtein distance
+        distance = levenshtein_distance(normalized_query, normalized_title)
+
+        # Calculate similarity score (0-1, where 1 is identical)
+        max_length = [normalized_query.length, normalized_title.length].max
+        score = max_length.zero? ? 0.0 : 1.0 - (distance.to_f / max_length)
+
+        Match.new(task[:uuid], task[:title], score, distance)
+      end
+
+      # Sort by score descending
+      matches.sort_by! { |m| -m.score }
+
+      # Filter by threshold
+      high_confidence = matches.select { |m| m.score >= threshold }
+
+      if high_confidence.length == 1
+        # Single high-confidence match
+        high_confidence
+      elsif high_confidence.length > 1
+        # Multiple high-confidence matches
+        high_confidence
+      else
+        # No high-confidence matches, return top N candidates
+        matches.take(max_candidates)
+      end
+    end
+
+    def self.normalize(text)
+      return "" if text.nil?
+      text.to_s
+          .downcase
+          .gsub(/[[:punct:]]+/, " ") # Replace punctuation with spaces
+          .gsub(/\s+/, " ")           # Normalize whitespace
+          .strip
+    end
+
+    # Simple Levenshtein distance implementation
+    def self.levenshtein_distance(s, t)
+      m = s.length
+      n = t.length
+      return m if n.zero?
+      return n if m.zero?
+
+      d = Array.new(m + 1) { Array.new(n + 1) }
+
+      (0..m).each { |i| d[i][0] = i }
+      (0..n).each { |j| d[0][j] = j }
+
+      (1..n).each do |j|
+        (1..m).each do |i|
+          cost = s[i - 1] == t[j - 1] ? 0 : 1
+          d[i][j] = [
+            d[i - 1][j] + 1,      # deletion
+            d[i][j - 1] + 1,      # insertion
+            d[i - 1][j - 1] + cost  # substitution
+          ].min
+        end
+      end
+
+      d[m][n]
+    end
+  end
+
+  # Database interface for Things
+  module ThingsDatabase
+    STATUSES = { todo: 0, cancelled: 2, done: 3 }.freeze
+    TYPES = { task: 0, project: 1 }.freeze
+
+    def self.connect(test_mode: false)
+      if test_mode
+        TestData.create_database
+      else
+        db_path = File.join(
+          Dir.home,
+          "Library/Group Containers/JLMPQHK86H.com.culturedcode.ThingsMac",
+          "ThingsData-A57N3/Things Database.thingsdatabase/main.sqlite"
+        )
+
+        unless File.exist?(db_path)
+          raise "Things database not found at: #{db_path}"
+        end
+
+        SQLite3::Database.new(db_path)
+      end
+    end
+
+    def self.fetch_tasks(db)
+      rows = db.execute(<<~SQL)
+        SELECT uuid, title
+        FROM TMTask
+        WHERE trashed = 0
+        AND type = #{TYPES[:task]}
+        AND status = #{STATUSES[:todo]}
+        ORDER BY creationDate
+      SQL
+
+      rows.map { |(uuid, title)| { uuid: uuid, title: title } }
+    end
+  end
+
+  # Test data and in-memory database setup
+  module TestData
+    def self.create_database
+      db = SQLite3::Database.new(":memory:")
+
+      # Create schema
+      db.execute(<<~SQL)
+        CREATE TABLE TMTask (
+          uuid TEXT PRIMARY KEY,
+          title TEXT,
+          notes TEXT,
+          type INTEGER,
+          status INTEGER,
+          trashed INTEGER,
+          creationDate REAL
+        )
+      SQL
+
+      # Insert test data
+      test_tasks.each do |task|
+        db.execute(
+          "INSERT INTO TMTask (uuid, title, notes, type, status, trashed, creationDate) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          [task[:uuid], task[:title], task[:notes], 0, 0, 0, Time.now.to_f]
+        )
+      end
+
+      db
+    end
+
+    def self.test_tasks
+      # YAML.load returns hashes with string keys, convert to symbol keys
+      tasks = YAML.load(DATA.read)
+      tasks.map { |task| task.transform_keys(&:to_sym) }
+    end
+  end
+
+  # Main CLI application
+  class CLI
+    def initialize(args)
+      @args = args
+      @options = {
+        test: false,
+        threshold: 0.8,
+        verbose: false,
+        model: "gpt-4o",
+        max_candidates: 5
+      }
+      parse_options!
+    end
+
+    def run
+      if @options[:test]
+        run_test_mode
+      else
+        run_production_mode
+      end
+    end
+
+    private
+
+    def parse_options!
+      parser = OptionParser.new do |opts|
+        opts.banner = "Usage: things-pdf-matcher [options] PDF_FILE"
+
+        opts.on("--test", "Run in test mode with sample data") do
+          @options[:test] = true
+        end
+
+        opts.on("--threshold FLOAT", Float, "Fuzzy match threshold (0-1, default: 0.8)") do |t|
+          @options[:threshold] = t
+        end
+
+        opts.on("--verbose", "Show matching details") do
+          @options[:verbose] = true
+        end
+
+        opts.on("--model MODEL", "LLM model to use (default: gpt-4o)") do |m|
+          @options[:model] = m
+        end
+
+        opts.on("--max-candidates N", Integer, "Max candidates to show (default: 5)") do |n|
+          @options[:max_candidates] = n
+        end
+
+        opts.on("-h", "--help", "Show this help message") do
+          puts opts
+          exit
+        end
+      end
+
+      parser.parse!(@args)
+
+      unless @options[:test]
+        if @args.empty?
+          puts parser
+          exit 1
+        end
+        @pdf_path = @args[0]
+      end
+    end
+
+    def run_test_mode
+      puts "Running in test mode with sample data..."
+      puts
+
+      db = ThingsDatabase.connect(test_mode: true)
+      tasks = ThingsDatabase.fetch_tasks(db)
+
+      puts "Test database contains #{tasks.length} tasks:"
+      tasks.each do |task|
+        puts "  - #{task[:title]}"
+      end
+      puts
+
+      # Test queries
+      test_queries = [
+        "Tech career",                    # Exact match
+        "Tech carrer",                    # Typo
+        "ACS: Linux, PG, etc. not as transferable as expected",  # Spelling variation
+        "Review OAuth implementation",    # Exact match
+        "review oauth",                   # Case/punctuation differences
+        "Nonexistent task"                # No match
+      ]
+
+      test_queries.each do |query|
+        puts "Query: \"#{query}\""
+        matches = ThingsMatcher.find_matches(
+          query,
+          tasks,
+          threshold: @options[:threshold],
+          max_candidates: @options[:max_candidates]
+        )
+
+        display_matches(matches, query)
+        puts
+      end
+    end
+
+    def run_production_mode
+      unless File.exist?(@pdf_path)
+        abort "Error: PDF file not found: #{@pdf_path}"
+      end
+
+      puts "Extracting text from PDF..." if @options[:verbose]
+
+      begin
+        titles = PdfExtractor.extract_titles(@pdf_path, model: @options[:model])
+      rescue => e
+        abort "Error extracting text from PDF: #{e.message}"
+      end
+
+      if titles.empty?
+        abort "No text extracted from PDF"
+      end
+
+      puts "Extracted #{titles.length} title(s):" if @options[:verbose]
+      titles.each { |t| puts "  - #{t}" } if @options[:verbose]
+      puts if @options[:verbose]
+
+      puts "Connecting to Things database..." if @options[:verbose]
+
+      begin
+        db = ThingsDatabase.connect
+        tasks = ThingsDatabase.fetch_tasks(db)
+      rescue => e
+        abort "Error accessing Things database: #{e.message}"
+      end
+
+      puts "Searching #{tasks.length} tasks..." if @options[:verbose]
+      puts if @options[:verbose]
+
+      titles.each_with_index do |title, i|
+        puts "Title #{i + 1}: \"#{title}\"" if titles.length > 1 && @options[:verbose]
+
+        matches = ThingsMatcher.find_matches(
+          title,
+          tasks,
+          threshold: @options[:threshold],
+          max_candidates: @options[:max_candidates]
+        )
+
+        display_matches(matches, title)
+        puts if titles.length > 1
+      end
+    end
+
+    def display_matches(matches, query)
+      if matches.empty?
+        puts "No matches found"
+        return
+      end
+
+      high_confidence = matches.select { |m| m.score >= @options[:threshold] }
+
+      if high_confidence.length == 1
+        match = high_confidence.first
+        puts "things:///show?id=#{match.uuid}"
+        puts "(#{(match.score * 100).round}% match: \"#{match.title}\")" if @options[:verbose]
+      elsif high_confidence.length > 1
+        puts "Multiple high-confidence matches:"
+        high_confidence.each do |match|
+          puts "  things:///show?id=#{match.uuid} (#{(match.score * 100).round}% - \"#{match.title}\")"
+        end
+      else
+        puts "No high-confidence matches. Top candidates:"
+        matches.each do |match|
+          puts "  things:///show?id=#{match.uuid} (#{(match.score * 100).round}% - \"#{match.title}\")"
+        end
+      end
+    end
+  end
+end
+
+# Run the CLI
+ThingsPdfMatcher::CLI.new(ARGV).run
+
+__END__
+# Test data with edge cases
+- uuid: "9kPn3m1Fo1ePh82dLPkziE"
+  title: "Tech career"
+  notes: "Ch. 9\nCh. 10\nCh. 16"
+
+- uuid: "ACS1234567890abcdef"
+  title: "ACS: Linux, PG, etc. not as transferrable as expected"
+  notes: null
+
+- uuid: "OAuth123456789"
+  title: "Review OAuth implementation"
+  notes: "Check token refresh logic"
+
+- uuid: "ShortTask1234"
+  title: "Buy milk"
+  notes: null
+
+- uuid: "VeryLongTask123456"
+  title: "Complete comprehensive review of the entire authentication system including OAuth2, JWT tokens, session management, and password reset flow"
+  notes: "This is a very long task title to test edge cases"
+
+- uuid: "SpecialChars12345"
+  title: "Fix bug in PDF parser (handle multi-column layouts)"
+  notes: null
+
+- uuid: "CaseSensitive123"
+  title: "URGENT: Deploy to production"
+  notes: null
+
+- uuid: "Punctuation12345"
+  title: "Review PR #1234: Add new feature"
+  notes: null
+
+- uuid: "SimilarTask12345"
+  title: "Tech interview prep"
+  notes: "Different from 'Tech career'"
+
+- uuid: "WithNumbers12345"
+  title: "Update to Node.js v20.5.1"
+  notes: null
+
+- uuid: "ExtraSpaces12345"
+  title: "Clean    up    database"
+  notes: "Has extra spaces"
+
+- uuid: "Abbreviated12345"
+  title: "Implement auth w/ JWT"
+  notes: "Abbreviated 'with'"
+
+- uuid: "Unicode123456789"
+  title: "Add emoji support 🎉"
+  notes: null
+
+- uuid: "QuotedTask12345"
+  title: "Read \"Clean Code\" book"
+  notes: null
+
+- uuid: "SlashTask123456"
+  title: "Fix bug in API endpoint /users/:id"
+  notes: null
