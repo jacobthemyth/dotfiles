@@ -22,9 +22,13 @@
 #   things-pdf-matcher scanned-cards.pdf
 #   things-pdf-matcher --verbose --threshold 0.7 cards.pdf
 #
-#   # Test mode (uses embedded test data, no external dependencies)
+#   # Test mode with hardcoded queries (no external dependencies)
 #   things-pdf-matcher --test
 #   things-pdf-matcher --test --verbose
+#
+#   # Test mode with PDF (requires llm CLI but uses test database)
+#   things-pdf-matcher --test scanned-test-cards.pdf
+#   things-pdf-matcher --test --verbose test-cards.pdf
 #
 # OPTIONS:
 #   --test              Run in test mode with sample data
@@ -320,9 +324,10 @@ module ThingsPdfMatcher
 
     def parse_options!
       parser = OptionParser.new do |opts|
-        opts.banner = "Usage: things-pdf-matcher [options] PDF_FILE"
+        opts.banner = "Usage: things-pdf-matcher [options] [PDF_FILE]\n" \
+                      "       things-pdf-matcher --test [PDF_FILE]"
 
-        opts.on("--test", "Run in test mode with sample data") do
+        opts.on("--test", "Run in test mode with sample database") do
           @options[:test] = true
         end
 
@@ -350,11 +355,15 @@ module ThingsPdfMatcher
 
       parser.parse!(@args)
 
-      unless @options[:test]
-        if @args.empty?
+      # In production mode, PDF is required
+      # In test mode, PDF is optional (uses test queries if not provided)
+      if @args.empty?
+        unless @options[:test]
           puts parser
           exit 1
         end
+        @pdf_path = nil
+      else
         @pdf_path = @args[0]
       end
     end
@@ -372,6 +381,15 @@ module ThingsPdfMatcher
       end
       puts
 
+      # If PDF provided, extract from it; otherwise use hardcoded test queries
+      if @pdf_path
+        run_pdf_matching(tasks)
+      else
+        run_test_queries(tasks)
+      end
+    end
+
+    def run_test_queries(tasks)
       # Test queries
       test_queries = [
         "Tech career",                    # Exact match
@@ -396,7 +414,7 @@ module ThingsPdfMatcher
       end
     end
 
-    def run_production_mode
+    def run_pdf_matching(tasks)
       unless File.exist?(@pdf_path)
         abort "Error: PDF file not found: #{@pdf_path}"
       end
@@ -417,18 +435,6 @@ module ThingsPdfMatcher
       titles.each { |t| puts "  - #{t}" } if @options[:verbose]
       puts if @options[:verbose]
 
-      puts "Connecting to Things database..." if @options[:verbose]
-
-      begin
-        db = ThingsDatabase.connect
-        tasks = ThingsDatabase.fetch_tasks(db)
-      rescue => e
-        abort "Error accessing Things database: #{e.message}"
-      end
-
-      puts "Searching #{tasks.length} tasks..." if @options[:verbose]
-      puts if @options[:verbose]
-
       titles.each_with_index do |title, i|
         puts "Title #{i + 1}: \"#{title}\"" if titles.length > 1 && @options[:verbose]
 
@@ -441,6 +447,21 @@ module ThingsPdfMatcher
 
         display_matches(matches, title)
         puts if titles.length > 1
+      end
+    end
+
+    def run_production_mode
+      run_pdf_matching(get_production_tasks)
+    end
+
+    def get_production_tasks
+      puts "Connecting to Things database..." if @options[:verbose]
+
+      begin
+        db = ThingsDatabase.connect
+        ThingsDatabase.fetch_tasks(db)
+      rescue => e
+        abort "Error accessing Things database: #{e.message}"
       end
     end
 
