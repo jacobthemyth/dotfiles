@@ -363,8 +363,36 @@ module ThingsPdfMatcher
           @options[:max_candidates] = n
         end
 
-        opts.on("--list-models", "List available llm models") do
-          system("llm", "models", "list")
+        opts.on("--list-models", "List available llm models with vision support") do
+          puts "Available vision models (supports image attachments):"
+          puts
+
+          # Get models in JSON format and filter for those supporting attachments
+          output = `llm models list --json 2>/dev/null`
+
+          if $?.success? && !output.empty?
+            require 'json'
+            models = JSON.parse(output)
+            vision_models = models.select { |m| m["attachment_support"] == true }
+
+            if vision_models.empty?
+              puts "No vision models found."
+              puts "Install vision models with:"
+              puts "  ollama pull llava:latest"
+              puts "  ollama pull llava-phi3:latest"
+              puts "  llm keys set openai  # for gpt-4o, gpt-4o-mini"
+            else
+              vision_models.each do |model|
+                aliases = model["aliases"] || []
+                alias_str = aliases.empty? ? "" : " (aliases: #{aliases.join(', ')})"
+                puts "  #{model['model_id']}#{alias_str}"
+              end
+            end
+          else
+            # Fallback if JSON parsing fails
+            puts "Unable to query models. Try running: llm models list"
+          end
+
           exit
         end
 
