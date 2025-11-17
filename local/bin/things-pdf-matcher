@@ -535,3 +535,7 @@ __END__
 - uuid: "SlashTask123456"
   title: "Fix bug in API endpoint /users/:id"
   notes: null
+
+- uuid: "MultiPageTask123"
+  title: "Research distributed systems patterns"
+  notes: "Key concepts to cover: 1) Consistency models - strong consistency, eventual consistency, causal consistency. Understanding CAP theorem and how it applies to real-world systems. 2) Replication strategies - master-slave, multi-master, quorum-based replication. Trade-offs between availability and consistency. 3) Partitioning approaches - hash-based, range-based, consistent hashing. How to handle hotspots and rebalancing. 4) Consensus algorithms - Paxos, Raft, and their practical implementations. Understanding leader election and log replication. 5) Event sourcing and CQRS patterns for handling distributed state. 6) Distributed transactions - two-phase commit, saga pattern, and compensating transactions. When to use each approach. 7) Service discovery and coordination using tools like Consul, etcd, or ZooKeeper. 8) Circuit breakers and fault tolerance patterns. How to build resilient systems. 9) Observability in distributed systems - distributed tracing, metrics aggregation, and log correlation. 10) Testing strategies for distributed systems including chaos engineering. Read papers: Google Spanner, Amazon Dynamo, Facebook TAO. Implement sample projects using microservices architecture. Document common failure scenarios and recovery strategies. Consider data locality and network partitions."

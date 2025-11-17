@@ -220,6 +220,10 @@ module ThingsPrint
           normal: "#{FONTS_PATH}/#{REQUIRED_FONTS[:normal]}"
         })
 
+        # Use Helvetica as fallback for emojis and other Unicode characters
+        # that OperatorMono doesn't support
+        fallback_fonts(["Helvetica"])
+
         tasks.each_with_index do |task, i|
           start_new_page unless i.zero?
 
