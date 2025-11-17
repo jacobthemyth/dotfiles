@@ -586,14 +586,6 @@ ThingsPdfMatcher::CLI.new(ARGV).run
 
 __END__
 # Test data with edge cases
-- uuid: "9kPn3m1Fo1ePh82dLPkziE"
-  title: "Tech career"
-  notes: "Ch. 9\nCh. 10\nCh. 16"
-
-- uuid: "ACS1234567890abcdef"
-  title: "ACS: Linux, PG, etc. not as transferrable as expected"
-  notes: null
-
 - uuid: "OAuth123456789"
   title: "Review OAuth implementation"
   notes: "Check token refresh logic"
