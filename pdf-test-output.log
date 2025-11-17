@@ -1,3 +1,74 @@
+Downloading scipy (34.2MiB)
+Downloading nvidia-nvjitlink-cu12 (37.4MiB)
+Downloading nvidia-cufft-cu12 (184.2MiB)
+Downloading nvidia-cusparse-cu12 (274.9MiB)
+Downloading nvidia-cudnn-cu12 (674.0MiB)
+Downloading nvidia-curand-cu12 (60.7MiB)
+Downloading torch (858.1MiB)
+Downloading nvidia-cusolver-cu12 (255.1MiB)
+Downloading nvidia-cusparselt-cu12 (273.9MiB)
+Downloading nvidia-nvshmem-cu12 (118.9MiB)
+Downloading lxml (5.0MiB)
+Downloading nvidia-cuda-nvrtc-cu12 (84.0MiB)
+Downloading opencv-python (60.1MiB)
+Downloading nvidia-nccl-cu12 (307.4MiB)
+Downloading sympy (6.0MiB)
+Downloading numpy (16.1MiB)
+Downloading nvidia-cublas-cu12 (566.8MiB)
+Downloading hf-xet (3.2MiB)
+Downloading nvidia-cuda-cupti-cu12 (9.8MiB)
+Downloading shapely (3.0MiB)
+Downloading pydantic-core (2.0MiB)
+Downloading transformers (11.4MiB)
+Downloading pandas (12.2MiB)
+Downloading tokenizers (3.1MiB)
+Downloading pillow (6.3MiB)
+Downloading pypdfium2 (2.7MiB)
+Downloading networkx (1.9MiB)
+Downloading triton (162.5MiB)
+Downloading faker (1.9MiB)
+Downloading rapidocr (14.4MiB)
+Downloading docling-parse (14.4MiB)
+Downloading nvidia-cufile-cu12 (1.1MiB)
+Downloading torchvision (7.7MiB)
+   Building pylatexenc==2.10
+   Building antlr4-python3-runtime==4.9.3
+ Downloading nvidia-cufile-cu12
+      Built pylatexenc==2.10
+      Built antlr4-python3-runtime==4.9.3
+ Downloading pydantic-core
+ Downloading networkx
+ Downloading faker
+ Downloading pypdfium2
+ Downloading shapely
+ Downloading tokenizers
+ Downloading hf-xet
+ Downloading lxml
+ Downloading sympy
+ Downloading pillow
+ Downloading torchvision
+ Downloading nvidia-cuda-cupti-cu12
+ Downloading transformers
+ Downloading rapidocr
+ Downloading docling-parse
+ Downloading pandas
+ Downloading numpy
+ Downloading scipy
+ Downloading nvidia-nvjitlink-cu12
+ Downloading opencv-python
+ Downloading nvidia-curand-cu12
+ Downloading nvidia-cuda-nvrtc-cu12
+ Downloading nvidia-nvshmem-cu12
+ Downloading triton
+ Downloading nvidia-cufft-cu12
+ Downloading nvidia-cusolver-cu12
+ Downloading nvidia-cusparselt-cu12
+ Downloading nvidia-cusparse-cu12
+ Downloading nvidia-nccl-cu12
+ Downloading nvidia-cublas-cu12
+ Downloading nvidia-cudnn-cu12
+ Downloading torch
+Installed 112 packages in 10.76s
 Using test database...
 Loaded 14 tasks
 
@@ -19,36 +90,36 @@ Test database contains:
 
 Processing scanned PDF with docling: things-2025-11-16-222127.pdf
 (This may take a while on first run while downloading models...)
-2025-11-17 15:45:26,309 - INFO - detected formats: [<InputFormat.PDF: 'pdf'>]
-2025-11-17 15:45:26,449 - INFO - Going to convert document batch...
-2025-11-17 15:45:26,449 - INFO - Initializing pipeline for StandardPdfPipeline with options hash 44ae89a68fc272bc7889292e9b5a1bad
-2025-11-17 15:45:26,486 - INFO - Loading plugin 'docling_defaults'
-2025-11-17 15:45:26,496 - INFO - Registered picture descriptions: ['vlm', 'api']
-2025-11-17 15:45:26,520 - INFO - Loading plugin 'docling_defaults'
-2025-11-17 15:45:26,548 - INFO - Registered ocr engines: ['auto', 'easyocr', 'ocrmac', 'rapidocr', 'tesserocr', 'tesseract']
-2025-11-17 15:45:26,626 - INFO - rapidocr cannot be used because onnxruntime is not installed.
-2025-11-17 15:45:26,627 - INFO - easyocr cannot be used because it is not installed.
-2025-11-17 15:45:27,499 - INFO - Accelerator device: 'cpu'
-[32m[INFO] 2025-11-17 15:45:27,516 [RapidOCR] base.py:22: Using engine_name: torch[0m
-[32m[INFO] 2025-11-17 15:45:27,545 [RapidOCR] download_file.py:68: Initiating download: https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.4.0/torch/PP-OCRv4/det/ch_PP-OCRv4_det_infer.pth[0m
-[32m[INFO] 2025-11-17 15:45:28,949 [RapidOCR] download_file.py:82: Download size: 13.83MB[0m
-[32m[INFO] 2025-11-17 15:45:31,781 [RapidOCR] download_file.py:95: Successfully saved to: /root/.cache/uv/environments-v2/things-pdf-matcher-5a56b8e5ee156d14/lib/python3.11/site-packages/rapidocr/models/ch_PP-OCRv4_det_infer.pth[0m
-[32m[INFO] 2025-11-17 15:45:31,783 [RapidOCR] torch.py:54: Using /root/.cache/uv/environments-v2/things-pdf-matcher-5a56b8e5ee156d14/lib/python3.11/site-packages/rapidocr/models/ch_PP-OCRv4_det_infer.pth[0m
-[32m[INFO] 2025-11-17 15:45:32,151 [RapidOCR] base.py:22: Using engine_name: torch[0m
-[32m[INFO] 2025-11-17 15:45:32,152 [RapidOCR] download_file.py:68: Initiating download: https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.4.0/torch/PP-OCRv4/cls/ch_ptocr_mobile_v2.0_cls_infer.pth[0m
-[32m[INFO] 2025-11-17 15:45:33,868 [RapidOCR] download_file.py:82: Download size: 0.56MB[0m
-[32m[INFO] 2025-11-17 15:45:33,982 [RapidOCR] download_file.py:95: Successfully saved to: /root/.cache/uv/environments-v2/things-pdf-matcher-5a56b8e5ee156d14/lib/python3.11/site-packages/rapidocr/models/ch_ptocr_mobile_v2.0_cls_infer.pth[0m
-[32m[INFO] 2025-11-17 15:45:33,984 [RapidOCR] torch.py:54: Using /root/.cache/uv/environments-v2/things-pdf-matcher-5a56b8e5ee156d14/lib/python3.11/site-packages/rapidocr/models/ch_ptocr_mobile_v2.0_cls_infer.pth[0m
-[32m[INFO] 2025-11-17 15:45:34,101 [RapidOCR] base.py:22: Using engine_name: torch[0m
-[32m[INFO] 2025-11-17 15:45:34,102 [RapidOCR] download_file.py:68: Initiating download: https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.4.0/torch/PP-OCRv4/rec/ch_PP-OCRv4_rec_infer.pth[0m
-[32m[INFO] 2025-11-17 15:45:35,836 [RapidOCR] download_file.py:82: Download size: 25.67MB[0m
-[32m[INFO] 2025-11-17 15:45:44,176 [RapidOCR] download_file.py:95: Successfully saved to: /root/.cache/uv/environments-v2/things-pdf-matcher-5a56b8e5ee156d14/lib/python3.11/site-packages/rapidocr/models/ch_PP-OCRv4_rec_infer.pth[0m
-[32m[INFO] 2025-11-17 15:45:44,178 [RapidOCR] torch.py:54: Using /root/.cache/uv/environments-v2/things-pdf-matcher-5a56b8e5ee156d14/lib/python3.11/site-packages/rapidocr/models/ch_PP-OCRv4_rec_infer.pth[0m
-2025-11-17 15:45:44,496 - INFO - Auto OCR model selected rapidocr with torch.
-2025-11-17 15:45:44,527 - INFO - Accelerator device: 'cpu'
-2025-11-17 15:45:48,934 - INFO - Accelerator device: 'cpu'
-2025-11-17 15:45:49,564 - INFO - Processing document things-2025-11-16-222127.pdf
-2025-11-17 15:46:04,459 - INFO - Finished converting document things-2025-11-16-222127.pdf in 38.15 sec.
+2025-11-17 16:27:01,606 - INFO - detected formats: [<InputFormat.PDF: 'pdf'>]
+2025-11-17 16:27:01,741 - INFO - Going to convert document batch...
+2025-11-17 16:27:01,742 - INFO - Initializing pipeline for StandardPdfPipeline with options hash 44ae89a68fc272bc7889292e9b5a1bad
+2025-11-17 16:27:01,778 - INFO - Loading plugin 'docling_defaults'
+2025-11-17 16:27:01,787 - INFO - Registered picture descriptions: ['vlm', 'api']
+2025-11-17 16:27:01,812 - INFO - Loading plugin 'docling_defaults'
+2025-11-17 16:27:01,836 - INFO - Registered ocr engines: ['auto', 'easyocr', 'ocrmac', 'rapidocr', 'tesserocr', 'tesseract']
+2025-11-17 16:27:01,903 - INFO - rapidocr cannot be used because onnxruntime is not installed.
+2025-11-17 16:27:01,904 - INFO - easyocr cannot be used because it is not installed.
+2025-11-17 16:27:02,750 - INFO - Accelerator device: 'cpu'
+[32m[INFO] 2025-11-17 16:27:02,768 [RapidOCR] base.py:22: Using engine_name: torch[0m
+[32m[INFO] 2025-11-17 16:27:02,796 [RapidOCR] download_file.py:68: Initiating download: https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.4.0/torch/PP-OCRv4/det/ch_PP-OCRv4_det_infer.pth[0m
+[32m[INFO] 2025-11-17 16:27:05,328 [RapidOCR] download_file.py:82: Download size: 13.83MB[0m
+[32m[INFO] 2025-11-17 16:27:08,087 [RapidOCR] download_file.py:95: Successfully saved to: /root/.cache/uv/environments-v2/things-pdf-matcher-5a56b8e5ee156d14/lib/python3.11/site-packages/rapidocr/models/ch_PP-OCRv4_det_infer.pth[0m
+[32m[INFO] 2025-11-17 16:27:08,090 [RapidOCR] torch.py:54: Using /root/.cache/uv/environments-v2/things-pdf-matcher-5a56b8e5ee156d14/lib/python3.11/site-packages/rapidocr/models/ch_PP-OCRv4_det_infer.pth[0m
+[32m[INFO] 2025-11-17 16:27:08,691 [RapidOCR] base.py:22: Using engine_name: torch[0m
+[32m[INFO] 2025-11-17 16:27:08,692 [RapidOCR] download_file.py:68: Initiating download: https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.4.0/torch/PP-OCRv4/cls/ch_ptocr_mobile_v2.0_cls_infer.pth[0m
+[32m[INFO] 2025-11-17 16:27:10,314 [RapidOCR] download_file.py:82: Download size: 0.56MB[0m
+[32m[INFO] 2025-11-17 16:27:10,429 [RapidOCR] download_file.py:95: Successfully saved to: /root/.cache/uv/environments-v2/things-pdf-matcher-5a56b8e5ee156d14/lib/python3.11/site-packages/rapidocr/models/ch_ptocr_mobile_v2.0_cls_infer.pth[0m
+[32m[INFO] 2025-11-17 16:27:10,432 [RapidOCR] torch.py:54: Using /root/.cache/uv/environments-v2/things-pdf-matcher-5a56b8e5ee156d14/lib/python3.11/site-packages/rapidocr/models/ch_ptocr_mobile_v2.0_cls_infer.pth[0m
+[32m[INFO] 2025-11-17 16:27:10,558 [RapidOCR] base.py:22: Using engine_name: torch[0m
+[32m[INFO] 2025-11-17 16:27:10,559 [RapidOCR] download_file.py:68: Initiating download: https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.4.0/torch/PP-OCRv4/rec/ch_PP-OCRv4_rec_infer.pth[0m
+[32m[INFO] 2025-11-17 16:27:11,967 [RapidOCR] download_file.py:82: Download size: 25.67MB[0m
+[32m[INFO] 2025-11-17 16:27:20,598 [RapidOCR] download_file.py:95: Successfully saved to: /root/.cache/uv/environments-v2/things-pdf-matcher-5a56b8e5ee156d14/lib/python3.11/site-packages/rapidocr/models/ch_PP-OCRv4_rec_infer.pth[0m
+[32m[INFO] 2025-11-17 16:27:20,602 [RapidOCR] torch.py:54: Using /root/.cache/uv/environments-v2/things-pdf-matcher-5a56b8e5ee156d14/lib/python3.11/site-packages/rapidocr/models/ch_PP-OCRv4_rec_infer.pth[0m
+2025-11-17 16:27:20,933 - INFO - Auto OCR model selected rapidocr with torch.
+2025-11-17 16:27:20,965 - INFO - Accelerator device: 'cpu'
+2025-11-17 16:27:25,050 - INFO - Accelerator device: 'cpu'
+2025-11-17 16:27:25,462 - INFO - Processing document things-2025-11-16-222127.pdf
+2025-11-17 16:27:41,591 - INFO - Finished converting document things-2025-11-16-222127.pdf in 39.99 sec.
 PDF converted successfully
 
 Extracted markdown:
