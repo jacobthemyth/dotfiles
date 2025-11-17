@@ -363,35 +363,41 @@ module ThingsPdfMatcher
           @options[:max_candidates] = n
         end
 
-        opts.on("--list-models", "List available llm models with vision support") do
-          puts "Available vision models (supports image attachments):"
+        opts.on("--list-models", "List available llm models and recommendations") do
+          puts "Checking available models..."
           puts
 
-          # Get models in JSON format and filter for those supporting attachments
-          output = `llm models list --json 2>/dev/null`
+          # Try to run llm models list
+          output = `llm models list 2>&1`
 
-          if $?.success? && !output.empty?
-            require 'json'
-            models = JSON.parse(output)
-            vision_models = models.select { |m| m["attachment_support"] == true }
-
-            if vision_models.empty?
-              puts "No vision models found."
-              puts "Install vision models with:"
-              puts "  ollama pull llava:latest"
-              puts "  ollama pull llava-phi3:latest"
-              puts "  llm keys set openai  # for gpt-4o, gpt-4o-mini"
-            else
-              vision_models.each do |model|
-                aliases = model["aliases"] || []
-                alias_str = aliases.empty? ? "" : " (aliases: #{aliases.join(', ')})"
-                puts "  #{model['model_id']}#{alias_str}"
-              end
-            end
-          else
-            # Fallback if JSON parsing fails
-            puts "Unable to query models. Try running: llm models list"
+          if $?.success?
+            puts "All available models:"
+            puts output
+            puts
+            puts "=" * 60
+            puts
           end
+
+          puts "VISION-CAPABLE MODELS (tested/recommended):"
+          puts
+          puts "Local (Ollama - brew install ollama):"
+          puts "  llava:latest"
+          puts "  llava-phi3:latest"
+          puts "  qwen2-vl:latest"
+          puts "  minicpm-v:latest"
+          puts
+          puts "API (requires keys):"
+          puts "  gpt-4o              # llm keys set openai"
+          puts "  gpt-4o-mini         # llm keys set openai"
+          puts "  claude-3-5-sonnet-latest  # llm keys set claude"
+          puts "  gemini-1.5-pro-latest     # llm keys set gemini"
+          puts
+          puts "Install Ollama models:"
+          puts "  ollama pull llava:latest"
+          puts "  ollama pull llava-phi3:latest"
+          puts
+          puts "Note: Not all models support image attachments."
+          puts "Test a model with: llm 'describe this image' -a test.png -m MODEL_NAME"
 
           exit
         end
