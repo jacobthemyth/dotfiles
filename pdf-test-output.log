@@ -1,0 +1,223 @@
+Using test database...
+Loaded 14 tasks
+
+Test database contains:
+  - Add emoji support 🎉
+  - Buy milk
+  - Clean    up    database
+  - Complete comprehensive review of the entire authentication system including OAuth2, JWT tokens, session management, and password reset flow
+  - Fix bug in API endpoint /users/:id
+  - Fix bug in PDF parser (handle multi-column layouts)
+  - Implement auth w/ JWT
+  - Read "Clean Code" book
+  - Research distributed systems patterns
+  - Review OAuth implementation
+  - Review PR #1234: Add new feature
+  - Tech interview prep
+  - URGENT: Deploy to production
+  - Update to Node.js v20.5.1
+
+Processing scanned PDF with docling: things-2025-11-16-222127.pdf
+(This may take a while on first run while downloading models...)
+2025-11-17 15:45:26,309 - INFO - detected formats: [<InputFormat.PDF: 'pdf'>]
+2025-11-17 15:45:26,449 - INFO - Going to convert document batch...
+2025-11-17 15:45:26,449 - INFO - Initializing pipeline for StandardPdfPipeline with options hash 44ae89a68fc272bc7889292e9b5a1bad
+2025-11-17 15:45:26,486 - INFO - Loading plugin 'docling_defaults'
+2025-11-17 15:45:26,496 - INFO - Registered picture descriptions: ['vlm', 'api']
+2025-11-17 15:45:26,520 - INFO - Loading plugin 'docling_defaults'
+2025-11-17 15:45:26,548 - INFO - Registered ocr engines: ['auto', 'easyocr', 'ocrmac', 'rapidocr', 'tesserocr', 'tesseract']
+2025-11-17 15:45:26,626 - INFO - rapidocr cannot be used because onnxruntime is not installed.
+2025-11-17 15:45:26,627 - INFO - easyocr cannot be used because it is not installed.
+2025-11-17 15:45:27,499 - INFO - Accelerator device: 'cpu'
+[32m[INFO] 2025-11-17 15:45:27,516 [RapidOCR] base.py:22: Using engine_name: torch[0m
+[32m[INFO] 2025-11-17 15:45:27,545 [RapidOCR] download_file.py:68: Initiating download: https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.4.0/torch/PP-OCRv4/det/ch_PP-OCRv4_det_infer.pth[0m
+[32m[INFO] 2025-11-17 15:45:28,949 [RapidOCR] download_file.py:82: Download size: 13.83MB[0m
+[32m[INFO] 2025-11-17 15:45:31,781 [RapidOCR] download_file.py:95: Successfully saved to: /root/.cache/uv/environments-v2/things-pdf-matcher-5a56b8e5ee156d14/lib/python3.11/site-packages/rapidocr/models/ch_PP-OCRv4_det_infer.pth[0m
+[32m[INFO] 2025-11-17 15:45:31,783 [RapidOCR] torch.py:54: Using /root/.cache/uv/environments-v2/things-pdf-matcher-5a56b8e5ee156d14/lib/python3.11/site-packages/rapidocr/models/ch_PP-OCRv4_det_infer.pth[0m
+[32m[INFO] 2025-11-17 15:45:32,151 [RapidOCR] base.py:22: Using engine_name: torch[0m
+[32m[INFO] 2025-11-17 15:45:32,152 [RapidOCR] download_file.py:68: Initiating download: https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.4.0/torch/PP-OCRv4/cls/ch_ptocr_mobile_v2.0_cls_infer.pth[0m
+[32m[INFO] 2025-11-17 15:45:33,868 [RapidOCR] download_file.py:82: Download size: 0.56MB[0m
+[32m[INFO] 2025-11-17 15:45:33,982 [RapidOCR] download_file.py:95: Successfully saved to: /root/.cache/uv/environments-v2/things-pdf-matcher-5a56b8e5ee156d14/lib/python3.11/site-packages/rapidocr/models/ch_ptocr_mobile_v2.0_cls_infer.pth[0m
+[32m[INFO] 2025-11-17 15:45:33,984 [RapidOCR] torch.py:54: Using /root/.cache/uv/environments-v2/things-pdf-matcher-5a56b8e5ee156d14/lib/python3.11/site-packages/rapidocr/models/ch_ptocr_mobile_v2.0_cls_infer.pth[0m
+[32m[INFO] 2025-11-17 15:45:34,101 [RapidOCR] base.py:22: Using engine_name: torch[0m
+[32m[INFO] 2025-11-17 15:45:34,102 [RapidOCR] download_file.py:68: Initiating download: https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.4.0/torch/PP-OCRv4/rec/ch_PP-OCRv4_rec_infer.pth[0m
+[32m[INFO] 2025-11-17 15:45:35,836 [RapidOCR] download_file.py:82: Download size: 25.67MB[0m
+[32m[INFO] 2025-11-17 15:45:44,176 [RapidOCR] download_file.py:95: Successfully saved to: /root/.cache/uv/environments-v2/things-pdf-matcher-5a56b8e5ee156d14/lib/python3.11/site-packages/rapidocr/models/ch_PP-OCRv4_rec_infer.pth[0m
+[32m[INFO] 2025-11-17 15:45:44,178 [RapidOCR] torch.py:54: Using /root/.cache/uv/environments-v2/things-pdf-matcher-5a56b8e5ee156d14/lib/python3.11/site-packages/rapidocr/models/ch_PP-OCRv4_rec_infer.pth[0m
+2025-11-17 15:45:44,496 - INFO - Auto OCR model selected rapidocr with torch.
+2025-11-17 15:45:44,527 - INFO - Accelerator device: 'cpu'
+2025-11-17 15:45:48,934 - INFO - Accelerator device: 'cpu'
+2025-11-17 15:45:49,564 - INFO - Processing document things-2025-11-16-222127.pdf
+2025-11-17 15:46:04,459 - INFO - Finished converting document things-2025-11-16-222127.pdf in 38.15 sec.
+PDF converted successfully
+
+Extracted markdown:
+============================================================
+## Review OAuth implementation
+
+Check token refresh logic
+
+## Buy milk
+
+Complete comprehensive review of the entire authentication system including OAuth2, JWT tokens, session management, and password reset flow
+
+This is a very long task title to test edge cases
+
+Fix bug in PDF parser (handle multi-column layouts)
+
+## URGENT: Deploy to production
+
+## Review PR #1234: Add new feature
+
+## Tech interview prep
+
+Different from 'Tech career'
+
+## Update to Node.js v20.5.1
+
+## Clean    up    database
+
+## Has extra spaces
+
+## Implement auth w/ JWT
+
+Abbreviated 'with'
+
+## Add emoji support
+
+GLYPH&lt;0&gt;
+
+## Read "Clean Code" book
+
+## Fix bug in API endpoint /users/:id
+
+## Research distributed systems patterns
+
+Key concepts to cover: 1) Consistency models - strong consistency, eventual consistency, causal consistency. Understanding CAP theorem and how it applies to real-world systems. 2) Replication strategies master-slave, multi-master, quorum-based replication. Trade-offs between availability...
+============================================================
+  Found title (header): Review OAuth implementation
+  Found title (header): Buy milk
+  Found title (header): URGENT: Deploy to production
+  Found title (header): Review PR #1234: Add new feature
+  Found title (header): Tech interview prep
+  Found title (header): Update to Node.js v20.5.1
+  Found title (header): Clean    up    database
+  Found title (header): Has extra spaces
+  Found title (header): Implement auth w/ JWT
+  Found title (header): Add emoji support
+  Found title (header): Read "Clean Code" book
+  Found title (header): Fix bug in API endpoint /users/:id
+  Found title (header): Research distributed systems patterns
+
+Extracted 13 titles
+
+Extracted 13 title(s):
+  - Review OAuth implementation
+  - Buy milk
+  - URGENT: Deploy to production
+  - Review PR #1234: Add new feature
+  - Tech interview prep
+  - Update to Node.js v20.5.1
+  - Clean    up    database
+  - Has extra spaces
+  - Implement auth w/ JWT
+  - Add emoji support
+  - Read "Clean Code" book
+  - Fix bug in API endpoint /users/:id
+  - Research distributed systems patterns
+
+
+============================================================
+Title 1: "Review OAuth implementation"
+============================================================
+things:///show?id=OAuth123456789
+  100% - "Review OAuth implementation"
+
+
+============================================================
+Title 2: "Buy milk"
+============================================================
+things:///show?id=ShortTask1234
+  100% - "Buy milk"
+
+
+============================================================
+Title 3: "URGENT: Deploy to production"
+============================================================
+things:///show?id=CaseSensitive123
+  100% - "URGENT: Deploy to production"
+
+
+============================================================
+Title 4: "Review PR #1234: Add new feature"
+============================================================
+things:///show?id=Punctuation12345
+  100% - "Review PR #1234: Add new feature"
+
+
+============================================================
+Title 5: "Tech interview prep"
+============================================================
+things:///show?id=SimilarTask12345
+  100% - "Tech interview prep"
+
+
+============================================================
+Title 6: "Update to Node.js v20.5.1"
+============================================================
+things:///show?id=WithNumbers12345
+  100% - "Update to Node.js v20.5.1"
+
+
+============================================================
+Title 7: "Clean    up    database"
+============================================================
+things:///show?id=ExtraSpaces12345
+  100% - "Clean    up    database"
+
+
+============================================================
+Title 8: "Has extra spaces"
+============================================================
+No high-confidence matches. Top candidates:
+  things:///show?id=Unicode123456789 (29% - "Add emoji support 🎉")
+  things:///show?id=MultiPageTask123 (27% - "Research distributed systems patterns")
+  things:///show?id=ExtraSpaces12345 (23% - "Clean    up    database")
+  things:///show?id=SimilarTask12345 (21% - "Tech interview prep")
+  things:///show?id=SlashTask123456 (18% - "Fix bug in API endpoint /users/:id")
+
+
+============================================================
+Title 9: "Implement auth w/ JWT"
+============================================================
+things:///show?id=Abbreviated12345
+  100% - "Implement auth w/ JWT"
+
+
+============================================================
+Title 10: "Add emoji support"
+============================================================
+things:///show?id=Unicode123456789
+  100% - "Add emoji support 🎉"
+
+
+============================================================
+Title 11: "Read "Clean Code" book"
+============================================================
+things:///show?id=QuotedTask12345
+  100% - "Read "Clean Code" book"
+
+
+============================================================
+Title 12: "Fix bug in API endpoint /users/:id"
+============================================================
+things:///show?id=SlashTask123456
+  100% - "Fix bug in API endpoint /users/:id"
+
+
+============================================================
+Title 13: "Research distributed systems patterns"
+============================================================
+things:///show?id=MultiPageTask123
+  100% - "Research distributed systems patterns"
+
