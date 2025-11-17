@@ -208,8 +208,11 @@ module ThingsPrint
 
     def generate_pdf(tasks, output_path)
       page_size = PAGE_SIZES[@options[:page_size]]
+      margin = @options[:margin]
+      title_size = @options[:title_size]
+      notes_size = @options[:notes_size]
 
-      Prawn::Document.generate(output_path, page_size: page_size, margin: @options[:margin]) do
+      Prawn::Document.generate(output_path, page_size: page_size, margin: margin) do
         font_families.update("OperatorMono" => {
           bold: "#{FONTS_PATH}/#{REQUIRED_FONTS[:bold]}",
           italic: "#{FONTS_PATH}/#{REQUIRED_FONTS[:italic]}",
@@ -220,14 +223,14 @@ module ThingsPrint
         tasks.each_with_index do |task, i|
           start_new_page unless i.zero?
 
-          font("OperatorMono", size: @options[:title_size], style: :bold)
+          font("OperatorMono", size: title_size, style: :bold)
           text task[:title]
 
           next unless task[:notes]
 
           move_down 20
 
-          font("OperatorMono", size: @options[:notes_size])
+          font("OperatorMono", size: notes_size)
           text task[:notes]
         end
       end
