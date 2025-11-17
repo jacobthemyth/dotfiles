@@ -201,12 +201,16 @@ class PdfExtractor:
         if 'pages' in doc_dict:
             print(f"Pages: {len(doc_dict['pages'])}")
 
-        # Show first few text elements with metadata
-        if 'main_text' in doc_dict:
-            print("\nFirst few text elements:")
-            for i, elem in enumerate(doc_dict['main_text'][:5]):
-                print(f"  {i+1}. {elem.get('text', '')[:80]}")
-                print(f"     Metadata: {elem.get('metadata', {})}")
+        # Show first few text elements with labels
+        if 'texts' in doc_dict:
+            print(f"\nTotal text elements: {len(doc_dict['texts'])}")
+            print("\nFirst 10 text elements:")
+            for i, elem in enumerate(doc_dict['texts'][:10]):
+                text = elem.get('text', '')[:80]
+                label = elem.get('label', '')
+                prov = elem.get('prov', [])
+                page = prov[0].get('page_no', 0) if prov else 0
+                print(f"  {i+1}. [page {page}, label={label}] {text}")
 
         print("=" * 60)
 
@@ -214,91 +218,53 @@ class PdfExtractor:
         """Extract titles from docling's structured document representation"""
         titles = []
 
-        # Parse document structure - docling provides hierarchical content
-        if 'main_text' in doc_dict:
-            for item in doc_dict['main_text']:
+        # Docling uses 'texts' array with 'label' field
+        if 'texts' in doc_dict:
+            for item in doc_dict['texts']:
                 text = item.get('text', '').strip()
                 if not text or len(text) < 4:
                     continue
 
-                # Get metadata
-                metadata = item.get('metadata', {})
-                item_type = item.get('type', '')
+                # Get label and page info
+                label = item.get('label', '')
+                prov = item.get('prov', [])
+                page_no = prov[0].get('page_no', 0) if prov else 0
 
-                # Look for headers/titles
-                if item_type in ['title', 'heading', 'section_header']:
+                # Look for section headers (these are titles)
+                if label == 'section_header':
                     titles.append(ExtractedTitle(
                         text=text,
-                        page=metadata.get('page', 0),
+                        page=page_no,
                         confidence='high',
                         method='structure',
                         is_bold=True
                     ))
                     if self.debug:
-                        print(f"[DEBUG] Found {item_type}: {text}")
+                        print(f"[DEBUG] Found section_header on page {page_no}: {text}")
 
-        # Also check if doc has a different structure
-        if 'body' in doc_dict:
-            titles.extend(self._extract_from_body(doc_dict['body']))
-
-        return titles
-
-    def _extract_from_body(self, body: Dict[str, Any]) -> List[ExtractedTitle]:
-        """Extract from body structure"""
-        titles = []
-
-        def traverse(node, page=0):
-            if isinstance(node, dict):
-                # Check node type
-                node_type = node.get('type', '')
-                text = node.get('text', '').strip()
-
-                if node_type in ['title', 'heading', 'section_header'] and text and len(text) >= 4:
-                    titles.append(ExtractedTitle(
-                        text=text,
-                        page=page,
-                        confidence='high',
-                        method='structure',
-                        is_bold=True
-                    ))
-
-                # Traverse children
-                for key, value in node.items():
-                    if key == 'children' and isinstance(value, list):
-                        for child in value:
-                            traverse(child, page)
-                    elif isinstance(value, (dict, list)):
-                        traverse(value, page)
-
-            elif isinstance(node, list):
-                for item in node:
-                    traverse(item, page)
-
-        traverse(body)
         return titles
 
     def _extract_with_heuristics(self, doc_dict: Dict[str, Any]) -> List[ExtractedTitle]:
         """Apply heuristics to detect title-like text patterns"""
         titles = []
 
-        # Get all text content
-        all_text = []
-        if 'main_text' in doc_dict:
-            all_text = doc_dict['main_text']
+        # Get all text content from 'texts' array
+        all_text = doc_dict.get('texts', [])
 
         # Group by pages
         pages = {}
         for item in all_text:
             text = item.get('text', '').strip()
-            metadata = item.get('metadata', {})
-            page_num = metadata.get('page', 0)
+            label = item.get('label', '')
+            prov = item.get('prov', [])
+            page_num = prov[0].get('page_no', 0) if prov else 0
 
             if page_num not in pages:
                 pages[page_num] = []
             pages[page_num].append({
                 'text': text,
-                'metadata': metadata,
-                'type': item.get('type', '')
+                'label': label,
+                'prov': prov
             })
 
         # Analyze each page for title patterns
@@ -311,7 +277,7 @@ class PdfExtractor:
                     continue
 
                 # Skip if already extracted as structure
-                if item['type'] in ['title', 'heading', 'section_header']:
+                if item['label'] == 'section_header':
                     continue
 
                 # Heuristic: Short line (< 150 chars), followed by longer text or blank
