@@ -40,17 +40,24 @@
 #   -h, --help         Show help message
 #
 # RECOMMENDED MODELS:
-#   Local (fast, free, private):
+#   Local (fast, free, private) - uses image-based extraction:
 #     llava-phi3:latest        # Via Ollama (brew install ollama)
 #     llava:latest             # Via Ollama
 #     qwen2-vl:latest          # Via Ollama
 #     mlx-community/qwen2-vl   # Via MLX (Apple Silicon)
 #
-#   API (best quality, costs money):
+#   API (best quality) - supports PDF-native extraction (faster, cheaper):
+#     gpt-4o-mini              # OpenAI, recommended (cheap)
 #     gpt-4o                   # OpenAI, excellent for OCR
-#     gpt-4o-mini              # OpenAI, cheaper
 #     claude-3-5-sonnet-latest # Anthropic
+#     claude-3-haiku-latest    # Anthropic, cheaper
+#     gemini-1.5-flash-latest  # Google, cheap
 #     gemini-1.5-pro-latest    # Google
+#
+# COST COMPARISON (15-page PDF):
+#   Image-based: 15 API calls (one per page)   ~$0.50 with gpt-4o
+#   PDF-native:  1 API call (entire PDF)       ~$0.02 with gpt-4o-mini
+#                                               ~$0.01 with claude-3-haiku
 #
 # OUTPUT:
 #   Single high-confidence match:
@@ -80,7 +87,8 @@ end
 module ThingsPdfMatcher
   # Converts PDF pages to images and extracts bold text using llm CLI
   module PdfExtractor
-    PROMPT = <<~PROMPT.strip
+    # Single-page prompt for image-based extraction
+    PAGE_PROMPT = <<~PROMPT.strip
       You are analyzing a page from a to-do list printed on index cards.
 
       Each card has:
@@ -99,19 +107,54 @@ module ThingsPdfMatcher
       Return only the title or NONE.
     PROMPT
 
-    def self.check_dependencies!
+    # Multi-page prompt for PDF-native extraction
+    PDF_PROMPT = <<~PROMPT.strip
+      You are analyzing a PDF of to-do list index cards. Each page contains a single task card.
+
+      Each card has:
+      - A TITLE in BOLD/HEAVY WEIGHT font at the top
+      - Optional notes in REGULAR/NORMAL WEIGHT font below
+
+      TASK: Extract ALL bold/heavy weight titles from the PDF, one per line.
+
+      RULES:
+      - Extract ONLY the bold text from the top of each page
+      - Ignore ALL regular weight text (notes, descriptions, details)
+      - If a page has NO bold text (continuation page), skip that page
+      - Return one title per line
+      - Do not add numbering, bullets, commentary, or formatting
+      - Return the exact text as it appears, preserving case and punctuation
+
+      Return only the titles, one per line.
+    PROMPT
+
+    # Models that support PDF input natively
+    PDF_CAPABLE_MODELS = %w[
+      gpt-4o gpt-4o-mini gpt-4-turbo gpt-4-turbo-preview
+      claude-3-5-sonnet claude-3-5-sonnet-latest
+      claude-3-opus claude-3-opus-latest
+      claude-3-haiku claude-3-haiku-latest
+      gemini-1.5-pro gemini-1.5-pro-latest
+      gemini-1.5-flash gemini-1.5-flash-latest
+    ].freeze
+
+    def self.check_dependencies!(use_pdf_native: false)
       missing = []
 
-      unless system("which pdfinfo > /dev/null 2>&1")
-        missing << "pdfinfo (install with: brew install poppler)"
-      end
-
-      unless system("which pdftoppm > /dev/null 2>&1")
-        missing << "pdftoppm (install with: brew install poppler)"
-      end
-
+      # Always need llm CLI
       unless system("which llm > /dev/null 2>&1")
         missing << "llm (install with: pip install llm)"
+      end
+
+      # Only need poppler for image-based extraction
+      unless use_pdf_native
+        unless system("which pdfinfo > /dev/null 2>&1")
+          missing << "pdfinfo (install with: brew install poppler)"
+        end
+
+        unless system("which pdftoppm > /dev/null 2>&1")
+          missing << "pdftoppm (install with: brew install poppler)"
+        end
       end
 
       return if missing.empty?
@@ -124,12 +167,46 @@ module ThingsPdfMatcher
       ERROR
     end
 
-    def self.extract_titles(pdf_path, model: "gpt-4o")
-      check_dependencies!
+    def self.supports_pdf?(model)
+      # Check if model name matches any PDF-capable model patterns
+      PDF_CAPABLE_MODELS.any? { |capable_model| model.downcase.include?(capable_model) }
+    end
+
+    def self.extract_titles(pdf_path, model: "gpt-4o", verbose: false)
       unless File.exist?(pdf_path)
         raise ArgumentError, "PDF file not found: #{pdf_path}"
       end
 
+      # Choose extraction method based on model capabilities
+      if supports_pdf?(model)
+        puts "Using PDF-native extraction (faster, cheaper)..." if verbose
+        check_dependencies!(use_pdf_native: true)
+        extract_titles_from_pdf(pdf_path, model, verbose)
+      else
+        puts "Using image-based extraction (local model)..." if verbose
+        check_dependencies!(use_pdf_native: false)
+        extract_titles_from_images(pdf_path, model, verbose)
+      end
+    end
+
+    def self.extract_titles_from_pdf(pdf_path, model, verbose)
+      puts "Sending PDF to #{model}..." if verbose
+
+      # Send entire PDF to model with multi-page prompt
+      result = `llm "#{PDF_PROMPT}" -a "#{pdf_path}" -m #{model} 2>&1`.strip
+
+      unless $?.success?
+        raise "llm command failed: #{result}"
+      end
+
+      # Parse titles (one per line)
+      titles = result.lines.map { |line| clean_text(line) }.reject(&:empty?)
+
+      puts "Extracted #{titles.length} titles from PDF" if verbose
+      titles
+    end
+
+    def self.extract_titles_from_images(pdf_path, model, verbose)
       # Get page count
       page_count = `pdfinfo "#{pdf_path}" 2>/dev/null | grep "Pages:" | awk '{print $2}'`.strip.to_i
 
@@ -137,6 +214,7 @@ module ThingsPdfMatcher
         raise "Unable to determine page count for #{pdf_path}. Is poppler-utils installed?"
       end
 
+      puts "Converting #{page_count} pages to images..." if verbose
       titles = []
 
       # Convert each page to PNG and extract text
@@ -153,11 +231,13 @@ module ThingsPdfMatcher
 
         png_files.each_with_index do |image_path, index|
           page_num = index + 1
+          print "Processing page #{page_num}/#{page_count}..." if verbose
 
           # Call llm CLI to extract bold text
-          result = `llm "#{PROMPT}" -a "#{image_path}" -m #{model} 2>&1`.strip
+          result = `llm "#{PAGE_PROMPT}" -a "#{image_path}" -m #{model} 2>&1`.strip
 
           unless $?.success?
+            puts " FAILED: #{result}" if verbose
             warn "Warning: llm command failed for page #{page_num}: #{result}"
             next
           end
@@ -166,8 +246,12 @@ module ThingsPdfMatcher
           cleaned = clean_text(result)
 
           # Skip if the model indicated no bold text (continuation page)
-          next if cleaned.empty? || cleaned.upcase == "NONE"
+          if cleaned.empty? || cleaned.upcase == "NONE"
+            puts " (skipped - continuation page)" if verbose
+            next
+          end
 
+          puts " \"#{cleaned}\"" if verbose
           titles << cleaned
         end
       end
@@ -529,10 +613,8 @@ module ThingsPdfMatcher
         ERROR
       end
 
-      puts "Extracting text from PDF..." if @options[:verbose]
-
       begin
-        titles = PdfExtractor.extract_titles(@pdf_path, model: @options[:model])
+        titles = PdfExtractor.extract_titles(@pdf_path, model: @options[:model], verbose: @options[:verbose])
       rescue => e
         abort "Error extracting text from PDF: #{e.message}"
       end
@@ -541,9 +623,10 @@ module ThingsPdfMatcher
         abort "No text extracted from PDF"
       end
 
-      puts "Extracted #{titles.length} title(s):" if @options[:verbose]
-      titles.each { |t| puts "  - #{t}" } if @options[:verbose]
-      puts if @options[:verbose]
+      if @options[:verbose]
+        puts "\nExtracted #{titles.length} title(s) total"
+        puts
+      end
 
       titles.each_with_index do |title, i|
         puts "Title #{i + 1}: \"#{title}\"" if titles.length > 1 && @options[:verbose]
