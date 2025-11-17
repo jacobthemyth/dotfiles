@@ -64,7 +64,33 @@ module ThingsPdfMatcher
   module PdfExtractor
     PROMPT = "Extract only the bold text from this image. Ignore any non-bold or regular weight text. Return only the bold text exactly as it appears, with no additional commentary or formatting."
 
+    def self.check_dependencies!
+      missing = []
+
+      unless system("which pdfinfo > /dev/null 2>&1")
+        missing << "pdfinfo (install with: brew install poppler)"
+      end
+
+      unless system("which pdftoppm > /dev/null 2>&1")
+        missing << "pdftoppm (install with: brew install poppler)"
+      end
+
+      unless system("which llm > /dev/null 2>&1")
+        missing << "llm (install with: pip install llm)"
+      end
+
+      return if missing.empty?
+
+      abort <<~ERROR
+        Missing required dependencies:
+          - #{missing.join("\n  - ")}
+
+        See the script header for installation instructions.
+      ERROR
+    end
+
     def self.extract_titles(pdf_path, model: "gpt-4o")
+      check_dependencies!
       unless File.exist?(pdf_path)
         raise ArgumentError, "PDF file not found: #{pdf_path}"
       end
