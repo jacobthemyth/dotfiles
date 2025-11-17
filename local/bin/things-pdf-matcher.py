@@ -134,14 +134,14 @@ class PdfExtractor:
             raise FileNotFoundError(f"PDF file not found: {pdf_path}")
 
         if self.verbose:
-            print(f"Processing scanned PDF with docling: {pdf_path}")
-            print("(This may take a while on first run while downloading models...)")
+            print(f"Processing scanned PDF with docling: {pdf_path}", file=sys.stderr)
+            print("(This may take a while on first run while downloading models...)", file=sys.stderr)
 
         # Convert PDF with docling
         result = self.converter.convert(pdf_path)
 
         if self.verbose:
-            print("PDF converted successfully")
+            print("PDF converted successfully", file=sys.stderr)
 
         # Get structured document representation
         doc_dict = result.document.export_to_dict()
@@ -153,23 +153,23 @@ class PdfExtractor:
         titles_from_structure = self._extract_from_structure(doc_dict)
 
         if self.debug:
-            print(f"\n[DEBUG] Extracted {len(titles_from_structure)} titles from structure")
+            print(f"\n[DEBUG] Extracted {len(titles_from_structure)} titles from structure", file=sys.stderr)
             for title in titles_from_structure:
-                print(f"  - {title.text} (page {title.page}, {title.method}, confidence={title.confidence})")
+                print(f"  - {title.text} (page {title.page}, {title.method}, confidence={title.confidence})", file=sys.stderr)
 
         # Strategy 2: Apply heuristics to detect title-like text
         titles_from_heuristics = self._extract_with_heuristics(doc_dict)
 
         if self.debug:
-            print(f"\n[DEBUG] Extracted {len(titles_from_heuristics)} titles from heuristics")
+            print(f"\n[DEBUG] Extracted {len(titles_from_heuristics)} titles from heuristics", file=sys.stderr)
             for title in titles_from_heuristics:
-                print(f"  - {title.text} (page {title.page}, {title.method}, confidence={title.confidence})")
+                print(f"  - {title.text} (page {title.page}, {title.method}, confidence={title.confidence})", file=sys.stderr)
 
         # Merge and deduplicate
         all_extracted = self._merge_extracted_titles(titles_from_structure, titles_from_heuristics)
 
         if self.debug:
-            print(f"\n[DEBUG] After merge: {len(all_extracted)} unique titles")
+            print(f"\n[DEBUG] After merge: {len(all_extracted)} unique titles", file=sys.stderr)
 
         # Validate against known tasks if provided (filter false positives)
         if tasks:
@@ -177,7 +177,7 @@ class PdfExtractor:
             if self.debug:
                 filtered_count = len(all_extracted) - len(validated)
                 if filtered_count > 0:
-                    print(f"\n[DEBUG] Filtered out {filtered_count} low-confidence items (likely notes)")
+                    print(f"\n[DEBUG] Filtered out {filtered_count} low-confidence items (likely notes)", file=sys.stderr)
         else:
             validated = all_extracted
 
@@ -185,34 +185,34 @@ class PdfExtractor:
         titles = [t.text for t in validated]
 
         if self.verbose:
-            print(f"\nExtracted {len(titles)} title(s)")
+            print(f"\nExtracted {len(titles)} title(s)", file=sys.stderr)
 
         return titles
 
     def _debug_document_structure(self, doc_dict: Dict[str, Any]):
         """Print document structure for debugging"""
-        print("\n[DEBUG] Document Structure:")
-        print("=" * 60)
+        print("\n[DEBUG] Document Structure:", file=sys.stderr)
+        print("=" * 60, file=sys.stderr)
 
         # Show main structure keys
-        print(f"Keys: {list(doc_dict.keys())}")
+        print(f"Keys: {list(doc_dict.keys())}", file=sys.stderr)
 
         # Show page count
         if 'pages' in doc_dict:
-            print(f"Pages: {len(doc_dict['pages'])}")
+            print(f"Pages: {len(doc_dict['pages'])}", file=sys.stderr)
 
         # Show first few text elements with labels
         if 'texts' in doc_dict:
-            print(f"\nTotal text elements: {len(doc_dict['texts'])}")
-            print("\nFirst 10 text elements:")
+            print(f"\nTotal text elements: {len(doc_dict['texts'])}", file=sys.stderr)
+            print("\nFirst 10 text elements:", file=sys.stderr)
             for i, elem in enumerate(doc_dict['texts'][:10]):
                 text = elem.get('text', '')[:80]
                 label = elem.get('label', '')
                 prov = elem.get('prov', [])
                 page = prov[0].get('page_no', 0) if prov else 0
-                print(f"  {i+1}. [page {page}, label={label}] {text}")
+                print(f"  {i+1}. [page {page}, label={label}] {text}", file=sys.stderr)
 
-        print("=" * 60)
+        print("=" * 60, file=sys.stderr)
 
     def _extract_from_structure(self, doc_dict: Dict[str, Any]) -> List[ExtractedTitle]:
         """Extract titles from docling's structured document representation"""
@@ -240,7 +240,7 @@ class PdfExtractor:
                         is_bold=True
                     ))
                     if self.debug:
-                        print(f"[DEBUG] Found section_header on page {page_no}: {text}")
+                        print(f"[DEBUG] Found section_header on page {page_no}: {text}", file=sys.stderr)
 
         return titles
 
@@ -385,7 +385,7 @@ class PdfExtractor:
                 # Keep high-confidence even if no match (might be a new task)
                 validated.append(title)
             elif self.debug:
-                print(f"[DEBUG] Filtered out (low match): {title.text} (best match: {best_match.score if best_match else 0:.0%})")
+                print(f"[DEBUG] Filtered out (low match): {title.text} (best match: {best_match.score if best_match else 0:.0%})", file=sys.stderr)
 
         return validated
 
@@ -556,9 +556,9 @@ class ThingsDatabase:
 
 def prompt_user_selection(matches: List[Match], query: str) -> Optional[Match]:
     """Prompt user to select from multiple matches"""
-    print(f"\nMultiple matches found for \"{query}\":")
+    print(f"\nMultiple matches found for \"{query}\":", file=sys.stderr)
     for i, match in enumerate(matches, 1):
-        print(f"  {i}. {match.title} ({int(match.score * 100)}%)")
+        print(f"  {i}. {match.title} ({int(match.score * 100)}%)", file=sys.stderr)
 
     while True:
         try:
@@ -571,11 +571,11 @@ def prompt_user_selection(matches: List[Match], query: str) -> Optional[Match]:
             if 1 <= choice <= len(matches):
                 return matches[choice - 1]
             else:
-                print(f"Please enter a number between 1 and {len(matches)}, or 's' to skip")
+                print(f"Please enter a number between 1 and {len(matches)}, or 's' to skip", file=sys.stderr)
         except ValueError:
-            print(f"Please enter a number between 1 and {len(matches)}, or 's' to skip")
+            print(f"Please enter a number between 1 and {len(matches)}, or 's' to skip", file=sys.stderr)
         except (EOFError, KeyboardInterrupt):
-            print()
+            print(file=sys.stderr)
             return None
 
 
@@ -606,7 +606,7 @@ def main():
 
     # Connect to database
     if args.verbose:
-        print("Connecting to Things database..." if not args.test else "Using test database...")
+        print("Connecting to Things database..." if not args.test else "Using test database...", file=sys.stderr)
 
     try:
         conn = ThingsDatabase.connect(test_mode=args.test)
@@ -616,12 +616,12 @@ def main():
         sys.exit(1)
 
     if args.verbose:
-        print(f"Loaded {len(tasks)} tasks")
+        print(f"Loaded {len(tasks)} tasks", file=sys.stderr)
         if args.test:
-            print("\nTest database contains:")
+            print("\nTest database contains:", file=sys.stderr)
             for task in tasks:
-                print(f"  - {task.title}")
-            print()
+                print(f"  - {task.title}", file=sys.stderr)
+            print(file=sys.stderr)
 
     # Extract titles from PDF or use test queries
     if args.pdf_file:
@@ -644,10 +644,10 @@ def main():
             sys.exit(1)
 
         if args.verbose:
-            print(f"\nExtracted {len(titles)} title(s):")
+            print(f"\nExtracted {len(titles)} title(s):", file=sys.stderr)
             for title in titles:
-                print(f"  - {title}")
-            print()
+                print(f"  - {title}", file=sys.stderr)
+            print(file=sys.stderr)
     else:
         # Test mode without PDF - use hardcoded queries
         titles = [
@@ -658,17 +658,17 @@ def main():
             "Nonexistent task"
         ]
         if args.verbose:
-            print("Using test queries:")
+            print("Using test queries:", file=sys.stderr)
             for title in titles:
-                print(f"  - {title}")
-            print()
+                print(f"  - {title}", file=sys.stderr)
+            print(file=sys.stderr)
 
     # Match each title
     for i, title in enumerate(titles):
         if len(titles) > 1 and args.verbose:
-            print(f"\n{'='*60}")
-            print(f"Title {i+1}: \"{title}\"")
-            print('='*60)
+            print(f"\n{'='*60}", file=sys.stderr)
+            print(f"Title {i+1}: \"{title}\"", file=sys.stderr)
+            print('='*60, file=sys.stderr)
 
         matches = ThingsMatcher.find_matches(
             title,
@@ -679,14 +679,11 @@ def main():
 
         display_matches(matches, title, args.threshold, args.verbose, args.non_interactive)
 
-        if len(titles) > 1:
-            print()
-
 
 def display_matches(matches: List[Match], query: str, threshold: float, verbose: bool, non_interactive: bool):
     """Display match results"""
     if not matches:
-        print("No matches found")
+        print("No matches found", file=sys.stderr)
         return
 
     high_confidence = [m for m in matches if m.score >= threshold]
@@ -696,7 +693,7 @@ def display_matches(matches: List[Match], query: str, threshold: float, verbose:
         match = high_confidence[0]
         print(f"things:///show?id={match.uuid}")
         if verbose:
-            print(f"  {int(match.score * 100)}% - \"{match.title}\"")
+            print(f"  {int(match.score * 100)}% - \"{match.title}\"", file=sys.stderr)
     elif len(high_confidence) > 1:
         # Multiple high-confidence matches
         if non_interactive:
@@ -704,19 +701,19 @@ def display_matches(matches: List[Match], query: str, threshold: float, verbose:
             match = high_confidence[0]
             print(f"things:///show?id={match.uuid}")
             if verbose:
-                print(f"  {int(match.score * 100)}% - \"{match.title}\" (best of {len(high_confidence)} matches)")
+                print(f"  {int(match.score * 100)}% - \"{match.title}\" (best of {len(high_confidence)} matches)", file=sys.stderr)
         else:
             # Interactive selection
             selected = prompt_user_selection(high_confidence, query)
             if selected:
                 print(f"things:///show?id={selected.uuid}")
             else:
-                print("Skipped")
+                print("Skipped", file=sys.stderr)
     else:
         # No high-confidence matches
-        print("No high-confidence matches. Top candidates:")
+        print("No high-confidence matches. Top candidates:", file=sys.stderr)
         for match in matches:
-            print(f"  things:///show?id={match.uuid} ({int(match.score * 100)}% - \"{match.title}\")")
+            print(f"  things:///show?id={match.uuid} ({int(match.score * 100)}% - \"{match.title}\")", file=sys.stderr)
 
 
 if __name__ == "__main__":
