@@ -80,7 +80,24 @@ end
 module ThingsPdfMatcher
   # Converts PDF pages to images and extracts bold text using llm CLI
   module PdfExtractor
-    PROMPT = "Extract only the bold text from this image. Ignore any non-bold or regular weight text. Return only the bold text exactly as it appears, with no additional commentary or formatting."
+    PROMPT = <<~PROMPT.strip
+      You are analyzing a page from a to-do list printed on index cards.
+
+      Each card has:
+      - A TITLE in BOLD/HEAVY WEIGHT font at the top
+      - Optional notes in REGULAR/NORMAL WEIGHT font below
+
+      TASK: Extract ONLY the bold/heavy weight title text.
+
+      RULES:
+      - Only return the bold text from the top of the page
+      - Ignore ALL regular weight text (notes, descriptions, details)
+      - If there is NO bold text on this page, return exactly: NONE
+      - Do not add commentary, explanations, or formatting
+      - Return the exact text as it appears, preserving case and punctuation
+
+      Return only the title or NONE.
+    PROMPT
 
     def self.check_dependencies!
       missing = []
@@ -147,7 +164,11 @@ module ThingsPdfMatcher
 
           # Clean up the extracted text
           cleaned = clean_text(result)
-          titles << cleaned unless cleaned.empty?
+
+          # Skip if the model indicated no bold text (continuation page)
+          next if cleaned.empty? || cleaned.upcase == "NONE"
+
+          titles << cleaned
         end
       end
 
