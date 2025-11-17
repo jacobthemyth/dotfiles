@@ -19,24 +19,38 @@
 #
 # USAGE:
 #   # Production mode (requires Things database and llm CLI)
-#   things-pdf-matcher scanned-cards.pdf
-#   things-pdf-matcher --verbose --threshold 0.7 cards.pdf
+#   things-pdf-matcher -m llava:latest scanned-cards.pdf
+#   things-pdf-matcher -m gpt-4o --verbose --threshold 0.7 cards.pdf
 #
 #   # Test mode with hardcoded queries (no external dependencies)
 #   things-pdf-matcher --test
 #   things-pdf-matcher --test --verbose
 #
 #   # Test mode with PDF (requires llm CLI but uses test database)
-#   things-pdf-matcher --test scanned-test-cards.pdf
-#   things-pdf-matcher --test --verbose test-cards.pdf
+#   things-pdf-matcher --test -m llava:latest scanned-test-cards.pdf
+#   things-pdf-matcher --test -m gpt-4o-mini --verbose test-cards.pdf
 #
 # OPTIONS:
-#   --test              Run in test mode with sample data
+#   --test              Run in test mode with sample database
+#   --model, -m MODEL   LLM model to use (REQUIRED for PDF processing)
 #   --threshold FLOAT   Fuzzy match threshold (0-1, default: 0.8)
 #   --verbose          Show matching details and extraction progress
-#   --model MODEL      LLM model to use (default: gpt-4o)
 #   --max-candidates N  Max candidates to show (default: 5)
+#   --list-models      List available llm models
 #   -h, --help         Show help message
+#
+# RECOMMENDED MODELS:
+#   Local (fast, free, private):
+#     llava-phi3:latest        # Via Ollama (brew install ollama)
+#     llava:latest             # Via Ollama
+#     qwen2-vl:latest          # Via Ollama
+#     mlx-community/qwen2-vl   # Via MLX (Apple Silicon)
+#
+#   API (best quality, costs money):
+#     gpt-4o                   # OpenAI, excellent for OCR
+#     gpt-4o-mini              # OpenAI, cheaper
+#     claude-3-5-sonnet-latest # Anthropic
+#     gemini-1.5-pro-latest    # Google
 #
 # OUTPUT:
 #   Single high-confidence match:
@@ -110,16 +124,18 @@ module ThingsPdfMatcher
 
       # Convert each page to PNG and extract text
       Dir.mktmpdir do |tmpdir|
-        # pdftoppm outputs files like: output-1.png, output-2.png, etc.
+        # pdftoppm outputs files like: page-01.png, page-02.png, etc. (zero-padded)
         system("pdftoppm", "-png", pdf_path, "#{tmpdir}/page", exception: true)
 
-        (1..page_count).each do |page_num|
-          image_path = "#{tmpdir}/page-#{page_num}.png"
+        # Find all generated PNG files and sort them
+        png_files = Dir.glob("#{tmpdir}/page-*.png").sort
 
-          unless File.exist?(image_path)
-            warn "Warning: Expected image not found: #{image_path}"
-            next
-          end
+        if png_files.empty?
+          raise "pdftoppm did not generate any PNG files"
+        end
+
+        png_files.each_with_index do |image_path, index|
+          page_num = index + 1
 
           # Call llm CLI to extract bold text
           result = `llm "#{PROMPT}" -a "#{image_path}" -m #{model} 2>&1`.strip
@@ -306,7 +322,7 @@ module ThingsPdfMatcher
         test: false,
         threshold: 0.8,
         verbose: false,
-        model: "gpt-4o",
+        model: nil,
         max_candidates: 5
       }
       parse_options!
@@ -339,7 +355,7 @@ module ThingsPdfMatcher
           @options[:verbose] = true
         end
 
-        opts.on("--model MODEL", "LLM model to use (default: gpt-4o)") do |m|
+        opts.on("-m", "--model MODEL", "LLM model to use (REQUIRED for PDF processing)") do |m|
           @options[:model] = m
         end
 
@@ -347,8 +363,30 @@ module ThingsPdfMatcher
           @options[:max_candidates] = n
         end
 
-        opts.on("-h", "--help", "Show this help message") do
+        opts.on("--list-models", "List available llm models") do
+          system("llm", "models", "list")
+          exit
+        end
+
+        opts.on("-h", "--help", "Show this help message and model recommendations") do
           puts opts
+          puts
+          puts "RECOMMENDED MODELS:"
+          puts "  Local (fast, free, private):"
+          puts "    llava-phi3:latest        # Via Ollama (brew install ollama)"
+          puts "    llava:latest             # Via Ollama"
+          puts "    qwen2-vl:latest          # Via Ollama"
+          puts "    mlx-community/qwen2-vl   # Via MLX (Apple Silicon)"
+          puts
+          puts "  API (best quality, costs money):"
+          puts "    gpt-4o                   # OpenAI, excellent for OCR"
+          puts "    gpt-4o-mini              # OpenAI, cheaper"
+          puts "    claude-3-5-sonnet-latest # Anthropic"
+          puts "    gemini-1.5-pro-latest    # Google"
+          puts
+          puts "Examples:"
+          puts "  things-pdf-matcher -m llava:latest scanned.pdf"
+          puts "  things-pdf-matcher --test -m gpt-4o-mini test-cards.pdf"
           exit
         end
       end
@@ -417,6 +455,23 @@ module ThingsPdfMatcher
     def run_pdf_matching(tasks)
       unless File.exist?(@pdf_path)
         abort "Error: PDF file not found: #{@pdf_path}"
+      end
+
+      unless @options[:model]
+        abort <<~ERROR
+          Error: --model/-m is required for PDF processing.
+
+          Recommended models:
+            Local: llava:latest, llava-phi3:latest, qwen2-vl:latest
+            API:   gpt-4o, gpt-4o-mini, claude-3-5-sonnet-latest
+
+          Examples:
+            things-pdf-matcher -m llava:latest #{@pdf_path}
+            things-pdf-matcher -m gpt-4o-mini #{@pdf_path}
+
+          Use --list-models to see all available models.
+          Use --help for more information.
+        ERROR
       end
 
       puts "Extracting text from PDF..." if @options[:verbose]
