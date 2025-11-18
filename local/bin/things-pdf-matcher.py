@@ -691,22 +691,22 @@ def display_matches(matches: List[Match], query: str, threshold: float, verbose:
     if len(high_confidence) == 1:
         # Single high-confidence match
         match = high_confidence[0]
-        print(f"things:///show?id={match.uuid}")
+        print(f"{match.title}\tthings:///show?id={match.uuid}")
         if verbose:
-            print(f"  {int(match.score * 100)}% - \"{match.title}\"", file=sys.stderr)
+            print(f"  {int(match.score * 100)}%", file=sys.stderr)
     elif len(high_confidence) > 1:
         # Multiple high-confidence matches
         if non_interactive:
             # Use best match
             match = high_confidence[0]
-            print(f"things:///show?id={match.uuid}")
+            print(f"{match.title}\tthings:///show?id={match.uuid}")
             if verbose:
-                print(f"  {int(match.score * 100)}% - \"{match.title}\" (best of {len(high_confidence)} matches)", file=sys.stderr)
+                print(f"  {int(match.score * 100)}% (best of {len(high_confidence)} matches)", file=sys.stderr)
         else:
             # Interactive selection
             selected = prompt_user_selection(high_confidence, query)
             if selected:
-                print(f"things:///show?id={selected.uuid}")
+                print(f"{selected.title}\tthings:///show?id={selected.uuid}")
             else:
                 print("Skipped", file=sys.stderr)
     else:
