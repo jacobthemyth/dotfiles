@@ -70,10 +70,12 @@ OUTPUT:
 
 import argparse
 import json
+import logging
 import os
 import re
 import sqlite3
 import sys
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Tuple, Dict, Any
@@ -91,6 +93,18 @@ except ImportError:
     print("Error: docling not installed", file=sys.stderr)
     print("Install with: pip install docling", file=sys.stderr)
     sys.exit(1)
+
+
+@contextmanager
+def suppress_stderr():
+    """Temporarily suppress stderr output"""
+    with open(os.devnull, 'w') as devnull:
+        old_stderr = sys.stderr
+        sys.stderr = devnull
+        try:
+            yield
+        finally:
+            sys.stderr = old_stderr
 
 
 @dataclass
@@ -126,6 +140,13 @@ class PdfExtractor:
     def __init__(self, verbose: bool = False, debug: bool = False):
         self.verbose = verbose
         self.debug = debug
+
+        # Suppress library logging if not verbose
+        if not verbose:
+            # Aggressively suppress all third-party library loggers
+            for logger_name in list(logging.root.manager.loggerDict):
+                logging.getLogger(logger_name).setLevel(logging.ERROR)
+
         self.converter = DocumentConverter()
 
     def extract_titles(self, pdf_path: str, tasks: Optional[List[Task]] = None) -> List[str]:
@@ -136,9 +157,15 @@ class PdfExtractor:
         if self.verbose:
             print(f"Processing scanned PDF with docling: {pdf_path}", file=sys.stderr)
             print("(This may take a while on first run while downloading models...)", file=sys.stderr)
-
-        # Convert PDF with docling
-        result = self.converter.convert(pdf_path)
+            # Convert PDF with docling
+            result = self.converter.convert(pdf_path)
+        else:
+            # Suppress all library logging and stderr output during conversion
+            for logger_name in list(logging.root.manager.loggerDict):
+                logging.getLogger(logger_name).setLevel(logging.ERROR)
+            # Convert PDF with docling (suppress library output)
+            with suppress_stderr():
+                result = self.converter.convert(pdf_path)
 
         if self.verbose:
             print("PDF converted successfully", file=sys.stderr)
@@ -600,6 +627,18 @@ def main():
 
     args = parser.parse_args()
 
+    # Configure logging - suppress docling's INFO messages unless verbose
+    if args.verbose:
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    else:
+        # Suppress all INFO and below messages from all loggers
+        logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
+        # Aggressively suppress all third-party library loggers
+        logging.root.setLevel(logging.ERROR)
+        # Suppress specific known chatty loggers
+        for logger_name in logging.root.manager.loggerDict:
+            logging.getLogger(logger_name).setLevel(logging.ERROR)
+
     # Validate arguments
     if not args.test and not args.pdf_file:
         parser.error("PDF file required unless using --test mode")
@@ -711,9 +750,10 @@ def display_matches(matches: List[Match], query: str, threshold: float, verbose:
                 print("Skipped", file=sys.stderr)
     else:
         # No high-confidence matches
-        print("No high-confidence matches. Top candidates:", file=sys.stderr)
-        for match in matches:
-            print(f"  things:///show?id={match.uuid} ({int(match.score * 100)}% - \"{match.title}\")", file=sys.stderr)
+        if verbose:
+            print("No high-confidence matches. Top candidates:", file=sys.stderr)
+            for match in matches:
+                print(f"  things:///show?id={match.uuid} ({int(match.score * 100)}% - \"{match.title}\")", file=sys.stderr)
 
 
 if __name__ == "__main__":
