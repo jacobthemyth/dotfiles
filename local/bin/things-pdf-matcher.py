@@ -211,9 +211,6 @@ class PdfExtractor:
         # Extract just the text
         titles = [t.text for t in validated]
 
-        if self.verbose:
-            print(f"\nExtracted {len(titles)} title(s)", file=sys.stderr)
-
         return titles
 
     def _debug_document_structure(self, doc_dict: Dict[str, Any]):
