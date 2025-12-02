@@ -67,7 +67,7 @@
   name = Jacob Smith
   email = jacob@jacobsmith.io
 [github]
-  user = systemist
+  user = jacobthemyth
 [filter "lfs"]
 	clean = git-lfs clean -- %f
 	smudge = git-lfs smudge -- %f
@@ -79,9 +79,10 @@
 	protocol = https
 [init]
 	defaultBranch = main
+[include]
+	path = ~/.config/git/config.local
 [credential]
+	helper =
 	helper = /usr/local/share/gcm-core/git-credential-manager
 [credential "https://dev.azure.com"]
 	useHttpPath = true
-[include]
-	path = ~/.config/git/config.local

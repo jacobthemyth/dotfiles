@@ -11,7 +11,6 @@ return {
   { "nvim-orgmode/orgmode", ft = {"org"} },
   { "nvim-tree/nvim-web-devicons", lazy = true },
   "nvim-treesitter/nvim-treesitter",
-  "nvim-treesitter/nvim-treesitter-context",
   "tmhedberg/matchit",
   "tpope/vim-abolish",
   "tpope/vim-bundler",

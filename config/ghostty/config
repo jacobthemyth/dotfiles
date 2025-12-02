@@ -3,3 +3,4 @@ font-size = 16
 font-feature = -liga
 theme = "tinted-theming"
 keybind = shift+enter=text:\x1b\r
+bold-color = "bright"
