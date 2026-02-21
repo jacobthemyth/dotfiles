@@ -22,8 +22,8 @@
 ;; font string. You generally only need these two:
 ;; (setq doom-font (font-spec :family "Operator Mono SSm for Powerline" :size 16)
 ;;       doom-variable-pitch-font (font-spec :family "sans" :size 13))
-(setq doom-font (font-spec :family "OperatorMonoSSm Nerd Font Mono" :weight 'medium :size 16)
-      doom-variable-pitch-font (font-spec :family "iA Writer Quattro V" :weight 'medium :size 16))
+(setq doom-font (font-spec :family "OperatorMonoSSm Nerd Font Mono" :size 16)
+      doom-variable-pitch-font (font-spec :family "Recursive Sans Casual Static" :weight 'medium :size 16))
 
 ;; There are two ways to load a theme. Both assume the theme is installed and
 ;; available. You can either set `doom-theme' or manually load a theme with the
@@ -52,26 +52,25 @@
                                                                (org-agenda-start-day "+0d")
                                                                (org-deadline-warning-days 0)
                                                                ))))))
-  (setq org-directory "~/Library/CloudStorage/Dropbox/org/")
-    (setq org-agenda-files '("~/Library/CloudStorage/Dropbox/org/"))
-    (setq org-archive-location "~/Library/CloudStorage/Dropbox/org/.archive/%s_archive::")
-    (setq org-default-notes-file "~/Library/CloudStorage/Dropbox/org/Inbox.org"))
+  (setq org-directory "~/Documents/org/")
+    (setq org-agenda-files '("~/Documents/org/"))
+    (setq org-archive-location "~/Documents/org/.archive/%s_archive::")
+    (setq org-default-notes-file "~/Documents/org/Inbox.org"))
 
 (map!
-:n "gj" #'evil-next-visual-line
-:n "gk" #'evil-previous-visual-line)
-
-(setq menu-bar-mode t)
-(setq tab-bar-mode t)
-(setq tab-bar-new-tab-choice "*doom*")
-
-(map!
+ :n "gj" #'evil-next-visual-line
  :nv "gx" #'browse-url-at-point
  :n "-" #'dired-jump
- :n "s-RET" #'toggle-frame-fullscreen)
+ :n "s-RET" #'toggle-frame-fullscreen
+ :n "gk" #'evil-previous-visual-line)
 
 (map! :map dired-mode-map
       :n "%" 'dired-create-empty-file
       :n "TAB" 'dired-hide-details-mode)  ; Toggle details
 
 (setq auth-sources '("~/.authinfo.gpg"))
+
+(after! dirvish
+  (dirvish-override-dired-mode))
+
+(setq tab-bar-show 1)

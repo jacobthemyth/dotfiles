@@ -1,8 +1,12 @@
 {
+  "cleanupPeriodDays": 99999,
   "statusLine": {
     "type": "command",
     "command": "npx -y ccstatusline@latest",
     "padding": 0
   },
-  "alwaysThinkingEnabled": true
+  "alwaysThinkingEnabled": true,
+  "enabledPlugins": {
+    "double-shot-latte@superpowers-marketplace": true
+  }
 }
