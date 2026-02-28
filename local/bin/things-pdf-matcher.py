@@ -141,12 +141,6 @@ class PdfExtractor:
         self.verbose = verbose
         self.debug = debug
 
-        # Suppress library logging if not verbose
-        if not verbose:
-            # Aggressively suppress all third-party library loggers
-            for logger_name in list(logging.root.manager.loggerDict):
-                logging.getLogger(logger_name).setLevel(logging.ERROR)
-
         self.converter = DocumentConverter()
 
     def extract_titles(self, pdf_path: str, tasks: Optional[List[Task]] = None) -> List[str]:
@@ -160,9 +154,6 @@ class PdfExtractor:
             # Convert PDF with docling
             result = self.converter.convert(pdf_path)
         else:
-            # Suppress all library logging and stderr output during conversion
-            for logger_name in list(logging.root.manager.loggerDict):
-                logging.getLogger(logger_name).setLevel(logging.ERROR)
             # Convert PDF with docling (suppress library output)
             with suppress_stderr():
                 result = self.converter.convert(pdf_path)
@@ -252,6 +243,7 @@ class PdfExtractor:
                 # Get label and page info
                 label = item.get('label', '')
                 prov = item.get('prov', [])
+                # Takes first provenance entry; may miss text spanning multiple pages
                 page_no = prov[0].get('page_no', 0) if prov else 0
 
                 # Look for section headers (these are titles)
@@ -355,13 +347,12 @@ class PdfExtractor:
             if re.search(pattern, text, re.IGNORECASE):
                 return True
 
-        # Default: if it's reasonably short and starts with capital, likely a title
-        return len(text) < 100
+        # No pattern matched — don't assume it's a title
+        return False
 
     def _merge_extracted_titles(self, *title_lists: List[ExtractedTitle]) -> List[ExtractedTitle]:
         """Merge and deduplicate extracted titles from multiple strategies"""
-        seen_texts = {}
-        merged = []
+        confidence_order = {'high': 0, 'medium': 1, 'low': 2}
 
         # Flatten all lists
         all_titles = []
@@ -369,29 +360,17 @@ class PdfExtractor:
             all_titles.extend(title_list)
 
         # Sort by page, then confidence
-        confidence_order = {'high': 0, 'medium': 1, 'low': 2}
         all_titles.sort(key=lambda t: (t.page, confidence_order.get(t.confidence, 3)))
 
-        # Deduplicate
+        # Deduplicate using dict keyed by normalized text
+        seen_texts: Dict[str, ExtractedTitle] = {}
         for title in all_titles:
-            # Normalize for comparison
             normalized = title.text.lower().strip()
+            existing = seen_texts.get(normalized)
+            if existing is None or confidence_order.get(title.confidence, 3) < confidence_order.get(existing.confidence, 3):
+                seen_texts[normalized] = title
 
-            # If we've seen very similar text, skip
-            if normalized in seen_texts:
-                # Keep the higher confidence one
-                existing = seen_texts[normalized]
-                if confidence_order.get(title.confidence, 3) < confidence_order.get(existing.confidence, 3):
-                    # Replace with higher confidence
-                    merged.remove(existing)
-                    merged.append(title)
-                    seen_texts[normalized] = title
-                continue
-
-            seen_texts[normalized] = title
-            merged.append(title)
-
-        return merged
+        return list(seen_texts.values())
 
     def _validate_against_tasks(self, extracted: List[ExtractedTitle], tasks: List[Task]) -> List[ExtractedTitle]:
         """Validate extracted titles against known tasks to filter false positives"""
@@ -447,34 +426,18 @@ class ThingsMatcher:
         if not query:
             return []
 
-        matches = []
+        query_lower = query.lower()
 
-        # Strategy 1: Token sort ratio (handles word reordering)
+        # Compute all three fuzz ratios per task in a single pass, keep max
+        match_objects = []
         for task in tasks:
-            score = fuzz.token_sort_ratio(query.lower(), task.title.lower()) / 100.0
-            matches.append((task, score, 'token_sort'))
-
-        # Strategy 2: Partial ratio (finds best substring match)
-        for task in tasks:
-            score = fuzz.partial_ratio(query.lower(), task.title.lower()) / 100.0
-            matches.append((task, score, 'partial'))
-
-        # Strategy 3: Token set ratio (handles extra/missing words)
-        for task in tasks:
-            score = fuzz.token_set_ratio(query.lower(), task.title.lower()) / 100.0
-            matches.append((task, score, 'token_set'))
-
-        # Group by task and take max score
-        task_scores = {}
-        for task, score, method in matches:
-            if task.uuid not in task_scores or score > task_scores[task.uuid][1]:
-                task_scores[task.uuid] = (task, score, method)
-
-        # Convert to Match objects
-        match_objects = [
-            Match(task.uuid, task.title, score)
-            for task, score, method in task_scores.values()
-        ]
+            title_lower = task.title.lower()
+            score = max(
+                fuzz.token_sort_ratio(query_lower, title_lower),
+                fuzz.partial_ratio(query_lower, title_lower),
+                fuzz.token_set_ratio(query_lower, title_lower),
+            ) / 100.0
+            match_objects.append(Match(task.uuid, task.title, score))
 
         # Sort by score descending
         match_objects.sort(key=lambda m: m.score, reverse=True)
@@ -751,6 +714,8 @@ def display_matches(matches: List[Match], query: str, threshold: float, verbose:
             print("No high-confidence matches. Top candidates:", file=sys.stderr)
             for match in matches:
                 print(f"  things:///show?id={match.uuid} ({int(match.score * 100)}% - \"{match.title}\")", file=sys.stderr)
+        else:
+            print(f"No match for \"{query}\"", file=sys.stderr)
 
 
 if __name__ == "__main__":
