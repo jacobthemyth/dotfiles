@@ -2,7 +2,9 @@
 # /// script
 # requires-python = ">=3.8"
 # dependencies = [
-#     "docling",
+#     "ocrmac",
+#     "pymupdf",
+#     "pillow",
 #     "rapidfuzz",
 # ]
 # ///
@@ -14,9 +16,8 @@ against tasks in the Things database using fuzzy matching.
 
 REQUIREMENTS:
     - Python 3.8+
+    - macOS (uses Apple Vision OCR via ocrmac)
     - uv (curl -LsSf https://astral.sh/uv/install.sh | sh)
-    - docling (automatically installed via uv)
-    - rapidfuzz (automatically installed via uv)
 
 INSTALLATION:
     # Install uv
@@ -24,11 +25,6 @@ INSTALLATION:
 
     # Dependencies are automatically installed when you run the script
     # No pip install needed!
-
-NOTE:
-    First run will download ~2GB of dependencies (PyTorch, etc.) for docling.
-    This is required for OCR/image recognition on scanned PDFs.
-    Subsequent runs will be fast.
 
 USAGE:
     # Production mode (requires Things database)
@@ -69,15 +65,12 @@ OUTPUT:
 """
 
 import argparse
-import json
+import io
 import logging
 import os
-import re
 import sqlite3
 import sys
-from contextlib import contextmanager
 from dataclasses import dataclass
-from pathlib import Path
 from typing import List, Optional, Tuple, Dict, Any
 
 try:
@@ -87,24 +80,9 @@ except ImportError:
     print("Install with: pip install rapidfuzz", file=sys.stderr)
     sys.exit(1)
 
-try:
-    from docling.document_converter import DocumentConverter
-except ImportError:
-    print("Error: docling not installed", file=sys.stderr)
-    print("Install with: pip install docling", file=sys.stderr)
-    sys.exit(1)
-
-
-@contextmanager
-def suppress_stderr():
-    """Temporarily suppress stderr output"""
-    with open(os.devnull, 'w') as devnull:
-        old_stderr = sys.stderr
-        sys.stderr = devnull
-        try:
-            yield
-        finally:
-            sys.stderr = old_stderr
+import fitz  # pymupdf
+from ocrmac import ocrmac as ocrmac_lib
+from PIL import Image
 
 
 @dataclass
@@ -129,65 +107,58 @@ class ExtractedTitle:
     text: str
     page: int
     confidence: str  # 'high', 'medium', 'low'
-    method: str      # 'structure', 'heuristic', 'header'
-    font_size: Optional[float] = None
-    is_bold: Optional[bool] = None
+    method: str      # 'vision_ocr'
 
 
 class PdfExtractor:
-    """Extracts task titles from scanned PDF using docling (OCR)"""
+    """Extracts task titles from scanned PDF using Apple Vision OCR (via ocrmac)"""
+
+    DPI = 200  # render resolution for OCR
 
     def __init__(self, verbose: bool = False, debug: bool = False):
         self.verbose = verbose
         self.debug = debug
 
-        self.converter = DocumentConverter()
-
     def extract_titles(self, pdf_path: str, tasks: Optional[List[Task]] = None) -> List[str]:
-        """Extract bold titles from scanned PDF using multiple strategies"""
+        """Extract titles from scanned PDF pages using Apple Vision OCR"""
         if not os.path.exists(pdf_path):
             raise FileNotFoundError(f"PDF file not found: {pdf_path}")
 
         if self.verbose:
-            print(f"Processing scanned PDF with docling: {pdf_path}", file=sys.stderr)
-            print("(This may take a while on first run while downloading models...)", file=sys.stderr)
-            # Convert PDF with docling
-            result = self.converter.convert(pdf_path)
-        else:
-            # Convert PDF with docling (suppress library output)
-            with suppress_stderr():
-                result = self.converter.convert(pdf_path)
+            print(f"Processing scanned PDF with Apple Vision OCR: {pdf_path}", file=sys.stderr)
+
+        doc = fitz.open(pdf_path)
 
         if self.verbose:
-            print("PDF converted successfully", file=sys.stderr)
+            print(f"PDF has {len(doc)} page(s)", file=sys.stderr)
 
-        # Get structured document representation
-        doc_dict = result.document.export_to_dict()
+        all_extracted: List[ExtractedTitle] = []
 
-        if self.debug:
-            self._debug_document_structure(doc_dict)
+        for page_num in range(len(doc)):
+            page = doc[page_num]
+            # Render page to pixmap at target DPI
+            mat = fitz.Matrix(self.DPI / 72, self.DPI / 72)
+            pix = page.get_pixmap(matrix=mat)
+            img = Image.open(io.BytesIO(pix.tobytes("png")))
 
-        # Strategy 1: Extract from document structure (bold text, font sizes)
-        titles_from_structure = self._extract_from_structure(doc_dict)
+            # Run Apple Vision OCR
+            annotations = ocrmac_lib.OCR(img, recognition_level="accurate").recognize()
 
-        if self.debug:
-            print(f"\n[DEBUG] Extracted {len(titles_from_structure)} titles from structure", file=sys.stderr)
-            for title in titles_from_structure:
-                print(f"  - {title.text} (page {title.page}, {title.method}, confidence={title.confidence})", file=sys.stderr)
+            if self.debug:
+                print(f"\n[DEBUG] Page {page_num + 1}: {len(annotations)} text elements", file=sys.stderr)
+                for text, confidence, bbox in annotations:
+                    print(f"  [{confidence:.2f}] ({bbox[0]:.2f},{bbox[1]:.2f},{bbox[2]:.2f},{bbox[3]:.2f}) {text}", file=sys.stderr)
 
-        # Strategy 2: Apply heuristics to detect title-like text
-        titles_from_heuristics = self._extract_with_heuristics(doc_dict)
+            title = self._pick_title_from_page(annotations, page_num + 1)
+            if title:
+                all_extracted.append(title)
 
-        if self.debug:
-            print(f"\n[DEBUG] Extracted {len(titles_from_heuristics)} titles from heuristics", file=sys.stderr)
-            for title in titles_from_heuristics:
-                print(f"  - {title.text} (page {title.page}, {title.method}, confidence={title.confidence})", file=sys.stderr)
-
-        # Merge and deduplicate
-        all_extracted = self._merge_extracted_titles(titles_from_structure, titles_from_heuristics)
+        doc.close()
 
         if self.debug:
-            print(f"\n[DEBUG] After merge: {len(all_extracted)} unique titles", file=sys.stderr)
+            print(f"\n[DEBUG] Extracted {len(all_extracted)} titles", file=sys.stderr)
+            for title in all_extracted:
+                print(f"  - {title.text} (page {title.page}, confidence={title.confidence})", file=sys.stderr)
 
         # Validate against known tasks if provided (filter false positives)
         if tasks:
@@ -199,178 +170,60 @@ class PdfExtractor:
         else:
             validated = all_extracted
 
-        # Extract just the text
         titles = [t.text for t in validated]
 
         return titles
 
-    def _debug_document_structure(self, doc_dict: Dict[str, Any]):
-        """Print document structure for debugging"""
-        print("\n[DEBUG] Document Structure:", file=sys.stderr)
-        print("=" * 60, file=sys.stderr)
+    # Max y-gap between consecutive lines that are still part of the same block.
+    # Title lines are ~0.03-0.04 apart; body starts after a 0.07-0.10 gap.
+    LINE_GAP_THRESHOLD = 0.06
 
-        # Show main structure keys
-        print(f"Keys: {list(doc_dict.keys())}", file=sys.stderr)
+    def _pick_title_from_page(self, annotations: List[Tuple], page_num: int) -> Optional[ExtractedTitle]:
+        """Pick the topmost block of text as the title for a page.
 
-        # Show page count
-        if 'pages' in doc_dict:
-            print(f"Pages: {len(doc_dict['pages'])}", file=sys.stderr)
+        Index cards have a title (one or more lines) at the top, then a gap,
+        then optional body text.  We group consecutive top lines whose y-gap
+        is within LINE_GAP_THRESHOLD and join them as the title.
 
-        # Show first few text elements with labels
-        if 'texts' in doc_dict:
-            print(f"\nTotal text elements: {len(doc_dict['texts'])}", file=sys.stderr)
-            print("\nFirst 10 text elements:", file=sys.stderr)
-            for i, elem in enumerate(doc_dict['texts'][:10]):
-                text = elem.get('text', '')[:80]
-                label = elem.get('label', '')
-                prov = elem.get('prov', [])
-                page = prov[0].get('page_no', 0) if prov else 0
-                print(f"  {i+1}. [page {page}, label={label}] {text}", file=sys.stderr)
+        ocrmac returns Core Graphics coordinates where y=0 is the bottom,
+        so the topmost element has the highest y value.
+        """
+        # Filter out tiny fragments (< 3 chars)
+        candidates = [(text, conf, bbox) for text, conf, bbox in annotations if len(text.strip()) >= 3]
 
-        print("=" * 60, file=sys.stderr)
+        if not candidates:
+            return None
 
-    def _extract_from_structure(self, doc_dict: Dict[str, Any]) -> List[ExtractedTitle]:
-        """Extract titles from docling's structured document representation"""
-        titles = []
+        # Sort by y descending (topmost first in visual space)
+        candidates.sort(key=lambda item: item[2][1], reverse=True)
 
-        # Docling uses 'texts' array with 'label' field
-        if 'texts' in doc_dict:
-            for item in doc_dict['texts']:
-                text = item.get('text', '').strip()
-                if not text or len(text) < 4:
-                    continue
+        # Collect the first block of lines (title) until we hit a large gap
+        title_parts = [candidates[0]]
+        for prev, cur in zip(candidates, candidates[1:]):
+            gap = prev[2][1] - cur[2][1]
+            if gap > self.LINE_GAP_THRESHOLD:
+                break
+            title_parts.append(cur)
 
-                # Get label and page info
-                label = item.get('label', '')
-                prov = item.get('prov', [])
-                # Takes first provenance entry; may miss text spanning multiple pages
-                page_no = prov[0].get('page_no', 0) if prov else 0
+        text = " ".join(part[0].strip() for part in title_parts)
+        avg_confidence = sum(part[1] for part in title_parts) / len(title_parts)
 
-                # Look for section headers (these are titles)
-                if label == 'section_header':
-                    titles.append(ExtractedTitle(
-                        text=text,
-                        page=page_no,
-                        confidence='high',
-                        method='structure',
-                        is_bold=True
-                    ))
-                    if self.debug:
-                        print(f"[DEBUG] Found section_header on page {page_no}: {text}", file=sys.stderr)
+        if avg_confidence >= 0.8:
+            conf_label = "high"
+        elif avg_confidence >= 0.5:
+            conf_label = "medium"
+        else:
+            conf_label = "low"
 
-        return titles
+        if self.verbose:
+            print(f"  Page {page_num}: \"{text}\" (confidence: {avg_confidence:.0%})", file=sys.stderr)
 
-    def _extract_with_heuristics(self, doc_dict: Dict[str, Any]) -> List[ExtractedTitle]:
-        """Apply heuristics to detect title-like text patterns"""
-        titles = []
-
-        # Get all text content from 'texts' array
-        all_text = doc_dict.get('texts', [])
-
-        # Group by pages
-        pages = {}
-        for item in all_text:
-            text = item.get('text', '').strip()
-            label = item.get('label', '')
-            prov = item.get('prov', [])
-            page_num = prov[0].get('page_no', 0) if prov else 0
-
-            if page_num not in pages:
-                pages[page_num] = []
-            pages[page_num].append({
-                'text': text,
-                'label': label,
-                'prov': prov
-            })
-
-        # Analyze each page for title patterns
-        for page_num, items in pages.items():
-            # Look for standalone short text at top of page
-            for i, item in enumerate(items):
-                text = item['text']
-
-                if not text or len(text) < 4:
-                    continue
-
-                # Skip if already extracted as structure
-                if item['label'] == 'section_header':
-                    continue
-
-                # Heuristic: Short line (< 150 chars), followed by longer text or blank
-                is_short = len(text) < 150
-                is_top_of_page = i < 3
-
-                # Check if followed by longer text (explanation/notes)
-                has_explanation = False
-                if i + 1 < len(items):
-                    next_text = items[i + 1]['text']
-                    if next_text and len(next_text) > len(text) * 1.5:
-                        has_explanation = True
-
-                # Title-like: short, at top, followed by explanation
-                if is_short and (is_top_of_page or has_explanation):
-                    # Additional check: looks like a task title
-                    # (starts with capital, has verb/noun words, etc.)
-                    if self._looks_like_title(text):
-                        confidence = 'high' if is_top_of_page else 'medium'
-                        titles.append(ExtractedTitle(
-                            text=text,
-                            page=page_num,
-                            confidence=confidence,
-                            method='heuristic'
-                        ))
-
-        return titles
-
-    def _looks_like_title(self, text: str) -> bool:
-        """Check if text looks like a task title using heuristics"""
-        # Too short or too long
-        if len(text) < 4 or len(text) > 200:
-            return False
-
-        # Should start with capital or special char (like emoji, #, etc)
-        if not (text[0].isupper() or not text[0].isalpha()):
-            return False
-
-        # Probably not a title if it ends with these
-        if text.endswith((':', ',', ';')):
-            return False
-
-        # Common title patterns (verb at start, action words, etc)
-        title_patterns = [
-            r'^(Add|Fix|Update|Review|Implement|Create|Delete|Remove|Test|Deploy|Build|Research|Read|Buy|Clean|Write)',
-            r'^[A-Z]{2,}:',  # URGENT:, TODO:, etc
-            r'\d+',          # Contains numbers (versions, IDs, etc)
-        ]
-
-        for pattern in title_patterns:
-            if re.search(pattern, text, re.IGNORECASE):
-                return True
-
-        # No pattern matched — don't assume it's a title
-        return False
-
-    def _merge_extracted_titles(self, *title_lists: List[ExtractedTitle]) -> List[ExtractedTitle]:
-        """Merge and deduplicate extracted titles from multiple strategies"""
-        confidence_order = {'high': 0, 'medium': 1, 'low': 2}
-
-        # Flatten all lists
-        all_titles = []
-        for title_list in title_lists:
-            all_titles.extend(title_list)
-
-        # Sort by page, then confidence
-        all_titles.sort(key=lambda t: (t.page, confidence_order.get(t.confidence, 3)))
-
-        # Deduplicate using dict keyed by normalized text
-        seen_texts: Dict[str, ExtractedTitle] = {}
-        for title in all_titles:
-            normalized = title.text.lower().strip()
-            existing = seen_texts.get(normalized)
-            if existing is None or confidence_order.get(title.confidence, 3) < confidence_order.get(existing.confidence, 3):
-                seen_texts[normalized] = title
-
-        return list(seen_texts.values())
+        return ExtractedTitle(
+            text=text,
+            page=page_num,
+            confidence=conf_label,
+            method="vision_ocr",
+        )
 
     def _validate_against_tasks(self, extracted: List[ExtractedTitle], tasks: List[Task]) -> List[ExtractedTitle]:
         """Validate extracted titles against known tasks to filter false positives"""
@@ -475,13 +328,12 @@ class ThingsDatabase:
 
     @staticmethod
     def fetch_tasks(conn: sqlite3.Connection) -> List[Task]:
-        """Fetch all active tasks from database"""
+        """Fetch all non-trashed tasks from database"""
         cursor = conn.cursor()
         cursor.execute("""
             SELECT uuid, title, notes
             FROM TMTask
             WHERE type = 0
-              AND status = 0
               AND trashed = 0
             ORDER BY title
         """)
@@ -587,7 +439,7 @@ def main():
 
     args = parser.parse_args()
 
-    # Configure logging - suppress docling's INFO messages unless verbose
+    # Configure logging
     if args.verbose:
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     else:
