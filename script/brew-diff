@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+dotfiles_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)"
+brewfile="$dotfiles_root/tag-mac/Brewfile"
+
+if [ ! -f "$brewfile" ]; then
+  echo "Brewfile not found at $brewfile" >&2
+  exit 1
+fi
+
+compare() {
+  local label="$1" installed="$2" listed="$3"
+  local missing extra
+  missing="$(comm -23 <(printf '%s\n' "$listed") <(printf '%s\n' "$installed"))"
+  extra="$(comm -13 <(printf '%s\n' "$listed") <(printf '%s\n' "$installed"))"
+
+  printf '== %s ==\n' "$label"
+  if [ -n "$extra" ]; then
+    echo "Installed but not in Brewfile:"
+    printf '%s\n' "$extra" | sed 's/^/  + /'
+  fi
+  if [ -n "$missing" ]; then
+    echo "In Brewfile but not installed:"
+    printf '%s\n' "$missing" | sed 's/^/  - /'
+  fi
+  if [ -z "$extra" ] && [ -z "$missing" ]; then
+    echo "  (in sync)"
+  fi
+  echo
+}
+
+compare "Formulae" \
+  "$(brew info --json=v2 --installed | jq -r '.formulae[] | select(.installed[].installed_on_request) | .full_name' | sort)" \
+  "$(brew bundle list --formula --file="$brewfile" | sort)"
+
+compare "Casks" \
+  "$(brew list --cask | sort)" \
+  "$(brew bundle list --cask --file="$brewfile" | sort)"
+
+compare "Taps" \
+  "$(brew tap | grep -vxE 'homebrew/(core|cask)' | sort)" \
+  "$(brew bundle list --tap --file="$brewfile" | sort)"

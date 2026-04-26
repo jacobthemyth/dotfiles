@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+#
+# Sync Claude Code plugins to match ~/.dotfiles/claude-plugins.
+# Idempotent: safe to run repeatedly. Installs missing plugins/marketplaces
+# and uninstalls anything not declared in the manifest.
+
+set -eo pipefail
+
+manifest="$HOME/.dotfiles/claude-plugins"
+
+command -v claude >/dev/null 2>&1 || exit 0
+[ -f "$manifest" ] || exit 0
+
+if ! command -v jq >/dev/null 2>&1; then
+  echo "claude-plugins hook requires jq" >&2
+  exit 1
+fi
+
+declare -a desired_plugins=()
+declare -A marketplace_source=()
+declare -A desired_marketplaces=()
+
+while IFS= read -r line || [ -n "$line" ]; do
+  line="${line%%#*}"
+  line="${line#"${line%%[![:space:]]*}"}"
+  line="${line%"${line##*[![:space:]]}"}"
+  [ -z "$line" ] && continue
+
+  read -r spec src _rest <<< "$line"
+  case "$spec" in
+    *@*) ;;
+    *) echo "claude-plugins: invalid spec '$spec' (expected plugin@marketplace)" >&2; exit 1 ;;
+  esac
+
+  desired_plugins+=("$spec")
+  mp="${spec##*@}"
+  desired_marketplaces["$mp"]=1
+  [ -n "${src:-}" ] && marketplace_source["$mp"]="$src"
+done < "$manifest"
+
+known="$HOME/.claude/plugins/known_marketplaces.json"
+installed_file="$HOME/.claude/plugins/installed_plugins.json"
+
+read_keys() {
+  local file="$1" filter="$2"
+  [ -f "$file" ] || return 0
+  jq -r "$filter" "$file"
+}
+
+existing_marketplaces="$(read_keys "$known" 'keys[]')"
+installed_plugins="$(read_keys "$installed_file" '.plugins | keys[]')"
+
+contains() {
+  local needle="$1"; shift
+  local haystack="$1"
+  [ -n "$haystack" ] && grep -qxF "$needle" <<< "$haystack"
+}
+
+# Every desired marketplace needs a source — either declared in the manifest
+# or already configured.
+for mp in "${!desired_marketplaces[@]}"; do
+  if [ -z "${marketplace_source[$mp]:-}" ] && ! contains "$mp" "$existing_marketplaces"; then
+    echo "claude-plugins: marketplace '$mp' has no source declared and is not configured" >&2
+    exit 1
+  fi
+done
+
+# Add missing marketplaces.
+for mp in "${!marketplace_source[@]}"; do
+  if ! contains "$mp" "$existing_marketplaces"; then
+    echo "claude-plugins: adding marketplace $mp (${marketplace_source[$mp]})"
+    claude plugin marketplace add "${marketplace_source[$mp]}"
+  fi
+done
+
+# Install missing plugins.
+for spec in "${desired_plugins[@]}"; do
+  if ! contains "$spec" "$installed_plugins"; then
+    echo "claude-plugins: installing $spec"
+    claude plugin install "$spec"
+  fi
+done
+
+# Uninstall plugins not in the manifest.
+if [ -n "$installed_plugins" ]; then
+  while IFS= read -r spec; do
+    [ -z "$spec" ] && continue
+    keep=0
+    for d in "${desired_plugins[@]}"; do
+      [ "$d" = "$spec" ] && keep=1 && break
+    done
+    if [ "$keep" -eq 0 ]; then
+      echo "claude-plugins: uninstalling $spec"
+      claude plugin uninstall "$spec"
+    fi
+  done <<< "$installed_plugins"
+fi
+
+# Remove marketplaces no desired plugin references.
+existing_marketplaces="$(read_keys "$known" 'keys[]')"
+if [ -n "$existing_marketplaces" ]; then
+  while IFS= read -r mp; do
+    [ -z "$mp" ] && continue
+    if [ -z "${desired_marketplaces[$mp]:-}" ]; then
+      echo "claude-plugins: removing marketplace $mp"
+      claude plugin marketplace remove "$mp"
+    fi
+  done <<< "$existing_marketplaces"
+fi

@@ -28,12 +28,12 @@ when "someday"
 when /\Athings:\/\/\/show\?id=(\w+)\z/
   "PROJECT.uuid = '#{$1}'"
 else
-  puts "Usage: things-export <inbox|next|someday|URI> <yaml|csv|org|logseq>"
+  puts "Usage: things-export <inbox|next|someday|URI> <yaml|csv|org|drafts>"
   exit 1
 end
 
 format = ARGV[1] || "yaml"
-unless ["csv", "yaml", "org", "logseq"].include?(format)
+unless ["csv", "yaml", "org", "drafts"].include?(format)
   exit 1
 end
 
@@ -55,7 +55,7 @@ db_path = "#{Dir.home}/Library/Group Containers/JLMPQHK86H.com.culturedcode.Thin
 db = SQLite3::Database.new(db_path)
 
 rows = db.execute <<~SQL
-SELECT TASK.title, TASK.notes, PROJECT.title project
+SELECT TASK.uuid, TASK.title, TASK.notes, PROJECT.title project
 FROM TMTask TASK
 LEFT JOIN TMTask PROJECT
 ON PROJECT.type = #{TYPES[:project]} AND TASK.project = PROJECT.uuid
@@ -66,19 +66,20 @@ AND #{source}
 ORDER BY TASK.creationDate
 SQL
 
-tasks = rows.map { |(title, notes, project)|
-  { title: title, notes: notes, project: project }
+tasks = rows.map { |(uuid, title, notes, project)|
+  { uuid: uuid, title: title, notes: notes, project: project }
 }
 
 case format
-when "logseq"
+when "drafts"
+  inbox = File.join(
+    Dir.home,
+    "Library/Mobile Documents/iCloud~com~agiletortoise~Drafts5/Documents/Inbox",
+  )
   tasks.each do |task|
-    puts "- #{task[:title]}"
-    unless String(task[:notes]) == ""
-      task[:notes].split("\n").each do |l|
-        puts "\t- #{l}"
-      end
-    end
+    body = "#{task[:title]}"
+    body += "\n\n#{task[:notes]}" unless String(task[:notes]) == ""
+    File.write(File.join(inbox, "#{task[:uuid]}.md"), body)
   end
 when "org"
   puts "* Things export #{Time.now}"

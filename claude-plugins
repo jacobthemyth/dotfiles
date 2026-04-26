@@ -1,0 +1,10 @@
+# Declarative manifest of Claude Code plugins for this machine.
+# Synced by hooks/post-up/claude-plugins on `rcup`.
+#
+# Format: <plugin>@<marketplace> [<marketplace-source>]
+#   - <marketplace-source> is `owner/repo` for GitHub, a URL, or a local path.
+#     Required the first time a marketplace is referenced; optional afterward.
+#   - Lines starting with # and blank lines are ignored.
+#   - Plugins and marketplaces not listed here will be uninstalled.
+
+superpowers@claude-plugins-official anthropics/claude-plugins-official

@@ -15,5 +15,5 @@ case "$OSTYPE" in
 esac
 
 export DOTFILES_DIRS="$HOME/.dotfiles"
-export EXCLUDES="script/* README.md LICENSE"
+export EXCLUDES="script/* README.md LICENSE claude-plugins"
 export TAGS="$RCM_OS_TAG"
