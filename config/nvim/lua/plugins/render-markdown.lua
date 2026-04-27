@@ -5,10 +5,6 @@ return {
   opts = {
     file_types = { "markdown", "Avante" },
 
-    heading = {
-      width = 'block',
-    },
-
     sign = {
       enabled = false,
     },
@@ -22,10 +18,6 @@ return {
       right_pad = 10,
       -- Inline code padding to maintain width when backticks are concealed
       inline_pad = 1, -- Adds 1 space on each side (replaces 1 backtick on each side)
-    },
-
-    link = {
-      enabled = false,
     },
   },
 }

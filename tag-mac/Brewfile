@@ -82,6 +82,7 @@ brew "tinted-theming/tinted/tinty"
 brew "tmux"
 brew "trash"
 brew "tree"
+brew "tree-sitter-cli"
 brew "uv"
 brew "vim"
 brew "vips" # emacs
