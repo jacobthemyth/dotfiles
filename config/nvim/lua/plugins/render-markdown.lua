@@ -9,6 +9,11 @@ return {
       enabled = false,
     },
 
+    pipe_table = {
+      style = 'normal',
+      cell = 'raw',
+    },
+
     code = {
       enabled = true,
       conceal_delimiters = false,

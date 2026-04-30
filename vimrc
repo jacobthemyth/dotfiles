@@ -19,7 +19,7 @@ set shiftround
 set expandtab
 
 " Display extra whitespace
-set list listchars=tab:»·,trail:·,nbsp:·
+set list listchars=tab:»·,trail:·,nbsp:·,extends:›,precedes:‹
 
 " Use one space, not two, after punctuation.
 set nojoinspaces
@@ -40,9 +40,6 @@ set splitright
 " Allow project specific vimrc
 set exrc
 
-" Optimize for fast terminal connections
-set ttyfast
-
 " Use UTF-8 without BOM
 set encoding=utf-8 nobomb
 
@@ -59,25 +56,17 @@ set colorcolumn=81
 set cursorline
 set hidden
 set textwidth=0
-set backspace=2   " Backspace deletes like most programs in insert mode
 set nobackup
 set nowritebackup
 set noswapfile    " http://robots.thoughtbot.com/post/18739402579/global-gitignore#comment-458413287
 set history=50
-set ruler         " show the cursor position all the time
-set showcmd       " display incomplete commands
-set incsearch     " do incremental searching
-set laststatus=2  " Always display the status line
 set autowrite     " Automatically :write before running commands
-set smartindent
 set breakindent
 let &showbreak = '→ '
 set linebreak
-set hlsearch
 set ignorecase  " searches are case insensitive...
 set smartcase   " ... unless they contain at least one capital letter
 set infercase   " Use the correct case when autocompleting
-set mouse=a " Enable mouse in all modes
 set updatetime=100
 set fillchars=eob:\ ,stl:─,vert:│
 
@@ -109,12 +98,6 @@ augroup quickfix
   autocmd QuickFixCmdPost l* lwindow
 augroup END
 
-hi VertSplit guibg=NONE
-
-highlight htmlArg cterm=italic gui=italic
-highlight Comment cterm=italic gui=italic
-highlight Type    cterm=italic gui=italic
-
 let theme_script_path = expand("~/.local/share/tinted-theming/tinty/base16-vim-colors-file.vim")
 
 function! FileExists(file_path)
@@ -129,11 +112,22 @@ endfunction
 
 if FileExists(theme_script_path)
   set termguicolors
-  let g:tinted_colorspace = 256
   execute 'source ' . theme_script_path
+  highlight VertSplit guibg=NONE
+  highlight htmlArg cterm=italic gui=italic
+  highlight Comment cterm=italic gui=italic
+  highlight Type    cterm=italic gui=italic
   " TODO: tmux isn't handling this correctly
   " autocmd FocusGained * call HandleFocusGained()
 endif
+
+augroup theme_overrides
+  autocmd!
+  autocmd ColorScheme * highlight VertSplit guibg=NONE
+  autocmd ColorScheme * highlight htmlArg cterm=italic gui=italic
+  autocmd ColorScheme * highlight Comment cterm=italic gui=italic
+  autocmd ColorScheme * highlight Type    cterm=italic gui=italic
+augroup END
 " }}}
 
 " Mappings {{{
@@ -161,15 +155,10 @@ let g:airline#extensions#tabline#show_tab_type = 0
 let g:airline#extensions#tabline#show_close_button = 0
 let g:airline_powerline_fonts = 1
 
-" ale
-let g:ale_completion_autoimport = 1
-let g:ale_completion_enabled = 1
+" ale (lint + fix only; LSP IDE features handled by nvim-lspconfig)
 let g:ale_echo_msg_error_str = ''
 let g:ale_echo_msg_format = '[%linter%] %s [%severity%]'
 let g:ale_echo_msg_warning_str = ''
-let g:ale_floating_preview = 1
-let g:ale_floating_window_border = ['│', '─', '╭', '╮', '╯', '╰']
-let g:ale_hover_cursor = 0
 let g:ale_linters_explicit = 1
 
 let g:ale_ruby_sorbet_enable_watchman = 1
@@ -178,75 +167,6 @@ let g:ale_vim_vimls_use_global = 1
 highlight link ALEError Error
 
 nnoremap <Leader>af :ALEFix<CR>
-
-function ALETagFunc(pattern, flags, info) abort
-  if a:flags != "c"
-    return v:null
-  endif
-
-  let l:current_tag = expand("<cWORD>")
-
-  " execute("call CocAction('jumpDefinition')")
-  " let filename = expand('%:p')
-  " let cursor_pos = getpos(".")
-  " let cmd = '/\%'.cursor_pos[1].'l\%'.cursor_pos[2].'c/'
-  " execute("normal \<C-o>")
-  " return [ { 'name': name, 'filename': filename, 'cmd': cmd } ]
-  return []
-endfunction
-
-" function! s:gotoDefinition() abort
-"   let l:current_tag = expand('<cWORD>')
-"
-"   let l:current_position    = getcurpos()
-"   let l:current_position[0] = bufnr()
-"
-"   let l:current_tag_stack = gettagstack()
-"   let l:current_tag_index = l:current_tag_stack['curidx']
-"   let l:current_tag_items = l:current_tag_stack['items']
-"
-"   if CocAction('jumpDefinition')
-"     let l:new_tag_index = l:current_tag_index + 1
-"     let l:new_tag_item = [#{tagname: l:current_tag, from: l:current_position}]
-"     let l:new_tag_items = l:current_tag_items[:]
-"     if l:current_tag_index <= len(l:current_tag_items)
-"       call remove(l:new_tag_items, l:current_tag_index - 1, -1)
-"     endif
-"     let l:new_tag_items += l:new_tag_item
-"
-"     call settagstack(winnr(), #{curidx: l:new_tag_index, items: l:new_tag_items}, 'r')
-"   endif
-" endfunction
-
-" function! ErlangTag(pattern, flags, info)
-"   let l:funcname = expand("<cword>")
-"   let l:line = getline(".")
-"   let l:match_res = matchlist(line, "[a-zA-Z0-9'_]*:" . l:funcname)
-"   if len(l:match_res) > 0
-"     let [l:mod, l:fun] = split(l:match_res[0], ":")
-"     return filter(taglist(a:pattern), 'get(v:val, "module", "") ==# l:mod')
-"   else
-"     return taglist(a:pattern)
-"   endif
-" endfunction
-
-function! OnALELSPStarted() abort
-    setlocal omnifunc=ale#completion#OmniFunc
-    setlocal signcolumn=yes
-    if exists('+tagfunc') | setlocal tagfunc=ALETagFunc | endif
-    nmap <buffer> gd <plug>(ale_go_to_definition)
-    nmap <buffer><silent> gs :ALESymbolSearch <cword><CR>
-    nmap <buffer> gr <plug>(ale_find_references)
-    nmap <buffer> gi <plug>(ale_go_to_implementation)
-    " nmap <buffer> gt <plug>(ale_go_to_type_definition)
-    nmap <buffer> <leader>rn :ALERename<CR>
-    nmap <buffer> K <plug>(ale_hover)
-endfunction
-
-augroup ale
-  autocmd!
-  autocmd User ALELSPStarted call OnALELSPStarted()
-augroup END
 
 let g:ale_linters = {
 \   'go': ['gobuild', 'gofmt'],
@@ -264,8 +184,8 @@ let g:ale_fixers = {
 " fugitive
 autocmd BufReadPost fugitive://* set bufhidden=delete
 
-" goyo
-nnoremap <leader>w :Goyo<CR>
+" zen-mode
+nnoremap <leader>w :ZenMode<CR>
 
 " markdown
 let g:markdown_fenced_languages = ['c', 'erb=eruby', 'diff', 'go', 'ruby', 'sh', 'sql']

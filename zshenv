@@ -1,4 +1,6 @@
 export PATH="/opt/homebrew/bin:$PATH"
+export PATH="$(brew --prefix rustup)/bin:$PATH"
+export PATH="$HOME/.cargo/bin:$PATH"
 eval "$(brew shellenv)"
 
 # Added by OrbStack: command-line tools and integration
