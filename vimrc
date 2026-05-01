@@ -137,6 +137,8 @@ nnoremap <silent> <leader><C-L> :nohlsearch<C-R>=has('diff')?'<Bar>diffupdate':'
 
 nnoremap <silent><Leader>] <C-w><C-]><C-w>T
 
+nnoremap <Leader>fo :!open %
+
 vnoremap <Leader>y "+y
 vnoremap <Leader>p "+p
 
@@ -189,6 +191,10 @@ nnoremap <leader>w :ZenMode<CR>
 
 " markdown
 let g:markdown_fenced_languages = ['c', 'erb=eruby', 'diff', 'go', 'ruby', 'sh', 'sql']
+augroup markdown
+  autocmd!
+  autocmd FileType markdown set spell
+augroup END
 
 " netrw
 let g:netrw_bufsettings = 'noma nomod nu nobl nowrap ro'
