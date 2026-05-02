@@ -45,7 +45,7 @@
   pager = diff-so-fancy | less --tabs=4 -RFX
   autocrlf = input
 [diff]
-  compactionHeuristic = true
+  algorithm = histogram
 [diff "rspec"]
   xfuncname = "^[ \t]*((RSpec|describe|context|it|before|after|around|feature|scenario)[ \t].*)$"
 [difftool]
@@ -58,8 +58,6 @@
   ff = true
 [mergetool]
   prompt = false
-[push]
-  default = simple
 [rebase]
   autosquash = true
 	instructionFormat = (%an <%ae>) %s

@@ -1,3 +1,5 @@
+set wrap-lines = true
+
 bind main G move-last-line
 bind diff G move-last-line
 bind log G move-last-line

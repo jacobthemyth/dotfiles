@@ -11,7 +11,7 @@ return {
 
     pipe_table = {
       style = 'normal',
-      cell = 'raw',
+      -- cell = 'raw',
     },
 
     code = {
