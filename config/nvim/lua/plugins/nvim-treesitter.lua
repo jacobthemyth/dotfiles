@@ -19,6 +19,7 @@ return {
       "typescript",
       "vim",
       "vimdoc",
+      "yaml",
     }
 
     require("nvim-treesitter").install(parsers)
@@ -27,6 +28,7 @@ return {
       callback = function(args)
         local lang = vim.treesitter.language.get_lang(vim.bo[args.buf].filetype)
         if lang and pcall(vim.treesitter.start, args.buf, lang) then
+          vim.bo[args.buf].syntax = ""
           vim.bo[args.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
         end
       end,
