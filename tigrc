@@ -1,5 +1,4 @@
 set wrap-lines = true
-set diff-highlight = "/opt/homebrew/opt/git/share/git-core/contrib/diff-highlight/diff-highlight"
 
 bind main G move-last-line
 bind diff G move-last-line
@@ -45,20 +44,5 @@ bind refs gg move-first-line
 bind stash gg move-first-line
 bind grep gg move-first-line
 bind generic gg move-first-line
-
-bind main gw :toggle wrap-lines
-bind diff gw :toggle wrap-lines
-bind log gw :toggle wrap-lines
-bind help gw :toggle wrap-lines
-bind pager gw :toggle wrap-lines
-bind status gw :toggle wrap-lines
-bind stage gw :toggle wrap-lines
-bind tree gw :toggle wrap-lines
-bind blob gw :toggle wrap-lines
-bind blame gw :toggle wrap-lines
-bind refs gw :toggle wrap-lines
-bind stash gw :toggle wrap-lines
-bind grep gw :toggle wrap-lines
-bind generic gw :toggle wrap-lines
 
 bind generic y @sh -c "printf '%s' %(commit) | pbcopy"

@@ -42,7 +42,7 @@
 [commit]
   template = ~/.gitmessage
 [core]
-  pager = diff-so-fancy | less --tabs=4 -RFX
+	pager = delta
   autocrlf = input
 [diff]
   algorithm = histogram
@@ -56,6 +56,7 @@
   lineNumber = true
 [merge]
   ff = true
+	conflictStyle = zdiff3
 [mergetool]
   prompt = false
 [rebase]
@@ -84,3 +85,10 @@
 	helper = /usr/local/share/gcm-core/git-credential-manager
 [credential "https://dev.azure.com"]
 	useHttpPath = true
+[interactive]
+	diffFilter = delta --color-only
+[delta]
+	navigate = true
+	pager = moor -mousemode scroll -wrap
+	width = -2
+	wrap-max-lines = unlimited

@@ -1,3 +1,5 @@
 local builtin = require('telescope.builtin')
 vim.keymap.set('n', '<C-p>', builtin.git_files, { desc = 'Telescope git files' })
 vim.keymap.set('n', '<C-P>', builtin.find_files, { desc = 'Telescope all project files' })
+vim.keymap.set('n', '<leader>:', builtin.command_history, { desc = 'Reverse-search command history' })
+vim.keymap.set('n', '<leader>/', builtin.search_history, { desc = 'Reverse-search search history' })

@@ -8,6 +8,7 @@ return {
   { "hashivim/vim-terraform", ft = {"hcl", "tf", "tfvars", "tfstate"} },
   { "janko-m/vim-test", lazy = true },
   "junegunn/fzf",
+  "junegunn/vim-easy-align",
   "neovim/nvim-lspconfig",
   { "nvim-orgmode/orgmode", ft = {"org"} },
   { "nvim-tree/nvim-web-devicons", lazy = true },
