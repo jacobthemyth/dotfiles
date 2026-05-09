@@ -1,8 +1,9 @@
 font-family = "OperatorMonoSSm Nerd Font Mono"
+font-style = "Medium"
 font-size = 16
 font-feature = -liga
+font-thicken = true
 theme = "tinted-theming"
 keybind = shift+enter=text:\x1b\r
-bold-color = "bright"
 working-directory = home
 window-inherit-working-directory = false

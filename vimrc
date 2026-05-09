@@ -139,12 +139,12 @@ nnoremap <silent><Leader>] <C-w><C-]><C-w>T
 
 nnoremap <Leader>fo :!open %
 
-vnoremap <Leader>y "+y
 vnoremap <Leader>p "+p
-
-nnoremap <Leader>y "+y
 nnoremap <Leader>p "+p
 nnoremap <Leader>P "+P
+
+nmap <Leader>y <Plug>OSCYankOperator
+vmap <Leader>y <Plug>OSCYankVisual
 " }}}
 
 " Plugins {{{

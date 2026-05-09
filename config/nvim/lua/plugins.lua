@@ -12,6 +12,7 @@ return {
   "neovim/nvim-lspconfig",
   { "nvim-orgmode/orgmode", ft = {"org"} },
   { "nvim-tree/nvim-web-devicons", lazy = true },
+  "ojroques/vim-oscyank",
   "tmhedberg/matchit",
   "tpope/vim-abolish",
   "tpope/vim-bundler",
