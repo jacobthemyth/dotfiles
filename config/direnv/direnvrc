@@ -1,0 +1,10 @@
+use_nvm() {
+  export NVM_DIR="$HOME/.nvm"
+  [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
+
+  if [ -n "${1:-}" ]; then
+    nvm use "$1"
+  elif [ -f .nvmrc ]; then
+    nvm use
+  fi
+}

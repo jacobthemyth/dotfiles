@@ -10,6 +10,10 @@ require("config.lazy")
 -- yanks travel the escape-sequence channel through tmux/mosh/ghostty to set the
 -- macOS clipboard, and (with `set-clipboard on` in tmux) populate the tmux
 -- paste buffer simultaneously.
+vim.keymap.set("n", "<leader>%", function()
+  vim.fn.setreg("+", vim.fn.expand("%"))
+end, { desc = "Copy filename to clipboard" })
+
 vim.g.clipboard = {
   name = "OSC 52",
   copy = {
