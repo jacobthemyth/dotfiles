@@ -1,0 +1,4 @@
+# systemd --user units to enable on rcup, one per line.
+# Lines starting with '#' are comments; blank lines are ignored.
+# Example:
+#   ssh-agent.service
