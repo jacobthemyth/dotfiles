@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+#
+# Apply the aconfmgr declarative manifest.
+# DOTFILES_ROOT is exported by hooks/dispatch.sh.
+
+set -eo pipefail
+
+config_dir="$DOTFILES_ROOT/tag-linux/config/aconfmgr"
+
+# No-op until the manifest has at least one non-comment, non-blank line.
+if [ ! -f "$config_dir/00-packages.sh" ] \
+   || ! grep -qE '^[[:space:]]*[^#[:space:]]' "$config_dir/00-packages.sh"; then
+  echo "aconfmgr: 00-packages.sh is empty (no declarations); skipping apply."
+  exit 0
+fi
+
+if ! command -v aconfmgr >/dev/null 2>&1; then
+  echo "aconfmgr binary not found; did aconfmgr-bootstrap run?" >&2
+  exit 1
+fi
+
+aconfmgr -c "$config_dir" apply -y
