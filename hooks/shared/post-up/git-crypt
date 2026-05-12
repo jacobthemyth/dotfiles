@@ -28,7 +28,7 @@ if git-crypt status >/dev/null 2>&1 && ! git-crypt status | grep -q "not encrypt
 
   # Create a temporary file for the key
   KEY_FILE=$(mktemp)
-  trap "rm -f $KEY_FILE" EXIT
+  trap 'rm -f "$KEY_FILE"' EXIT
 
   # Retrieve the key from 1password
   OP_KEY_PATH="op://Private/dotfiles.key"

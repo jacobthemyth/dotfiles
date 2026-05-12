@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 set -eo pipefail
 
 phase="$(basename "$(dirname "$(realpath "${BASH_SOURCE[1]}")")")"
