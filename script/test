@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Run lint + unit tests for the dotfiles repo.
+# Non-destructive: does not symlink, install, or modify the system.
+
+set -eo pipefail
+
+dotfiles_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)"
+cd "$dotfiles_root"
+
+fail=0
+
+echo "==> bash -n syntax check on all hook scripts"
+while IFS= read -r -d '' f; do
+  bash -n "$f" || { echo "  FAIL: $f"; fail=1; }
+done < <(find hooks -type f \( -perm -u+x -o -name "*.sh" \) -print0 2>/dev/null)
+
+if command -v shellcheck >/dev/null 2>&1; then
+  echo "==> shellcheck on all hook scripts"
+  while IFS= read -r -d '' f; do
+    shellcheck -x "$f" || fail=1
+  done < <(find hooks -type f \( -perm -u+x -o -name "*.sh" \) -print0 2>/dev/null)
+else
+  echo "==> shellcheck not installed, skipping"
+fi
+
+echo "==> no leftover OS guards in hooks (will fail until dispatcher refactor lands)"
+if grep -RnE 'OSTYPE.*darwin|uname.*[Dd]arwin' hooks/ 2>/dev/null | grep -vE '^hooks/dispatch\.sh:|^hooks/(pre|post)-up/dispatch:'; then
+  echo "  FAIL: inline OS guards found above"
+  fail=1
+fi
+
+echo "==> dispatcher unit test"
+if [ -x test/dispatch_test.sh ]; then
+  test/dispatch_test.sh || fail=1
+else
+  echo "  SKIP: test/dispatch_test.sh not present yet"
+fi
+
+if [ "$fail" -ne 0 ]; then
+  echo
+  echo "FAIL"
+  exit 1
+fi
+echo
+echo "OK"
