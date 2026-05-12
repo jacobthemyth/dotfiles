@@ -4,7 +4,7 @@ set -eo pipefail
 
 # Check if git-crypt is installed
 if ! command -v git-crypt >/dev/null; then
-  echo "git-crypt not found. Install it with: brew install git-crypt"
+  echo "git-crypt not found. Install via your OS package manager (brew install git-crypt on macOS, pacman -S git-crypt on Arch)."
   exit 1
 fi
 
@@ -22,7 +22,7 @@ if git-crypt status >/dev/null 2>&1 && ! git-crypt status | grep -q "not encrypt
 
   # Get the key from 1password
   if ! command -v op >/dev/null; then
-    echo "1Password CLI not found. Install it with: brew install 1password-cli"
+    echo "1Password CLI not found. Install via your OS package manager (brew install 1password-cli on macOS, paru -S 1password-cli on Arch)."
     exit 1
   fi
 
