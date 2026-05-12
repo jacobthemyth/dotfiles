@@ -2,7 +2,5 @@
 
 set -eo pipefail
 
-[[ "$OSTYPE" == "darwin"* ]] || exit
-
 mkdir -p ~/Library/Fonts
 find -L "$HOME/.local/share/fonts" -type f -exec cp -n '{}' ~/Library/Fonts \;
