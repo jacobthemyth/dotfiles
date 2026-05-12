@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+#
+# Refresh the system font cache after rcm-managed font submodules and
+# any aconfmgr-installed font packages have landed in ~/.local/share/fonts
+# or /usr/share/fonts.
+
+set -eo pipefail
+
+if command -v fc-cache >/dev/null 2>&1; then
+  echo "Refreshing font cache..."
+  fc-cache -f
+fi
