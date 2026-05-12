@@ -70,14 +70,18 @@ hooks/
     user-services.list         # data file read by post-up/user-services
 ```
 
-The dispatcher (single script, symlinked or copied as both `pre-up/dispatch`
-and `post-up/dispatch`):
+The dispatcher logic lives once in `hooks/dispatch.sh` (a regular file,
+not executable, sourced by both hook entry points). The rcm-visible
+entries `hooks/pre-up/dispatch` and `hooks/post-up/dispatch` are tiny
+shims that `source` it. This avoids the "is it a symlink or a copy"
+question and keeps the actual logic in one place.
 
 ```bash
-#!/usr/bin/env bash
+# hooks/dispatch.sh  (sourced by pre-up/dispatch and post-up/dispatch)
 set -eo pipefail
-phase="$(basename "$(dirname "$(realpath "$0")")")"   # pre-up | post-up
-root="$(cd "$(dirname "$(realpath "$0")")/../.." && pwd)"
+phase="$(basename "$(dirname "$(realpath "${BASH_SOURCE[1]}")")")"   # pre-up | post-up
+DOTFILES_ROOT="$(cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")/.." && pwd)"
+export DOTFILES_ROOT
 
 case "$(uname -s)" in
   Darwin) os=mac ;;
@@ -95,9 +99,18 @@ run_dir() {
   done
 }
 
-run_dir "$root/hooks/shared/$phase"
-run_dir "$root/hooks/$os/$phase"
+run_dir "$DOTFILES_ROOT/hooks/shared/$phase"
+run_dir "$DOTFILES_ROOT/hooks/$os/$phase"
 ```
+
+```bash
+# hooks/pre-up/dispatch  (executable, ~3 lines)
+#!/usr/bin/env bash
+source "$(dirname "$(realpath "$0")")/../dispatch.sh"
+```
+
+The `post-up/dispatch` shim is identical. Individual hooks can rely on
+`$DOTFILES_ROOT` being set in their environment.
 
 Every individual hook becomes OS-pure: no more `[[ darwin ]] || exit`
 guards anywhere. The OS choice is made once, in `dispatch`.
@@ -136,10 +149,11 @@ Two new linux pre-up hooks do the work:
   on subsequent runs (`pacman -Q aconfmgr` check). No AUR helper required
   for the bootstrap.
 - **`aconfmgr-apply`** — runs
-  `aconfmgr -c "$DOTFILES_ROOT/tag-linux/config/aconfmgr" apply -y`. The
-  explicit `-c` path is required because `aconfmgr-apply` runs in
-  *pre-up*, before rcm has had a chance to create the
-  `~/.config/aconfmgr` symlink.
+  `aconfmgr -c "$DOTFILES_ROOT/tag-linux/config/aconfmgr" apply -y`
+  (where `$DOTFILES_ROOT` is exported by the dispatcher). The explicit
+  `-c` path is required because `aconfmgr-apply` runs in *pre-up*,
+  before rcm has had a chance to create the `~/.config/aconfmgr`
+  symlink.
 
 Why pre-up: many shared post-up hooks (`node`, `ruby`, `git-crypt`, `pipx`)
 depend on packages being available (nodenv, rbenv, 1Password CLI, pipx).
@@ -212,16 +226,16 @@ git clone <repo-url> ~/.dotfiles
 cd ~/.dotfiles
 ./script/setup
 #   → installs rcm if missing
-#   → rcup -t linux
-#       → hooks/pre-up/dispatch
-#         → shared/pre-up/submodules
-#         → linux/pre-up/aconfmgr-bootstrap   # base-devel, git, aconfmgr-git
-#         → linux/pre-up/aconfmgr-apply       # all packages
-#       → symlink stage (rcm core)
-#         → ~/.zshrc, ~/.config/hypr/*, ~/.config/aconfmgr/*, ...
-#       → hooks/post-up/dispatch
-#         → shared/post-up/{claude-plugins,git-crypt,node,pipx,ruby,vim,zsh}
-#         → linux/post-up/{fonts,user-services}
+#   → exports TAGS=linux via rcrc, then invokes rcup
+#     → hooks/pre-up/dispatch
+#       → shared/pre-up/submodules
+#       → linux/pre-up/aconfmgr-bootstrap   # base-devel, git, aconfmgr-git
+#       → linux/pre-up/aconfmgr-apply       # all packages
+#     → symlink stage (rcm core, scoped to tag=linux)
+#       → ~/.zshrc, ~/.config/hypr/*, ~/.config/aconfmgr/*, ...
+#     → hooks/post-up/dispatch
+#       → shared/post-up/{claude-plugins,git-crypt,node,pipx,ruby,vim,zsh}
+#       → linux/post-up/{fonts,user-services}
 ```
 
 On second and subsequent `rcup` runs everything is idempotent: aconfmgr
