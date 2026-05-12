@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+#
+# Ensure base-devel, git, and aconfmgr-git are installed.
+# Idempotent: skips work if packages already present.
+# Builds aconfmgr-git from AUR via makepkg (no AUR helper required).
+
+set -eo pipefail
+
+if ! pacman -Q base-devel >/dev/null 2>&1 || ! pacman -Q git >/dev/null 2>&1; then
+  echo "Installing base-devel and git (sudo required)..."
+  sudo pacman -S --needed --noconfirm base-devel git
+fi
+
+if pacman -Q aconfmgr-git >/dev/null 2>&1 || pacman -Q aconfmgr >/dev/null 2>&1; then
+  exit 0
+fi
+
+echo "Building aconfmgr-git from AUR..."
+build_dir="$(mktemp -d)"
+trap 'rm -rf "$build_dir"' EXIT
+git clone --depth=1 https://aur.archlinux.org/aconfmgr-git.git "$build_dir/aconfmgr-git"
+(cd "$build_dir/aconfmgr-git" && makepkg -si --noconfirm)
