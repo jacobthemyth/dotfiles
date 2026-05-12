@@ -2,9 +2,6 @@
 
 set -eo pipefail
 
-# TODO: replace with tag hooks
-[[ "$OSTYPE" == "darwin"* ]] || exit
-
 maxfiles="$(launchctl limit maxfiles | awk '{ print $2 }')"
 maxproc="$(launchctl limit maxproc | awk '{ print $2 }')"
 

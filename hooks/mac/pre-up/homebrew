@@ -2,9 +2,6 @@
 
 set -eo pipefail
 
-# TODO: replace with tag hooks
-[[ "$OSTYPE" == "darwin"* ]] || exit
-
 if [[ "$(arch)" == "arm64" ]]; then
   brew_path="/opt/homebrew/bin/brew"
 else
