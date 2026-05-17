@@ -1,6 +1,8 @@
 use_nvm() {
   export NVM_DIR="$HOME/.nvm"
-  [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
+  for nvm_sh in "$NVM_DIR/nvm.sh" /opt/homebrew/opt/nvm/nvm.sh /usr/share/nvm/nvm.sh; do
+    [ -s "$nvm_sh" ] && { \. "$nvm_sh"; break; }
+  done
 
   if [ -n "${1:-}" ]; then
     nvm use "$1"

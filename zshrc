@@ -1,6 +1,6 @@
 source ~/.profile
 autoload -U promptinit; promptinit
-eval "$(starship init zsh)"
+command -v starship >/dev/null && eval "$(starship init zsh)"
 
 for zsh_source in $HOME/.zsh/configs/*.zsh; do
   source $zsh_source
@@ -24,14 +24,14 @@ zstyle ":completion:*:descriptions" format "%B%d%b"
 FPATH="$FPATH:~/.zsh/functions"
 
 export RBENV_BUILD_ROOT="$HOME/.rbenv/sources" # Force rbenv to always keep sources
-eval "$(rbenv init - --no-rehash)"
+command -v rbenv >/dev/null && eval "$(rbenv init - --no-rehash)"
 
 export PATH="$HOME/.nodenv/bin:$PATH"
-eval "$(nodenv init - --no-rehash)"
+command -v nodenv >/dev/null && eval "$(nodenv init - --no-rehash)"
 
-eval "$(pyenv init - --no-rehash)"
+command -v pyenv >/dev/null && eval "$(pyenv init - --no-rehash)"
 
-eval "$(direnv hook zsh)"
+command -v direnv >/dev/null && eval "$(direnv hook zsh)"
 
 export PATH="$HOME/go/bin:$PATH"
 export GOPATH="$HOME/go"
@@ -88,4 +88,4 @@ export FZF_DEFAULT_COMMAND='rg --files'
 # aliases
 [[ -f ~/.aliases ]] && source ~/.aliases
 
-export XDG_DATA_DIRS="$XDG_DATA_DIRS:/opt/homebrew/share"
+[[ -f ~/.zshrc.local ]] && source ~/.zshrc.local

@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+#
+# Ensure the current user's login shell is zsh. Idempotent: no-op when
+# already set, and skipped if zsh isn't installed (aconfmgr should
+# declare it, but don't hard-fail if the manifest hasn't been seeded).
+# chsh will prompt for the account password via PAM.
+
+set -eo pipefail
+
+want="$(command -v zsh || true)"
+if [ -z "$want" ]; then
+  echo "default-shell: zsh not installed, skipping"
+  exit 0
+fi
+
+current="$(getent passwd "$USER" | cut -d: -f7)"
+if [ "$current" = "$want" ]; then
+  exit 0
+fi
+
+if ! grep -qxF "$want" /etc/shells; then
+  echo "default-shell: $want not listed in /etc/shells, skipping" >&2
+  exit 0
+fi
+
+echo "default-shell: changing login shell $current -> $want"
+chsh -s "$want" "$USER"

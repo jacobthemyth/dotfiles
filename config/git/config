@@ -42,12 +42,9 @@
 [commit]
   template = ~/.gitmessage
 [core]
-	pager = delta
   autocrlf = input
 [diff]
   algorithm = histogram
-[diff "rspec"]
-  xfuncname = "^[ \t]*((RSpec|describe|context|it|before|after|around|feature|scenario)[ \t].*)$"
 [difftool]
   prompt = false
 [fetch]

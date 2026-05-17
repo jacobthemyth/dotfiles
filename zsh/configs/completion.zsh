@@ -1,5 +1,6 @@
 # load our own completion functions
-fpath=(~/.zsh/completion /opt/homebrew/share/zsh/site-functions /usr/local/share/zsh/site-functions $fpath)
+fpath=(~/.zsh/completion /usr/share/zsh/site-functions /usr/local/share/zsh/site-functions $fpath)
+command -v brew >/dev/null && fpath=("$(brew --prefix)/share/zsh/site-functions" $fpath)
 
 # completion; use cache if updated within 24h
 autoload -Uz compinit -i
