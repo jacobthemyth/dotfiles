@@ -77,11 +77,6 @@
 	defaultBranch = main
 [include]
 	path = ~/.config/git/config.local
-[credential]
-	helper = 
-	helper = /usr/local/share/gcm-core/git-credential-manager
-[credential "https://dev.azure.com"]
-	useHttpPath = true
 [interactive]
 	diffFilter = delta --color-only
 [delta]
@@ -89,3 +84,8 @@
 	pager = moor -mousemode scroll -wrap
 	width = -2
 	wrap-max-lines = unlimited
+[credential]
+	helper = 
+	helper = /usr/local/share/gcm-core/git-credential-manager
+[credential "https://dev.azure.com"]
+	useHttpPath = true
