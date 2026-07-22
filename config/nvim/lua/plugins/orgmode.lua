@@ -8,5 +8,8 @@ return {
       org_agenda_files = '~/Documents/org/**/*',
       org_default_notes_file = '~/Documents/org/Inbox.org',
     })
+
+    -- Experimental LSP support
+    vim.lsp.enable('org')
   end,
 }
