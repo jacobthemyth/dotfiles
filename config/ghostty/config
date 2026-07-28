@@ -1,7 +1,6 @@
-font-family = "OperatorMonoSSm Nerd Font Mono"
+font-family = "MonoLisaCode"
 font-style = "Medium"
 font-size = 16
-font-feature = -liga
 font-thicken = true
 theme = "tinted-theming"
 keybind = shift+enter=text:\x1b\r
