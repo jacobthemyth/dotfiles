@@ -21,6 +21,14 @@ INPUT: collected data containing GitHub activity, local git commits, Linear issu
 - If `truncated: true`, treat absent content as unknown rather than significant.
 - Documents with no clear connection to work activity should be ignored.
 
+## LINEAR DATA HANDLING
+- Issues arrive pre-bucketed (completed / created / in progress / canceled / touched). Respect the bucket: frame **completed** as delivered, **in progress** as in flight, and never imply an in-progress issue shipped.
+- **In-progress issues legitimately recur week over week** — the bucket matches any started state overlapping the period, so a multi-week effort appears in every report it spans. Describe continuing work as continuing ("carried forward", "continued"), not as newly started, and keep it to one line unless something actually changed that week.
+- Prefer the concrete change from that week (PRs, commits, decisions) over restating the issue description, which does not change as work progresses.
+- **canceled** issues are backlog hygiene: at most one summarizing line, never framed as delivery.
+- **touched (low confidence)** issues are admissible only when GitHub, git, or Slack corroborates that week. Absent corroboration, omit them rather than padding.
+- Do NOT add a separate "Linear" or "Tickets" section, and do NOT list issue identifiers as a bare inventory.
+
 ## CALENDAR DATA HANDLING
 - Calendar data lists accepted meetings (the user was not declined and there was at least one other attendee) within the period.
 - Use meetings to enrich the **Collaboration** section as context (e.g., "Led working sessions on X", "Coordinated with team on Y").

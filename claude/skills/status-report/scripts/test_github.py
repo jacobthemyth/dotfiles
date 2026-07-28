@@ -27,12 +27,24 @@ PR_CREATED = {
     "labels": [{"name": "backend"}, {"name": "observability"}],
 }
 
-# `gh search prs --reviewed-by USER --json number,title,url,repository,author,updatedAt`
+# `gh search prs --reviewed-by USER --json number,title,url,state,repository,author,updatedAt`
 PR_REVIEWED = {
     "number": 411,
     "title": "chore(deploy): remove orphaned ArgoCD apps",
     "url": "https://github.com/acme/deploy-manifests/pull/411",
+    "state": "merged",
     "repository": {"name": "deploy-manifests", "nameWithOwner": "acme/deploy-manifests"},
+    "author": {"login": "octocat"},
+    "updatedAt": "2026-06-24T10:00:00Z",
+}
+
+# The same node as it arrives when `repository` was not requested in --json: the repo
+# has to be derived from the URL instead of the (absent) repository object.
+PR_REVIEWED_NO_REPO_FIELD = {
+    "number": 411,
+    "title": "chore(deploy): remove orphaned ArgoCD apps",
+    "url": "https://github.com/acme/deploy-manifests/pull/411",
+    "state": "closed",
     "author": {"login": "octocat"},
     "updatedAt": "2026-06-24T10:00:00Z",
 }
@@ -86,6 +98,30 @@ class BuildActivityTest(unittest.TestCase):
         self.assertEqual(rev["repository"], "acme/deploy-manifests")
         self.assertEqual(rev["author"], "octocat")
         self.assertEqual(rev["reviewed_at"], "2026-06-24T10:00:00Z")
+
+    def test_reviewed_pr_carries_state(self):
+        """Reviewers need to know whether the review landed, not just that it happened."""
+        rev = self._build(prs_reviewed=[PR_REVIEWED])["prs_reviewed"][0]
+        self.assertEqual(rev["state"], "merged")
+
+    def test_reviewed_pr_repo_derived_from_url_when_repository_absent(self):
+        rev = self._build(prs_reviewed=[PR_REVIEWED_NO_REPO_FIELD])["prs_reviewed"][0]
+        self.assertEqual(rev["repository"], "acme/deploy-manifests")
+        self.assertEqual(rev["state"], "closed")
+
+    def test_repo_from_url_handles_issues_and_junk(self):
+        from_url = github_collector._repo_from_url
+        self.assertEqual(from_url("https://github.com/acme/infra/issues/50"), "acme/infra")
+        self.assertEqual(from_url("https://github.com/acme/infra"), "acme/infra")
+        self.assertEqual(from_url("https://github.com/acme"), "")
+        self.assertEqual(from_url(""), "")
+        self.assertEqual(from_url(None), "")
+
+    def test_missing_state_degrades_to_empty_not_none(self):
+        """Downstream string formatting shouldn't have to guard against None."""
+        node = {k: v for k, v in PR_REVIEWED.items() if k != "state"}
+        rev = self._build(prs_reviewed=[node])["prs_reviewed"][0]
+        self.assertEqual(rev["state"], "")
 
     def test_issue_created_is_mapped(self):
         result = self._build(issues_created=[ISSUE_CREATED])

@@ -33,12 +33,35 @@ user to create `~/.config/status-report/config.json` and stop.
 Using `START_DATE`/`END_DATE` from step 2:
 
 1. Resolve the current Linear user (the authenticated identity / "me").
-2. List issues assigned to that user. Bucket them:
-   - **completed**: state is a completed/Done-type state and `updatedAt` is within range.
+2. **Gather candidates.** List issues assigned to that user, using the list filters as a
+   coarse net only (e.g. `updatedAt` from `START_DATE`, plus `createdAt` in range).
+3. **Confirm each candidate with immutable timestamps.** The list response does not carry
+   them, so fetch the issue (`get_issue`) and read `completedAt`, `canceledAt`, `startedAt`,
+   `createdAt`, and `stateHistory`. Then bucket:
+   - **completed**: `completedAt` is within range.
    - **created**: `createdAt` is within range.
-   - **updated**: `updatedAt` is within range and the issue is not already in completed or created.
-3. For each issue keep: identifier, title, description, url, state, the relevant
-   timestamp(s), labels, assignee, team, priority.
+   - **in progress**: any `stateHistory` entry whose state `type` is `started` *overlaps* the
+     range — i.e. its `startedAt` <= `END_DATE` AND (`endedAt` is null OR `endedAt` >=
+     `START_DATE`) — and it is not already in a bucket above. Use **overlap, not containment**:
+     an issue worked continuously across the whole week has no transition inside the week, and
+     is exactly the ongoing work most worth reporting. Do not rely on the top-level
+     `startedAt` field; it can be `null` even when `stateHistory` shows started states, so
+     `stateHistory` is authoritative.
+   - **canceled**: `canceledAt` is within range. Report as backlog hygiene, never as delivery.
+   - **touched (low confidence)**: `updatedAt` is in range but none of the above are. Do NOT
+     credit these as work on their own — only include one if GitHub, git, or Slack
+     independently corroborates activity that week, and describe it as in-flight, not done.
+
+   **Why this matters:** `updatedAt` records only the *latest* touch, so it is not evidence
+   that work happened in the window. A grooming pass weeks later rewrites `updatedAt` on
+   every issue it touches, which both drags long-finished issues into the week and pushes
+   genuinely active issues out of it. `completedAt`, `createdAt`, `canceledAt`, and
+   `stateHistory` entries are immutable — prefer them always.
+
+   If `completedAt` is genuinely unavailable for an issue, you may fall back to
+   completed-state + `updatedAt` in range, but say in your summary to the user that you did.
+4. For each issue keep: identifier, title, description, url, state, the deciding timestamp
+   (and which field it came from), labels, assignee, team, priority.
 
 If the Linear MCP is unavailable or unauthenticated, note it to the user and continue.
 

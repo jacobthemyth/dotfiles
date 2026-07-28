@@ -16,6 +16,7 @@ import json
 import subprocess
 import sys
 from typing import Dict, List, Any
+from urllib.parse import urlsplit
 import argparse
 
 # Zero-value timestamp gh emits for "not closed" PRs.
@@ -40,13 +41,29 @@ def run_gh_command(args: List[str]) -> Any:
         sys.exit(1)
 
 
+def _repo_from_url(url: str) -> str:
+    """Derive 'owner/name' from a github.com PR/issue URL, or '' if unparseable."""
+    parts = urlsplit(url or "").path.strip("/").split("/")
+    if len(parts) >= 2 and parts[0] and parts[1]:
+        return f"{parts[0]}/{parts[1]}"
+    return ""
+
+
 def _repo(node: Dict[str, Any]) -> str:
-    """Return 'owner/name' for a search node's repository."""
+    """Return 'owner/name' for a search node's repository.
+
+    Prefers the `repository` object, then falls back to deriving it from the node's
+    URL — so a caller that forgets to request `repository` in its `--json` field set
+    still gets a usable repo instead of a bare '/'.
+    """
     repo = node.get("repository", {}) or {}
     if repo.get("nameWithOwner"):
         return repo["nameWithOwner"]
     owner = (repo.get("owner", {}) or {}).get("login", "")
-    return f"{owner}/{repo.get('name', '')}".strip("/")
+    name = repo.get("name", "")
+    if owner and name:
+        return f"{owner}/{name}"
+    return _repo_from_url(node.get("url", "")) or f"{owner}/{name}".strip("/")
 
 
 def _labels(node: Dict[str, Any]) -> List[str]:
@@ -91,6 +108,7 @@ def build_activity(
                 "title": pr.get("title", ""),
                 "url": pr.get("url", ""),
                 "number": pr.get("number", 0),
+                "state": pr.get("state", ""),
                 "repository": _repo(pr),
                 "author": (pr.get("author", {}) or {}).get("login", ""),
                 "reviewed_at": pr.get("updatedAt", ""),
@@ -145,7 +163,7 @@ def fetch_github_activity(start_date: str, end_date: str, org: str, username: st
     prs_reviewed = run_gh_command([
         "gh", "search", "prs", "--reviewed-by", username, "--owner", org,
         "--updated", created, "-L", "100",
-        "--json", "number,title,url,repository,author,updatedAt",
+        "--json", "number,title,url,state,repository,author,updatedAt",
     ])
 
     issues_created = run_gh_command([
