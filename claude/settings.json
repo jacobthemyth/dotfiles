@@ -12,10 +12,17 @@
     "padding": 0
   },
   "enabledPlugins": {
-    "superpowers@claude-plugins-official": true,
-    "codex@openai-codex": true
+    "codex@openai-codex": true,
+    "document-skills@anthropic-agent-skills": true,
+    "superpowers@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
+    "anthropic-agent-skills": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/skills"
+      }
+    },
     "openai-codex": {
       "source": {
         "source": "github",
@@ -23,6 +30,7 @@
       }
     }
   },
+  "alwaysThinkingEnabled": true,
   "tui": "fullscreen",
   "agentPushNotifEnabled": true,
   "skipAutoPermissionPrompt": true
