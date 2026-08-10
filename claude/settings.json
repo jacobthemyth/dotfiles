@@ -32,6 +32,7 @@
   },
   "alwaysThinkingEnabled": true,
   "tui": "fullscreen",
+  "theme": "dark",
   "agentPushNotifEnabled": true,
   "skipAutoPermissionPrompt": true
 }
