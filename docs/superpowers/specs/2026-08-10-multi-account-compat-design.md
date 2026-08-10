@@ -24,19 +24,35 @@ account, without requiring `testdouble` to ever gain write access to
 2. `zsh/configs/completion.zsh` — stop `compinit` from hitting an
    interactive (and, in non-interactive contexts, unanswerable) prompt about
    Homebrew's foreign-owned zsh completions.
-3. `tag-mac/config/yabai/yabairc` — make the scripting-addition load
-   idempotent so two FUS sessions don't race on patching the single shared
-   WindowServer process.
-4. `script/setup` — replace the hardcoded `/tmp/rcm-1.3.6*` paths with a
+3. `script/setup` — replace the hardcoded `/tmp/rcm-1.3.6*` paths with a
    unique temp directory, so two accounts' concurrent first-time setups
    can't collide.
-5. `hooks/mac/pre-up/filelimit` — fix a pre-existing bug where the
+4. `hooks/mac/pre-up/filelimit` — fix a pre-existing bug where the
    `launchctl load` calls are nested under the wrong `if` block (found
    during this investigation; not multi-account-specific, but in scope per
    request).
 
 **Investigated, confirmed already safe — no code change:**
 
+- **yabai scripting-addition load** (`tag-mac/config/yabai/yabairc:10-11`)
+  — originally flagged as a race between two FUS sessions patching a
+  shared resource, with a planned fix gating `--load-sa` behind a
+  `--check-sa` pre-check. That flag does not exist on the installed yabai
+  (v7.1.24, the `asmvik/yabai` fork — confirmed via `yabai --help` and
+  `man yabai`). `man yabai` describes `--load-sa` itself as installing and
+  updating the scripting-addition bundle at
+  `/Library/ScriptingAdditions/yabai.osax` "when necessary," and it's
+  designed to be invoked repeatedly (that's the whole point of wiring it to
+  the `dock_did_restart` signal) — i.e. idempotency is already yabai's own
+  responsibility, not something this repo's config should try to
+  second-guess with a nonexistent flag. Left unchanged. A narrow residual
+  risk remains — two sessions' Dock.app processes both triggering the
+  install path at the exact same moment, before the addition has ever been
+  installed once — but that's a TOCTOU race inside yabai's own
+  implementation that no dotfiles-level config change can fix, and the
+  window for it is vanishingly small (only matters on the very first
+  install, with sub-second timing overlap between two sessions coming up
+  simultaneously).
 - **skhd global hotkeys** (`tag-mac/skhdrc`) — macOS isolates FUS sessions
   at the kernel level: a backgrounded session receives no keyboard/mouse
   input at all ("as if the display had gone to sleep" for that session).
@@ -112,7 +128,7 @@ else
   if ! missing="$(brew bundle check --no-upgrade --verbose --file="$HOME/.dotfiles/tag-mac/Brewfile" 2>&1)"; then
     echo "⚠ Homebrew at $brew_prefix is owned by $owner; this account has no write access." >&2
     echo "  Missing from the Brewfile (ask $owner to run rcup or 'brew bundle'):" >&2
-    echo "$missing" | sed 's/^/  /' >&2
+    echo "  ${missing//$'\n'/$'\n  '}" >&2
   fi
 fi
 ```
@@ -190,30 +206,7 @@ documented trade-off — both accounts belong to the same person, so the
 "insecure" ownership mismatch compaudit is protecting against doesn't
 apply here.
 
-### 3. yabai: idempotent scripting-addition load
-
-`tag-mac/config/yabai/yabairc:10-11` unconditionally calls `sudo yabai
---load-sa` on load and on every `dock_did_restart` signal, patching the one
-shared WindowServer process. Unlike hotkeys, this isn't session-isolated —
-it's a real race if both FUS sessions' yabairc fire it concurrently. Fix by
-gating on yabai's own idempotency check:
-
-```
-yabai -m signal --add event=dock_did_restart action="yabai --check-sa >/dev/null 2>&1 || sudo yabai --load-sa"
-yabai --check-sa >/dev/null 2>&1 || sudo yabai --load-sa
-```
-
-No "owner account" concept is needed here — whichever session gets there
-first loads it, the other's check sees it's already loaded and no-ops. This
-also means a non-admin second account no longer hits a `sudo` password
-prompt in the common case where the SA is already loaded.
-
-*(Implementation note: verify `yabai --check-sa`'s exact exit-code
-semantics against the installed yabai version — confirm it exits non-zero
-when not loaded and zero when loaded, since the design above depends on
-that.)*
-
-### 4. `script/setup`: race-free temp directory
+### 3. `script/setup`: race-free temp directory
 
 `script/setup` downloads and builds rcm at the hardcoded paths
 `/tmp/rcm-1.3.6.tar.gz` and `/tmp/rcm-1.3.6/`. Two accounts' first-ever
@@ -230,7 +223,7 @@ tar -C "$rcm_tmp" -xvf "$rcm_tmp/rcm-$rcm_version.tar.gz"
 cd "$rcm_tmp/rcm-$rcm_version"
 ```
 
-### 5. `filelimit`: fix `launchctl load` scoping
+### 4. `filelimit`: fix `launchctl load` scoping
 
 Currently both `sudo launchctl load` calls (lines 65-66) live inside the
 `maxproc` block, not their respective `maxfiles`/`maxproc` blocks. Two
@@ -282,10 +275,8 @@ no double-load.
   path never does, and both exit 0.
 - Manual verification on the real machine once implemented: run `rcup`
   from both `jacob` and `testdouble`, confirm the owner path is unchanged,
-  the fallback path warns without failing, no `compinit` prompt appears in
-  a fresh `testdouble` shell, and yabai's `--load-sa` only actually fires
-  once across both sessions (check via `yabai --check-sa` after both have
-  loaded).
+  the fallback path warns without failing, and no `compinit` prompt appears
+  in a fresh `testdouble` shell.
 
 ## Risks & failure modes
 
@@ -293,9 +284,9 @@ no double-load.
 |---|---|
 | Write-access test passes at the prefix root but a deeper subdir isn't writable | Documented simplifying assumption (confirmed uniform ownership today); upgrade to per-subdir check if ever seen in practice |
 | `brew bundle check` false-negative if Homebrew's local tap metadata is very stale | Acceptable — presence checking doesn't require fresh metadata; version-staleness detection is explicitly out of scope (see §1) |
-| Fallback branch accidentally exits non-zero under `set -eo pipefail`, aborting `rcup` | Explicit `if ! brew bundle check; then ...; fi` guard; branch always falls through to exit 0 |
-| `yabai --check-sa` exit-code semantics differ from assumed | Verify against installed yabai version during implementation before relying on it |
+| Fallback branch accidentally exits non-zero under `set -eo pipefail`, aborting `rcup` | Explicit `if ! missing="$(brew bundle check ...)"; then ...; fi` guard (assignment form, verified this doesn't trip `errexit`); branch always falls through to exit 0 |
 | Owner account is ever renamed/recreated | Detection is dynamic (`stat` at runtime) — no hardcoded username to go stale |
+| Two FUS sessions both trigger yabai's first-ever SA install at the same instant | Accepted, not mitigated — TOCTOU race lives inside yabai's own `--load-sa` implementation, no config-level fix available (see Scope) |
 
 ## What "done" looks like
 
@@ -306,16 +297,34 @@ no double-load.
   (update/bundle/cleanup run normally).
 - A fresh `testdouble` shell starts with no `compinit` "insecure
   directories" prompt.
-- Both accounts logged in simultaneously via FUS never produce duplicate
-  `sudo yabai --load-sa` attempts once the SA is loaded.
 - Two accounts running `./script/setup` for the first time concurrently
   don't corrupt each other's rcm bootstrap.
 - `./script/test` passes, including the new `homebrew_hook_test.sh`.
 
 ## Open questions (decide during implementation, not blocking design)
 
-- Exact `yabai --check-sa` exit-code contract (verify against installed
-  version).
 - Whether `test/homebrew_hook_test.sh`'s fake-`brew` stub should live in
   `test/fixtures/` or inline in the test script — lean toward inline,
   matching `dispatch_test.sh`'s existing style.
+
+## Amendments during implementation
+
+- **yabai fix dropped.** `--check-sa` does not exist on the installed
+  yabai (v7.1.24, `asmvik/yabai` fork). `man yabai` documents `--load-sa`
+  as already idempotent ("installs and updates... when necessary"), so
+  `tag-mac/config/yabai/yabairc` was left unchanged rather than gated
+  behind a flag that doesn't exist. See the Scope section's "Investigated,
+  confirmed already safe" list for the full explanation.
+- **`brew bundle check` warning formatting** uses bash parameter
+  substitution (`${missing//$'\n'/$'\n  '}`) instead of piping through
+  `sed 's/^/  /'`, per `shellcheck` (SC2001).
+- **Stop hook error resolved as a side effect.** A separate, live symptom
+  — Claude Code's `openai-codex` plugin Stop hook failing with
+  `/bin/sh: node: command not found` — traced back to the same root cause:
+  `hooks/shared/post-up/node` had never successfully run for `testdouble`,
+  because the old unguarded `hooks/mac/pre-up/homebrew` used to crash
+  under `set -eo pipefail` on permission-denied, aborting all of `rcup`
+  (including every post-up hook) before the WIP stopgap existed. Fixed by
+  manually running `hooks/shared/post-up/node` once by hand; no code
+  change was needed beyond this spec's Homebrew fix, which prevents the
+  same class of failure going forward.

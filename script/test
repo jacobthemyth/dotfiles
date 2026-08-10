@@ -36,6 +36,13 @@ else
   echo "  SKIP: test/dispatch_test.sh not present yet"
 fi
 
+echo "==> homebrew hook unit test"
+if [ -x test/homebrew_hook_test.sh ]; then
+  test/homebrew_hook_test.sh || fail=1
+else
+  echo "  SKIP: test/homebrew_hook_test.sh not present yet"
+fi
+
 if [ "$fail" -ne 0 ]; then
   echo
   echo "FAIL"

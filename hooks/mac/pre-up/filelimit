@@ -32,6 +32,8 @@ if [[ "$maxfiles" -lt 200000 ]]; then
 </plist>
 EOS
   fi
+
+  sudo launchctl load /Library/LaunchDaemons/limit.maxfiles.plist
 fi
 
 if [[ "$maxproc" -lt 2048 ]]; then
@@ -62,6 +64,5 @@ if [[ "$maxproc" -lt 2048 ]]; then
 EOS
   fi
 
-  sudo launchctl load /Library/LaunchDaemons/limit.maxfiles.plist
   sudo launchctl load /Library/LaunchDaemons/limit.maxproc.plist
 fi

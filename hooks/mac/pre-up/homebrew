@@ -2,7 +2,9 @@
 
 set -eo pipefail
 
-if [[ "$(arch)" == "arm64" ]]; then
+if [[ -n "$BREW_PATH_OVERRIDE" ]]; then
+  brew_path="$BREW_PATH_OVERRIDE"
+elif [[ "$(arch)" == "arm64" ]]; then
   brew_path="/opt/homebrew/bin/brew"
 else
   brew_path="/usr/local/bin/brew"
@@ -15,9 +17,20 @@ fi
 
 eval "$($brew_path shellenv)"
 
-echo "Updating Homebrew formulae ..."
-brew update
-brew bundle --file="$HOME/.dotfiles/tag-mac/Brewfile"
+brew_prefix="$($brew_path --prefix)"
 
-echo "Cleaning up old Homebrew formulae ..."
-brew cleanup
+if [ -w "$brew_prefix" ]; then
+  echo "Updating Homebrew formulae ..."
+  brew update
+  brew bundle --file="$HOME/.dotfiles/tag-mac/Brewfile"
+
+  echo "Cleaning up old Homebrew formulae ..."
+  brew cleanup
+else
+  owner="$(stat -f "%Su" "$brew_prefix")"
+  if ! missing="$(brew bundle check --no-upgrade --verbose --file="$HOME/.dotfiles/tag-mac/Brewfile" 2>&1)"; then
+    echo "⚠ Homebrew at $brew_prefix is owned by $owner; this account has no write access." >&2
+    echo "  Missing from the Brewfile (ask $owner to run rcup or 'brew bundle'):" >&2
+    echo "  ${missing//$'\n'/$'\n  '}" >&2
+  fi
+fi

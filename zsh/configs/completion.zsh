@@ -3,9 +3,9 @@ fpath=(~/.zsh/completion /usr/share/zsh/site-functions /usr/local/share/zsh/site
 command -v brew >/dev/null && fpath=("$(brew --prefix)/share/zsh/site-functions" $fpath)
 
 # completion; use cache if updated within 24h
-autoload -Uz compinit -i
+autoload -Uz compinit
 if [[ -n $HOME/.zcompdump(#qN.mh+24) ]]; then
-  compinit -d $HOME/.zcompdump;
+  compinit -d $HOME/.zcompdump -i;
 else
   compinit -C;
 fi;

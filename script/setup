@@ -7,21 +7,23 @@ dotfiles_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -
 if ! command -v rcup >/dev/null; then
   rcm_version="1.3.6"
   rcm_sha_expected="f4fdfbc451d1fb5764531290a202a0a871f6b81ba3c01a6b76c49435c85080a5"
+  rcm_tmp="$(mktemp -d)"
+  trap 'rm -rf "$rcm_tmp"' EXIT
 
-  curl --output-dir /tmp --remote-name -L "https://thoughtbot.github.io/rcm/dist/rcm-$rcm_version.tar.gz"
+  curl --output-dir "$rcm_tmp" --remote-name -L "https://thoughtbot.github.io/rcm/dist/rcm-$rcm_version.tar.gz"
 
   # Use sha256sum with GNU coreutils, sha256 on BSD and macOS
   sha256bin="$(command -v sha256sum || command -v sha256)"
-  rcm_sha_actual="$("$sha256bin" "/tmp/rcm-$rcm_version.tar.gz" | cut -f1 -d' ')"
+  rcm_sha_actual="$("$sha256bin" "$rcm_tmp/rcm-$rcm_version.tar.gz" | cut -f1 -d' ')"
 
   if [ "$rcm_sha_actual" = "$rcm_sha_expected" ]; then
-    tar -C /tmp -xvf "/tmp/rcm-$rcm_version.tar.gz"
-    cd "/tmp/rcm-$rcm_version"
+    tar -C "$rcm_tmp" -xvf "$rcm_tmp/rcm-$rcm_version.tar.gz"
+    cd "$rcm_tmp/rcm-$rcm_version"
     ./configure --prefix="$HOME/.local"
     make
     make install
   else
-    echo "Checksum mismatch for /tmp/rcm-$rcm_version.tar.gz" >&2
+    echo "Checksum mismatch for $rcm_tmp/rcm-$rcm_version.tar.gz" >&2
     exit 1
   fi
 fi
