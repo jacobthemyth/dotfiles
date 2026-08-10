@@ -7,17 +7,11 @@
 set -eo pipefail
 
 # declare -A (associative arrays) needs bash >= 4. macOS permanently ships
-# bash 3.2 at /bin/bash, and PATH ordering isn't guaranteed to prefer a
-# newer one (e.g. Homebrew's) in every invocation context — only a fully
-# sourced interactive zsh session does that here. Re-exec into a newer bash
-# if we didn't get one.
+# bash 3.2 at /bin/bash. hooks/dispatch.sh normalizes PATH so `env bash`
+# resolves to a newer one when run via rcup; this is a clear error for the
+# case of running this hook standalone outside that context.
 if [ "${BASH_VERSINFO[0]}" -lt 4 ]; then
-  for candidate in /opt/homebrew/bin/bash /usr/local/bin/bash; do
-    if [ -x "$candidate" ]; then
-      exec "$candidate" "$0" "$@"
-    fi
-  done
-  echo "claude-plugins hook requires bash >= 4 (found $BASH_VERSION); install one via Homebrew (brew install bash)" >&2
+  echo "claude-plugins hook requires bash >= 4 (found $BASH_VERSION); install one via Homebrew (brew install bash) or run via ./script/setup" >&2
   exit 1
 fi
 
@@ -70,6 +64,23 @@ contains() {
   local haystack="$1"
   [ -n "$haystack" ] && grep -qxF "$needle" <<< "$haystack"
 }
+
+# Drift check: warn (don't act) if settings.json declares a plugin enabled
+# that isn't in this manifest. enabledPlugins can't express "should not be
+# installed" — false only disables an already-installed plugin — so it
+# can't be the sync source of truth. But "enabled there, absent here" is
+# almost always an oversight (e.g. installed ad hoc via `/plugin`), and
+# left unchecked it gets silently uninstalled below.
+settings_file="$HOME/.claude/settings.json"
+if [ -f "$settings_file" ]; then
+  desired_plugins_str="$(printf '%s\n' "${desired_plugins[@]}")"
+  while IFS= read -r enabled_spec; do
+    [ -z "$enabled_spec" ] && continue
+    if ! contains "$enabled_spec" "$desired_plugins_str"; then
+      echo "claude-plugins: WARNING: '$enabled_spec' is enabled in $settings_file but missing from $manifest — it will be uninstalled below unless added there" >&2
+    fi
+  done < <(jq -r '.enabledPlugins // {} | to_entries[] | select(.value == true) | .key' "$settings_file")
+fi
 
 # Every desired marketplace needs a source — either declared in the manifest
 # or already configured.

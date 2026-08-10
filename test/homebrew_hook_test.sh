@@ -102,10 +102,9 @@ assert_not_called cleanup || exit 1
 echo "  PASS"
 
 echo "==> fallback path: unwritable prefix + missing packages warns and still exits 0"
-out="$(run_hook "$readonly_prefix" "0" 2>&1)"
-status=$?
-if [ "$status" -ne 0 ]; then
-  echo "FAIL: hook exited $status, expected 0"
+if ! out="$(run_hook "$readonly_prefix" "0" 2>&1)"; then
+  echo "FAIL: hook exited non-zero, expected 0"
+  echo "$out"
   exit 1
 fi
 if ! echo "$out" | grep -q "no write access"; then

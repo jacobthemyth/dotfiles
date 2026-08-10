@@ -6,5 +6,12 @@
 #     Required the first time a marketplace is referenced; optional afterward.
 #   - Lines starting with # and blank lines are ignored.
 #   - Plugins and marketplaces not listed here will be uninstalled.
+#   - claude/settings.json's enabledPlugins is a separate on/off toggle for
+#     already-installed plugins, not a source of truth for this manifest
+#     (it can't express "should not be installed"). If a plugin is
+#     enabled=true there but missing here, the hook warns instead of
+#     silently uninstalling it — add it here too when that happens.
 
 superpowers@claude-plugins-official anthropics/claude-plugins-official
+codex@openai-codex openai/codex-plugin-cc
+document-skills@anthropic-agent-skills anthropics/skills

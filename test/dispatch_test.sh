@@ -71,4 +71,49 @@ echo "==> dispatcher runs shared even when OS-specific dir is empty"
 DOTFILES_OS_OVERRIDE=linux rm -rf "$fixture/hooks/linux/pre-up"
 assert_runs linux "ran:shared/pre-up/10-shared|" || exit 1
 
+cat > "$fixture/hooks/shared/pre-up/30-path-snapshot" <<'EOF'
+#!/usr/bin/env bash
+echo "PATH_SNAPSHOT:$PATH"
+EOF
+chmod +x "$fixture/hooks/shared/pre-up/30-path-snapshot"
+
+path_snapshot() {
+  local os_override="$1"
+  local brew_dirs="$2"
+  DOTFILES_OS_OVERRIDE="$os_override" DOTFILES_BREW_DIRS_OVERRIDE="$brew_dirs" \
+    "$fixture/hooks/pre-up/dispatch" 2>&1 | grep '^PATH_SNAPSHOT:' | cut -d: -f2-
+}
+
+original_path="$PATH"
+brewbin="$fixture/brewbin"
+mkdir -p "$brewbin"
+missingbin="$fixture/does-not-exist"
+
+echo "==> dispatcher prepends existing brew dirs to PATH on mac, skips missing ones"
+result="$(path_snapshot mac "$brewbin $missingbin")"
+if [ "$result" != "$brewbin:$original_path" ]; then
+  echo "FAIL: expected PATH $brewbin:\$PATH, got: $result"
+  exit 1
+fi
+echo "  PASS"
+
+echo "==> dispatcher leaves PATH untouched on linux regardless of brew dirs override"
+result="$(path_snapshot linux "$brewbin")"
+if [ "$result" != "$original_path" ]; then
+  echo "FAIL: linux PATH should be unchanged, got: $result"
+  exit 1
+fi
+echo "  PASS"
+
+echo "==> dispatcher never introduces an empty PATH component when no brew dirs exist"
+result="$(path_snapshot mac "$missingbin")"
+if [ "$result" != "$original_path" ]; then
+  echo "FAIL: PATH should be unchanged when no override dirs exist, got: $result"
+  exit 1
+fi
+case "$result" in
+  :*|*::*) echo "FAIL: PATH contains an empty component: $result"; exit 1 ;;
+esac
+echo "  PASS"
+
 echo "dispatcher test: OK"

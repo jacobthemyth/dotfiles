@@ -318,6 +318,38 @@ no double-load.
 - **`brew bundle check` warning formatting** uses bash parameter
   substitution (`${missing//$'\n'/$'\n  '}`) instead of piping through
   `sed 's/^/  /'`, per `shellcheck` (SC2001).
+- **`hooks/shared/post-up/claude-plugins` crashed on real-world `./script/setup`.**
+  `declare -A` needs bash >= 4, but macOS permanently ships 3.2 at
+  `/bin/bash`, and this hook's `env bash` shebang depended on ambient PATH
+  ordering to find a newer one — which only holds in a fully sourced
+  interactive zsh session (`zshenv.local` prepends `/opt/homebrew/bin`
+  there), not in other invocation contexts. Fixed at the correct layer:
+  `hooks/dispatch.sh` now normalizes PATH once (prepending Homebrew's bin
+  dirs when `os == mac`, via a `DOTFILES_BREW_DIRS_OVERRIDE` hook for
+  testing) before dispatching *any* hook, rather than duplicating a
+  bash-version guard into every hook that happens to need one. Verified
+  live by reproducing the original PATH ordering and confirming the crash
+  no longer occurs. `test/dispatch_test.sh` covers the PATH-prepend
+  behavior (present on mac, absent on linux, no empty-PATH-component bug
+  when no candidate dirs exist).
+- **`claude-plugins` then silently uninstalled two active plugins**
+  (`codex@openai-codex`, `document-skills@anthropic-agent-skills`) on the
+  same run, once it could finally execute for the first time on this
+  account — the manifest at `~/.dotfiles/claude-plugins` never declared
+  them, even though `claude/settings.json`'s `enabledPlugins` had both set
+  to `true`. Investigated whether `enabledPlugins` could just replace the
+  manifest outright (verified with Claude Code's own docs): it can't —
+  `enabledPlugins: false` only disables an already-installed plugin, it
+  can't express "must not be installed," so it's structurally incapable of
+  being a full install/uninstall source of truth. Also confirmed there is
+  no user-level `~/.claude/settings.local.json` (only project-level
+  `.claude/settings.local.json` exists), so per-machine plugin overrides
+  can't work that way either. Fix: restored both entries to the manifest
+  (with sources from `extraKnownMarketplaces`) and reinstalled them, then
+  added a non-destructive drift check to the hook — if `enabledPlugins`
+  ever again declares a plugin `true` that's absent from the manifest, it
+  now warns loudly before the existing uninstall logic would otherwise
+  remove it silently. Covered by the new `test/claude_plugins_hook_test.sh`.
 - **Stop hook error resolved as a side effect.** A separate, live symptom
   — Claude Code's `openai-codex` plugin Stop hook failing with
   `/bin/sh: node: command not found` — traced back to the same root cause:

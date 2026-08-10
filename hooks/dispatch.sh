@@ -16,6 +16,24 @@ else
   esac
 fi
 
+# Hooks shell out to `env bash`, `env jq`, etc. and expect modern tool
+# versions (e.g. bash >= 4). A fully sourced interactive zsh session
+# already prepends Homebrew's bin dirs (see zshenv.local), but rcup can be
+# invoked from contexts that never source that — cron, IDE terminals, CI —
+# leaving the OS's own ancient defaults (e.g. bash 3.2) first on PATH.
+# Normalize once here so every dispatched hook sees the same PATH,
+# regardless of how rcup itself was invoked.
+if [[ "$os" == "mac" ]]; then
+  brew_paths=""
+  for d in ${DOTFILES_BREW_DIRS_OVERRIDE:-/opt/homebrew/bin /opt/homebrew/sbin /usr/local/bin /usr/local/sbin}; do
+    [ -d "$d" ] && brew_paths="$brew_paths:$d"
+  done
+  if [ -n "$brew_paths" ]; then
+    PATH="${brew_paths#:}:$PATH"
+    export PATH
+  fi
+fi
+
 _run_dir() {
   local d="$1"
   [ -d "$d" ] || return 0
