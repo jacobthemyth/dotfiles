@@ -2,6 +2,9 @@
 vim.g.mapleader = " "
 vim.g.maplocalleader = "\\"
 
+-- Managed by hooks/shared/post-up/vim (uv venv --allow-existing)
+vim.g.python3_host_prog = vim.fn.expand("~/.local/share/nvim/venv/bin/python3")
+
 vim.cmd("source ~/.vimrc")
 
 require("config.lazy")

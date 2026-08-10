@@ -2,8 +2,20 @@
 
 set -eo pipefail
 
+if ! command -v uv >/dev/null; then
+  echo "uv not found. Install via your OS package manager (brew install uv on macOS, pacman -S uv on Arch)."
+  exit 1
+fi
+
+# Homebrew's Python is externally-managed (PEP 668) and refuses `pip
+# install --user`. A dedicated venv sidesteps that entirely; config/nvim's
+# g:python3_host_prog points at it. --allow-existing makes venv creation
+# idempotent without extra shell logic.
+VENV_DIR="$HOME/.local/share/nvim/venv"
+
 echo "Configuring Python for NeoVim ..."
-pip3 install --user --upgrade neovim neovim-remote
+uv venv --allow-existing "$VENV_DIR"
+uv pip install --python "$VENV_DIR/bin/python3" --upgrade neovim neovim-remote
 
 echo "Updating remote vim plugins..."
 nvim --headless -c 'UpdateRemotePlugins' -c 'qa'
