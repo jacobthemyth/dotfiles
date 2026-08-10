@@ -78,6 +78,8 @@ export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
 
 setopt HIST_IGNORE_SPACE
 
+export PAGER=moor
+
 # fzf
 export FZF_DEFAULT_OPTS="--extended --cycle"
 export FZF_DEFAULT_COMMAND='rg --files'
