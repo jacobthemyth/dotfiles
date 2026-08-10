@@ -29,8 +29,6 @@ command -v rbenv >/dev/null && eval "$(rbenv init - --no-rehash)"
 export PATH="$HOME/.nodenv/bin:$PATH"
 command -v nodenv >/dev/null && eval "$(nodenv init - --no-rehash)"
 
-command -v pyenv >/dev/null && eval "$(pyenv init - --no-rehash)"
-
 command -v direnv >/dev/null && eval "$(direnv hook zsh)"
 
 export PATH="$HOME/go/bin:$PATH"

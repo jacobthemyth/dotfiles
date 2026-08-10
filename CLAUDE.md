@@ -34,7 +34,7 @@ Personal dotfiles managed with [rcm](https://github.com/thoughtbot/rcm) (RC file
 
 - zsh with vi keybindings (`bindkey -v`) plus emacs-style shortcuts in viins mode
 - Starship prompt
-- Version managers: rbenv, nodenv, pyenv (all with `--no-rehash`)
+- Version managers: rbenv, nodenv (all with `--no-rehash`)
 - direnv for per-directory env
 - Default editor: nvim (`vim` is aliased to `nvim`)
 - fzf with ripgrep backend (`rg --files`)

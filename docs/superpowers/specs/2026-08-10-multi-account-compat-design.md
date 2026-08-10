@@ -70,7 +70,7 @@ account, without requiring `testdouble` to ever gain write access to
   here as land mines if anyone uncomments them later, not fixed now.
 - **SSH / 1Password / gpg agent sockets** — grepped the whole repo; no
   hardcoded agent socket paths exist.
-- **tmux / direnv / rbenv / nodenv / pyenv / Doom Emacs** — all state lives
+- **tmux / direnv / rbenv / nodenv / Doom Emacs** — all state lives
   under `$HOME`; no fixed-name sockets, PID files, or lock files that two
   accounts could collide on.
 - **Hardcoded home-directory paths** — grepped the whole repo; none exist.

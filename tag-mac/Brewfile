@@ -60,7 +60,6 @@ brew "poppler"
 brew "protolint" # ale.vim
 brew "pstree"
 brew "pv"
-brew "pyenv"
 brew "qemu"
 brew "rbenv"
 brew "rbenv-bundler"
