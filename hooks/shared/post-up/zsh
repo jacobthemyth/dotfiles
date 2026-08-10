@@ -2,5 +2,37 @@
 
 set -eo pipefail
 
-compaudit_files="$(zsh -c "autoload -Uz compinit && compinit && compaudit")"
-[[ -n "$compaudit_files" ]] && echo "$compaudit_files" | xargs chmod g-w || :
+# ZSH_FPATH_OVERRIDE lets tests point compaudit at a fixture directory
+# instead of the real, system-wide $fpath.
+if [ -n "$ZSH_FPATH_OVERRIDE" ]; then
+  fpath_setup="fpath=($ZSH_FPATH_OVERRIDE \$fpath);"
+else
+  fpath_setup=""
+fi
+
+# compaudit doesn't need compinit to have run first — it's independently
+# autoloadable. Calling compinit here was actively harmful: without -i, its
+# own security prompt needs a real TTY ("ignore insecure directories and
+# continue [y] or abort [n]?"), which aborts instead of defaulting either
+# way in a non-interactive `zsh -c` (as rcup always uses); and even with
+# -i, compinit's prior run leaks internal state that suppresses compaudit's
+# ability to freshly re-scan $fpath afterward (confirmed empirically: a
+# bare `autoload -Uz compaudit && compaudit` correctly flags a newly-added
+# insecure directory that `compinit -i && compaudit` in the same shell
+# misses).
+compaudit_files="$(zsh -c "$fpath_setup autoload -Uz compaudit && compaudit")" || true
+
+if [[ -n "$compaudit_files" ]]; then
+  while IFS= read -r f; do
+    [ -z "$f" ] && continue
+    # Only files this account actually owns can be chmod'd; on a shared
+    # Homebrew install, most flagged paths belong to whichever account
+    # owns it (flagged purely by ownership mismatch, not by permission
+    # bits — chmod can't fix that, and would just fail noisily).
+    [ -O "$f" ] && chmod g-w "$f"
+  done <<< "$compaudit_files"
+fi
+
+# Without this, the script's own exit status would be read's EOF-driven
+# loop-termination status (1) — an expected end condition, not a failure.
+exit 0

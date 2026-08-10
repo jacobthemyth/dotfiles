@@ -404,3 +404,51 @@ no double-load.
   uses a real (empty) git repo in its fixture `$HOME/.dotfiles` so
   `git rev-parse --git-dir` resolves correctly, and covers not-a-git-crypt-repo,
   no-encrypted-paths, and already-unlocked as distinct cases.
+- **`hooks/shared/post-up/vim` failed on `pip3 install --user` with a PEP
+  668 `externally-managed-environment` error** — another downstream
+  consequence of the `dispatch.sh` PATH fix: before it, `pip3` resolved to
+  whatever ambient PATH handed it (Apple's ancient Xcode Python 3.9.6, pip
+  21.2.4, too old to know about PEP 668), so the install silently
+  "worked"; now it correctly surfaces Homebrew's modern Python. Rewrote to
+  use `uv venv --allow-existing "$HOME/.local/share/nvim/venv"` (idempotent
+  without extra shell logic) plus `uv pip install --python
+  .../venv/bin/python3`, sidestepping the externally-managed restriction
+  entirely via an isolated venv, and pointed `config/nvim/init.lua`'s
+  `g:python3_host_prog` at it. Verified live (venv created, packages
+  installed, `:UpdateRemotePlugins` succeeded, `g:python3_host_prog`
+  resolves correctly) and covered by `test/vim_hook_test.sh`.
+- **`hooks/shared/post-up/zsh` crashed with `not interactive and can't
+  open terminal` / `compinit: initialization aborted`** — the same root
+  cause as the `compinit` fix earlier in this spec, in a second, separate
+  call site: `zsh -c "autoload -Uz compinit && compinit && compaudit"` has
+  no `-i`, so compinit's own security prompt needs a real TTY, which
+  doesn't exist in rcup's non-interactive `zsh -c` context. Fixing this
+  properly required going further than the earlier fix, though: adding
+  `-i` alone wasn't enough, because empirical testing revealed a second,
+  independent bug — `compinit`'s prior invocation (even with `-i`) leaks
+  internal state that suppresses the subsequent standalone `compaudit`
+  call's ability to freshly re-scan `$fpath`, silently missing
+  newly-insecure entries that a bare `autoload -Uz compaudit && compaudit`
+  (no `compinit` at all) correctly catches. Since this hook never actually
+  needed `compinit` — `compaudit` is independently autoloadable — removed
+  the `compinit` call entirely. Two more bugs found and fixed via the same
+  empirical-testing process: `compaudit`'s own non-zero "found insecure
+  items" exit status was tripping `errexit` on the capturing assignment
+  (same class of bug as the earlier `brew bundle check` fix, missed here
+  the first time); and the hook's trailing `while read` loop's expected
+  EOF-driven termination was becoming the whole script's own exit status
+  (1) since nothing followed it, requiring an explicit trailing `exit 0`.
+  Also made the `chmod g-w` remediation ownership-aware — reading
+  `compaudit`'s own source (`functions/compaudit`) shows it only ever
+  flags *files* for foreign ownership (never permission bits, which chmod
+  can't fix anyway) and flags *directories* for foreign ownership OR
+  group/world-writability, so `[ -O "$f" ]` before chmod-ing preserves the
+  original (legitimate, unrelated-to-multi-account) intent of
+  auto-hardening an owned-but-accidentally-writable directory, while
+  skipping the doomed-to-fail, needlessly noisy attempts on `jacob`-owned
+  paths. Covered by `test/zsh_hook_test.sh`, added via a new
+  `ZSH_FPATH_OVERRIDE` test hook since `compinit`/`compaudit` are zsh
+  built-in functions, not external binaries, and can't be stubbed on PATH
+  the way other hooks' dependencies were.
+- **End state:** `./script/setup` now completes end-to-end (exit 0) on
+  `testdouble` for the first time this session.

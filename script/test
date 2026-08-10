@@ -64,6 +64,13 @@ else
   echo "  SKIP: test/vim_hook_test.sh not present yet"
 fi
 
+echo "==> zsh hook unit test"
+if [ -x test/zsh_hook_test.sh ]; then
+  test/zsh_hook_test.sh || fail=1
+else
+  echo "  SKIP: test/zsh_hook_test.sh not present yet"
+fi
+
 if [ "$fail" -ne 0 ]; then
   echo
   echo "FAIL"
