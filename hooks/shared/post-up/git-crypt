@@ -20,27 +20,52 @@ if git-crypt status >/dev/null 2>&1 && ! git-crypt status | grep -q "not encrypt
 
   echo "Unlocking git-crypt encrypted files..."
 
-  # Get the key from 1password
-  if ! command -v op >/dev/null; then
-    echo "1Password CLI not found. Install via your OS package manager (brew install 1password-cli on macOS, paru -S 1password-cli on Arch)."
-    exit 1
-  fi
+  fallback_instructions() {
+    cat >&2 <<'EOF'
+To unlock later instead:
+  - Sign into 1Password on this account (op signin), then re-run this hook
+  - git-crypt unlock /path/to/key (if you have the raw key file another way)
+  - git-crypt unlock (uses your GPG key, if added as a collaborator via
+    git-crypt add-gpg-user on another account)
+EOF
+  }
 
-  # Create a temporary file for the key
   KEY_FILE=$(mktemp)
   trap 'rm -f "$KEY_FILE"' EXIT
 
-  # Retrieve the key from 1password
-  OP_KEY_PATH="op://Private/dotfiles.key"
-  op read "$OP_KEY_PATH" > "$KEY_FILE" 2>/dev/null || {
-    echo "Failed to retrieve git-crypt key from 1Password"
-    echo "Make sure you're signed in: op signin"
-    echo "And that the item exists at: $OP_KEY_PATH"
-    exit 1
-  }
+  fetched=0
+  if ! command -v op >/dev/null; then
+    echo "1Password CLI not found (brew install 1password-cli on macOS, paru -S 1password-cli on Arch)." >&2
+  else
+    OP_KEY_PATH="op://Private/dotfiles.key"
+    if op read "$OP_KEY_PATH" > "$KEY_FILE" 2>/dev/null; then
+      fetched=1
+    else
+      echo "Failed to retrieve git-crypt key from 1Password (sign in: op signin; item: $OP_KEY_PATH)." >&2
+    fi
+  fi
 
-  # Unlock the repository
-  git-crypt unlock "$KEY_FILE"
+  if [ "$fetched" -ne 1 ]; then
+    if [ -t 0 ]; then
+      echo "You can unlock manually instead: paste the git-crypt key content below (find" >&2
+      echo "it in 1Password's app even if you're not signed into the op CLI here), then" >&2
+      echo "press Ctrl-D. Leave it empty and press Ctrl-D to skip." >&2
+      stty -echo 2>/dev/null
+      cat > "$KEY_FILE"
+      stty echo 2>/dev/null
+      echo >&2
+    else
+      echo "Not running interactively — can't prompt for a manual key." >&2
+      fallback_instructions
+      exit 1
+    fi
+  fi
+
+  if ! git-crypt unlock "$KEY_FILE"; then
+    echo "git-crypt unlock failed." >&2
+    fallback_instructions
+    exit 1
+  fi
 
   echo "git-crypt unlocked successfully"
 fi

@@ -50,6 +50,13 @@ else
   echo "  SKIP: test/claude_plugins_hook_test.sh not present yet"
 fi
 
+echo "==> git-crypt hook unit test"
+if [ -x test/git_crypt_hook_test.sh ]; then
+  test/git_crypt_hook_test.sh || fail=1
+else
+  echo "  SKIP: test/git_crypt_hook_test.sh not present yet"
+fi
+
 if [ "$fail" -ne 0 ]; then
   echo
   echo "FAIL"

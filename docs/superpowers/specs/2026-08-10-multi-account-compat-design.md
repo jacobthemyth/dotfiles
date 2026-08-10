@@ -360,3 +360,20 @@ no double-load.
   manually running `hooks/shared/post-up/node` once by hand; no code
   change was needed beyond this spec's Homebrew fix, which prevents the
   same class of failure going forward.
+- **`hooks/shared/post-up/git-crypt` hard-failed and aborted `rcup`**
+  when `op` isn't signed in on this account — the exact "account-specific
+  credential gap blocks the whole pipeline" failure mode this spec exists
+  to eliminate. First pass made this non-fatal (warn and exit 0), but on
+  reflection that was the wrong trade-off for a *decryption* failure
+  specifically: silently leaving `tag-encrypted/` locked and continuing is
+  worse than stopping, since nothing downstream can safely assume those
+  files are readable. Revised to: try 1Password first: if that fails and
+  stdin is a TTY, prompt interactively to paste the key content directly
+  (verified via `git-crypt unlock KEY_FILE`'s own `--help`/man page that
+  there's no passphrase or stdin-marker mode — the paste is written to a
+  real temp file, mirroring the no-decoding assumption the existing `op
+  read` path already made); if unlock still fails, or stdin isn't a TTY
+  to prompt against, exit 1 with clear fallback instructions. Covered by
+  `test/git_crypt_hook_test.sh`, which explicitly redirects the hook's
+  stdin from `/dev/null` so the test can't hang waiting for terminal input
+  if run from a real interactive shell.
