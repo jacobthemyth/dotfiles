@@ -6,6 +6,21 @@
 
 set -eo pipefail
 
+# declare -A (associative arrays) needs bash >= 4. macOS permanently ships
+# bash 3.2 at /bin/bash, and PATH ordering isn't guaranteed to prefer a
+# newer one (e.g. Homebrew's) in every invocation context — only a fully
+# sourced interactive zsh session does that here. Re-exec into a newer bash
+# if we didn't get one.
+if [ "${BASH_VERSINFO[0]}" -lt 4 ]; then
+  for candidate in /opt/homebrew/bin/bash /usr/local/bin/bash; do
+    if [ -x "$candidate" ]; then
+      exec "$candidate" "$0" "$@"
+    fi
+  done
+  echo "claude-plugins hook requires bash >= 4 (found $BASH_VERSION); install one via Homebrew (brew install bash)" >&2
+  exit 1
+fi
+
 manifest="$HOME/.dotfiles/claude-plugins"
 
 command -v claude >/dev/null 2>&1 || exit 0
