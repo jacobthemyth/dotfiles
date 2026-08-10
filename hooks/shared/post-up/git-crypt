@@ -8,64 +8,84 @@ if ! command -v git-crypt >/dev/null; then
   exit 1
 fi
 
-# Check if repository is already unlocked
-if git-crypt status >/dev/null 2>&1 && ! git-crypt status | grep -q "not encrypted"; then
-  cd "$HOME/.dotfiles"
+cd "$HOME/.dotfiles"
 
-  # Check if already unlocked
-  if git-crypt status 2>&1 | grep -q "unlocked"; then
-    echo "git-crypt already unlocked"
-    exit 0
-  fi
+# git-crypt status only ever reports the *attribute* classification of each
+# path (is it configured as encrypted per .gitattributes), never the
+# current lock state — its own man page says so. It never prints the word
+# "unlocked" under any circumstances, so a previous version of this check
+# (`grep -q "unlocked"`) could never succeed. Capturing via $(...) instead
+# of piping into `grep -q` also matters: `grep -q` exits as soon as it
+# finds a match, closing the pipe early; git-crypt then gets SIGPIPE'd
+# trying to write its remaining output, and under `pipefail` that makes
+# the whole pipeline report failure regardless of whether a match was
+# actually found.
+if ! encrypted_files="$(git-crypt status -e)"; then
+  # Not a git-crypt-initialized repo; nothing to do.
+  exit 0
+fi
 
-  echo "Unlocking git-crypt encrypted files..."
+if [ -z "$encrypted_files" ]; then
+  # No git-crypt-encrypted paths configured; nothing to do.
+  exit 0
+fi
 
-  fallback_instructions() {
-    cat >&2 <<'EOF'
+# No first-class "is unlocked" query exists in git-crypt's CLI. The
+# community-standard signal is whether git-crypt has written the decrypted
+# key material to disk — present after `unlock`, removed by `lock`.
+git_dir="$(git rev-parse --git-dir)"
+if [ -f "$git_dir/git-crypt/keys/default" ]; then
+  echo "git-crypt already unlocked"
+  exit 0
+fi
+
+echo "Unlocking git-crypt encrypted files..."
+
+fallback_instructions() {
+  cat >&2 <<'EOF'
 To unlock later instead:
   - Sign into 1Password on this account (op signin), then re-run this hook
   - git-crypt unlock /path/to/key (if you have the raw key file another way)
   - git-crypt unlock (uses your GPG key, if added as a collaborator via
     git-crypt add-gpg-user on another account)
 EOF
-  }
+}
 
-  KEY_FILE=$(mktemp)
-  trap 'rm -f "$KEY_FILE"' EXIT
+KEY_FILE=$(mktemp)
+trap 'rm -f "$KEY_FILE"' EXIT
 
-  fetched=0
-  if ! command -v op >/dev/null; then
-    echo "1Password CLI not found (brew install 1password-cli on macOS, paru -S 1password-cli on Arch)." >&2
+fetched=0
+if ! command -v op >/dev/null; then
+  echo "1Password CLI not found (brew install 1password-cli on macOS, paru -S 1password-cli on Arch)." >&2
+else
+  OP_KEY_PATH="op://Private/dotfiles.key"
+  if op read "$OP_KEY_PATH" > "$KEY_FILE" 2>/dev/null; then
+    fetched=1
   else
-    OP_KEY_PATH="op://Private/dotfiles.key"
-    if op read "$OP_KEY_PATH" > "$KEY_FILE" 2>/dev/null; then
-      fetched=1
-    else
-      echo "Failed to retrieve git-crypt key from 1Password (sign in: op signin; item: $OP_KEY_PATH)." >&2
-    fi
+    echo "Failed to retrieve git-crypt key from 1Password (sign in: op signin; item: $OP_KEY_PATH)." >&2
   fi
+fi
 
-  if [ "$fetched" -ne 1 ]; then
-    if [ -t 0 ]; then
-      echo "You can unlock manually instead: paste the git-crypt key content below (find" >&2
-      echo "it in 1Password's app even if you're not signed into the op CLI here), then" >&2
-      echo "press Ctrl-D. Leave it empty and press Ctrl-D to skip." >&2
-      stty -echo 2>/dev/null
-      cat > "$KEY_FILE"
-      stty echo 2>/dev/null
-      echo >&2
-    else
-      echo "Not running interactively — can't prompt for a manual key." >&2
-      fallback_instructions
-      exit 1
-    fi
-  fi
-
-  if ! git-crypt unlock "$KEY_FILE"; then
-    echo "git-crypt unlock failed." >&2
+if [ "$fetched" -ne 1 ]; then
+  if [ -t 0 ]; then
+    echo "You can unlock manually instead: paste the git-crypt key content below (find" >&2
+    echo "it in 1Password's app even if you're not signed into the op CLI here), then" >&2
+    echo "press Ctrl-D. Leave it empty and press Ctrl-D to skip." >&2
+    stty -echo 2>/dev/null
+    cat > "$KEY_FILE"
+    stty echo 2>/dev/null
+    echo >&2
+  else
+    echo "Not running interactively — can't prompt for a manual key." >&2
     fallback_instructions
     exit 1
   fi
-
-  echo "git-crypt unlocked successfully"
 fi
+
+if ! git-crypt unlock "$KEY_FILE"; then
+  echo "git-crypt unlock failed." >&2
+  fallback_instructions
+  exit 1
+fi
+
+echo "git-crypt unlocked successfully"

@@ -377,3 +377,30 @@ no double-load.
   `test/git_crypt_hook_test.sh`, which explicitly redirects the hook's
   stdin from `/dev/null` so the test can't hang waiting for terminal input
   if run from a real interactive shell.
+- **The hook's pre-flight checks were themselves broken, independent of
+  everything above.** Manually running `git-crypt unlock /tmp/dotfiles.key`
+  and then `./script/setup` still re-triggered the full 1Password unlock
+  flow and failed, even though the repo was genuinely unlocked. Root
+  causes, both pre-existing (not introduced by this spec's earlier
+  changes): (1) the "already unlocked" check grepped `git-crypt status`
+  output for the literal word `"unlocked"` — but `git-crypt status`'s own
+  man page confirms it only ever reports each path's *attribute*
+  classification (encrypted vs. not, per `.gitattributes`), never lock
+  state, so that word never appears and the check could never succeed,
+  for anyone, regardless of actual lock state; (2) the outer "does this
+  repo use git-crypt" guard piped `git-crypt status` directly into
+  `grep -q "not encrypted"` — `grep -q` exits the instant it finds a
+  match, closing the pipe early, which SIGPIPEs `git-crypt status` before
+  it finishes writing (confirmed via exit code 141); under `pipefail` that
+  makes the whole pipeline report failure regardless of whether a match
+  was found, so the negated condition evaluated true essentially by
+  accident. Fixed by capturing `git-crypt status -e` in full via `$(...)`
+  before testing it (never pipe a large, possibly-early-closed producer
+  into `grep -q`), and by replacing the "already unlocked" text check with
+  the community-standard signal: whether git-crypt has written its
+  decrypted key material to `$(git rev-parse --git-dir)/git-crypt/keys/default`
+  (a file, not a directory — confirmed by inspection; my first attempt at
+  this fix used `-d` and still failed). `test/git_crypt_hook_test.sh` now
+  uses a real (empty) git repo in its fixture `$HOME/.dotfiles` so
+  `git rev-parse --git-dir` resolves correctly, and covers not-a-git-crypt-repo,
+  no-encrypted-paths, and already-unlocked as distinct cases.
