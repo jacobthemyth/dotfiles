@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+DOOM_DIR="$HOME/.config/emacs"
+DOOM_BIN="$DOOM_DIR/bin/doom"
+
+if ! command -v emacs >/dev/null; then
+  echo "emacs not found; skipping Doom setup (install Emacs first: brew bundle on macOS, pacman on Arch)."
+  exit 0
+fi
+
+if [ ! -x "$DOOM_BIN" ]; then
+  echo "Installing Doom Emacs ..."
+  # ~/.config/emacs may already exist (e.g. an eln-cache/ created by Emacs),
+  # which would make `git clone` refuse the target. Clone to a temp dir and
+  # merge the repo (including .git) into place instead.
+  tmp="$(mktemp -d)"
+  git clone --depth 1 https://github.com/doomemacs/doomemacs "$tmp/doomemacs"
+  mkdir -p "$DOOM_DIR"
+  cp -Rp "$tmp/doomemacs/." "$DOOM_DIR/"
+  rm -rf "$tmp"
+  # DOOMDIR (~/.config/doom) is already symlinked by rcm
+  "$DOOM_BIN" install --no-config
+else
+  echo "Syncing Doom Emacs ..."
+  "$DOOM_BIN" sync
+fi
+
+# Expose `doom` on PATH via ~/.local/bin (already on PATH in zshrc).
+mkdir -p "$HOME/.local/bin"
+ln -sf "$DOOM_BIN" "$HOME/.local/bin/doom"
