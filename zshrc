@@ -1,5 +1,10 @@
 source ~/.profile
-autoload -U promptinit; promptinit
+
+# Re-assert Homebrew's PATH priority. It's set in ~/.zshenv, but macOS's
+# /etc/zprofile runs path_helper afterward, which reorders /usr/bin ahead of
+# /opt/homebrew/bin. This runs after that, restoring brew's priority.
+command -v brew >/dev/null && eval "$(brew shellenv)"
+
 command -v starship >/dev/null && eval "$(starship init zsh)"
 
 for zsh_source in $HOME/.zsh/configs/*.zsh; do
@@ -20,8 +25,6 @@ export CLICOLOR=1
 
 # Show description in completion menu
 zstyle ":completion:*:descriptions" format "%B%d%b"
-
-FPATH="$FPATH:~/.zsh/functions"
 
 export RBENV_BUILD_ROOT="$HOME/.rbenv/sources" # Force rbenv to always keep sources
 command -v rbenv >/dev/null && eval "$(rbenv init - --no-rehash)"
@@ -60,8 +63,8 @@ bindkey '^x^e' edit-command-line
 
 setopt hist_ignore_all_dups inc_append_history
 HISTFILE=~/.zhistory
-HISTSIZE=4096
-SAVEHIST=4096
+HISTSIZE=50000
+SAVEHIST=50000
 
 # cd movements from zshkit
 setopt autocd autopushd pushdminus pushdsilent pushdtohome cdablevars
