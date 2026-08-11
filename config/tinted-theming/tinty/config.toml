@@ -8,6 +8,8 @@ supported-systems = ["base16", "base24"]
 path = "https://github.com/tinted-theming/tinted-terminal"
 name = "tinted-terminal"
 themes-dir = "themes/ghostty"
-# With `theme` set to "tinted-theming", this will be where Ghostty looks for the theme file:
-hook = "command cp -f %f ~/.config/ghostty/themes/tinted-theming"
+# With `theme` set to "tinted-theming", this will be where Ghostty looks for
+# the theme file. `cp` won't create the parent dir on its own, so make sure
+# it exists first.
+hook = "command mkdir -p ~/.config/ghostty/themes && command cp -f %f ~/.config/ghostty/themes/tinted-theming"
 supported-systems = ["base16", "base24"]

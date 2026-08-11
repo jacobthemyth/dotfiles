@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Bootstraps tinty (https://github.com/tinted-theming/tinty) so Ghostty,
+# vim, and the shell all have a base16 theme available on a fresh machine.
+# `tinty install` only fetches the template repos declared in
+# config/tinted-theming/tinty/config.toml — it never applies a scheme, so
+# without an explicit `tinty apply` the derived files (the Ghostty theme
+# file, vim's colors file) never get written and Ghostty errors out
+# looking for a theme that doesn't exist yet.
+
+set -eo pipefail
+
+DEFAULT_SCHEME="base16-tomorrow-night-eighties"
+
+if ! command -v tinty >/dev/null; then
+  echo "tinty not found. Install via your OS package manager (brew install tinted-theming/tinted/tinty on macOS)."
+  exit 1
+fi
+
+if ! tinty list >/dev/null 2>&1; then
+  echo "Installing tinty templates..."
+  tinty install
+fi
+
+if ! tinty current >/dev/null 2>&1; then
+  echo "Applying default tinty scheme ($DEFAULT_SCHEME)..."
+  tinty apply "$DEFAULT_SCHEME"
+fi
