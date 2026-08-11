@@ -36,17 +36,27 @@ case "$1" in
     touch "$FAKE_BREW_CALLS_DIR/update"
     ;;
   bundle)
-    if [[ "$2" == "check" ]]; then
-      touch "$FAKE_BREW_CALLS_DIR/bundle_check"
-      if [[ "$FAKE_BUNDLE_SATISFIED" == "1" ]]; then
-        exit 0
-      else
-        echo "brew bundle: jq"
-        exit 1
-      fi
-    else
-      touch "$FAKE_BREW_CALLS_DIR/bundle_install"
-    fi
+    case "$2" in
+      list)
+        # `brew bundle list --tap` — emit fake taps for the trust loop.
+        printf '%s\n' "fake/tap-one" "fake/tap-two"
+        ;;
+      check)
+        touch "$FAKE_BREW_CALLS_DIR/bundle_check"
+        if [[ "$FAKE_BUNDLE_SATISFIED" == "1" ]]; then
+          exit 0
+        else
+          echo "brew bundle: jq"
+          exit 1
+        fi
+        ;;
+      *)
+        touch "$FAKE_BREW_CALLS_DIR/bundle_install"
+        ;;
+    esac
+    ;;
+  trust)
+    touch "$FAKE_BREW_CALLS_DIR/trust"
     ;;
   cleanup)
     touch "$FAKE_BREW_CALLS_DIR/cleanup"
@@ -84,6 +94,7 @@ echo "==> owner path: writable prefix runs update/bundle/cleanup"
 writable_prefix="$fixture/writable_prefix"
 mkdir -p "$writable_prefix"
 run_hook "$writable_prefix" "1" >/dev/null
+assert_called trust || exit 1
 assert_called update || exit 1
 assert_called bundle_install || exit 1
 assert_called cleanup || exit 1
@@ -95,6 +106,7 @@ readonly_prefix="$fixture/readonly_prefix"
 mkdir -p "$readonly_prefix"
 chmod 555 "$readonly_prefix"
 run_hook "$readonly_prefix" "1" >/dev/null
+assert_called trust || exit 1
 assert_called bundle_check || exit 1
 assert_not_called update || exit 1
 assert_not_called bundle_install || exit 1
@@ -112,6 +124,7 @@ if ! echo "$out" | grep -q "no write access"; then
   echo "$out"
   exit 1
 fi
+assert_called trust || exit 1
 assert_not_called update || exit 1
 assert_not_called bundle_install || exit 1
 assert_not_called cleanup || exit 1

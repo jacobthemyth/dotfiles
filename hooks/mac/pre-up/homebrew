@@ -19,6 +19,14 @@ eval "$($brew_path shellenv)"
 
 brew_prefix="$($brew_path --prefix)"
 
+# Trust the non-official taps declared in the Brewfile so `brew bundle` can load
+# their formulae/casks non-interactively. `brew trust` is idempotent.
+echo "Trusting third-party taps ..."
+brew bundle list --tap --file="$HOME/.dotfiles/tag-mac/Brewfile" |
+  while IFS= read -r tap; do
+    brew trust --tap "$tap"
+  done
+
 if [ -w "$brew_prefix" ]; then
   echo "Updating Homebrew formulae ..."
   brew update
