@@ -7,6 +7,19 @@
     "defaultMode": "auto"
   },
   "model": "claude-opus-4-8[1m]",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "rtk hook claude"
+          }
+        ]
+      }
+    ]
+  },
   "statusLine": {
     "type": "command",
     "command": "npx -y ccstatusline@latest",
@@ -15,7 +28,8 @@
   "enabledPlugins": {
     "codex@openai-codex": true,
     "document-skills@anthropic-agent-skills": true,
-    "superpowers@claude-plugins-official": true
+    "superpowers@claude-plugins-official": true,
+    "simple-english@simple-english": true
   },
   "extraKnownMarketplaces": {
     "anthropic-agent-skills": {
@@ -28,6 +42,12 @@
       "source": {
         "source": "github",
         "repo": "openai/codex-plugin-cc"
+      }
+    },
+    "simple-english": {
+      "source": {
+        "source": "github",
+        "repo": "AminBlg/SimpleEnglish"
       }
     }
   },
