@@ -28,8 +28,8 @@
   "enabledPlugins": {
     "codex@openai-codex": true,
     "document-skills@anthropic-agent-skills": true,
-    "superpowers@claude-plugins-official": true,
-    "simple-english@simple-english": true
+    "simple-english@simple-english": true,
+    "superpowers@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "anthropic-agent-skills": {
