@@ -15,5 +15,6 @@ case "$OSTYPE" in
 esac
 
 export DOTFILES_DIRS="$HOME/.dotfiles"
+export SYMLINK_DIRS="agents/skills/*"
 export EXCLUDES="script/* README.md LICENSE claude-plugins docs docs/* test test/* *__pycache__*"
 export TAGS="$RCM_OS_TAG"

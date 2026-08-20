@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+#
+# Link ~/.claude/skills -> ~/.agents/skills.
+#
+# ~/.agents/skills is the agent-agnostic source of truth for personal skills
+# (Codex, Gemini CLI, Antigravity, ... read it). Claude Code, however, only
+# scans ~/.claude/skills and a project's .claude/skills — it never reads
+# ~/.agents/skills — so without this link the shared skills are invisible to
+# it. A whole-directory symlink keeps a single source of truth instead of a
+# per-skill link fan-out.
+#
+# Idempotent: re-running when the link already resolves to the target is a
+# no-op. Refuses (rather than clobbers) when ~/.claude/skills already holds
+# real content, because replacing a populated directory with a symlink would
+# hide whatever is in it. The fix is to fold that content into
+# ~/.agents/skills first — which is the whole point of the source of truth.
+
+set -eo pipefail
+
+agents_skills="$HOME/.agents/skills"
+claude_skills="$HOME/.claude/skills"
+
+# The link target must exist, or the symlink dangles. Creating it empty is
+# harmless and makes the hook self-sufficient on a fresh machine.
+mkdir -p "$agents_skills"
+
+# Already a symlink: no-op if it points at the source of truth, refuse if it
+# points anywhere else rather than silently repointing it.
+if [ -L "$claude_skills" ]; then
+  if [ "$(realpath "$claude_skills")" = "$(realpath "$agents_skills")" ]; then
+    exit 0
+  fi
+  {
+    echo "claude-skills: ~/.claude/skills is a symlink to '$(readlink "$claude_skills")',"
+    echo "  not ~/.agents/skills. Remove or repoint it, then re-run."
+  } >&2
+  exit 1
+fi
+
+# A real (non-symlink) path that exists must be empty to be replaced.
+if [ -e "$claude_skills" ]; then
+  if [ ! -d "$claude_skills" ]; then
+    echo "claude-skills: ~/.claude/skills exists and is not a directory; refusing to touch it." >&2
+    exit 1
+  fi
+
+  # Partition the contents to make the fix obvious. Entries that are already
+  # symlinks into ~/.agents/skills are redundant under a whole-directory link
+  # and can just be deleted; real entries must be migrated so nothing is lost.
+  redundant=()
+  migrate=()
+  shopt -s nullglob dotglob
+  for entry in "$claude_skills"/*; do
+    name="$(basename "$entry")"
+    if [ -L "$entry" ] && [ "$(realpath "$entry" 2>/dev/null)" = "$(realpath "$agents_skills")/$name" ]; then
+      redundant+=("$name")
+    else
+      migrate+=("$name")
+    fi
+  done
+  shopt -u nullglob dotglob
+
+  if [ ${#migrate[@]} -eq 0 ] && [ ${#redundant[@]} -eq 0 ]; then
+    # Empty directory: safe to replace with the link.
+    rmdir "$claude_skills"
+  else
+    {
+      echo "claude-skills: refusing to replace ~/.claude/skills — it is not empty."
+      echo "  ~/.agents/skills is the source of truth. Resolve its contents, then re-run:"
+      if [ ${#migrate[@]} -gt 0 ]; then
+        echo
+        echo "  Move these into ~/.agents/skills (real content, would be lost):"
+        for name in "${migrate[@]}"; do echo "    mv ~/.claude/skills/$name ~/.agents/skills/"; done
+      fi
+      if [ ${#redundant[@]} -gt 0 ]; then
+        echo
+        echo "  Delete these (already symlinks into ~/.agents/skills, redundant here):"
+        for name in "${redundant[@]}"; do echo "    rm ~/.claude/skills/$name"; done
+      fi
+      echo
+      echo "  Then re-run: rcup   (or ./script/setup)"
+    } >&2
+    exit 1
+  fi
+fi
+
+ln -s "../.agents/skills" "$claude_skills"
+echo "claude-skills: linked ~/.claude/skills -> ~/.agents/skills"
