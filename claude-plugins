@@ -12,6 +12,7 @@
 #     enabled=true there but missing here, the hook warns instead of
 #     silently uninstalling it — add it here too when that happens.
 
+beads@beads-marketplace gastownhall/beads
 codex@openai-codex openai/codex-plugin-cc
 document-skills@anthropic-agent-skills anthropics/skills
 simple-english@simple-english AminBlg/SimpleEnglish

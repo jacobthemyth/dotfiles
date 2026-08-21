@@ -29,7 +29,8 @@
     "codex@openai-codex": true,
     "document-skills@anthropic-agent-skills": true,
     "simple-english@simple-english": true,
-    "superpowers@claude-plugins-official": true
+    "superpowers@claude-plugins-official": true,
+    "beads@beads-marketplace": true
   },
   "extraKnownMarketplaces": {
     "anthropic-agent-skills": {
@@ -48,6 +49,12 @@
       "source": {
         "source": "github",
         "repo": "AminBlg/SimpleEnglish"
+      }
+    },
+    "beads-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "gastownhall/beads"
       }
     }
   },

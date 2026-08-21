@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+# Beads (bd) uses Dolt as its issue database. In embedded mode bd links the
+# Dolt engine from go.mod, but server / shared-server mode shells out to the
+# standalone `dolt` CLI on PATH. Beads pins Dolt to 2.2.0: 2.3.x regressed
+# `CALL DOLT_RESET('--hard')`, which breaks `bd flatten`, `bd admin compact`,
+# and the merge-settle fallback in `bd dolt pull` / `bd sync`. So we install
+# the pin ourselves to ~/.local/bin (first on PATH) rather than tracking
+# whatever `brew install dolt` currently points at.
+
+DOLT_VERSION="2.2.0"
+TARGET_DIR="$HOME/.local/bin"
+TARGET="$TARGET_DIR/dolt"
+
+echo "Configuring Dolt (pinned $DOLT_VERSION) ..."
+
+# On mac, drop any Homebrew-managed dolt so it can't win on PATH or drift off
+# the pin. dolt is not in the Brewfile, so `brew bundle` won't reinstall it.
+if [[ "$(uname -s)" == "Darwin" ]] && command -v brew >/dev/null; then
+  if brew list dolt >/dev/null 2>&1; then
+    echo "Removing Homebrew dolt (superseded by pinned $DOLT_VERSION) ..."
+    brew uninstall --ignore-dependencies dolt
+  fi
+fi
+
+# Idempotent: skip the download if the pinned version is already in place.
+# Capture into a variable rather than piping `dolt version` into `grep -q`:
+# grep -q closes the pipe on first match, `dolt version` then takes SIGPIPE,
+# and `pipefail` would turn that into a spurious failure (exit 141).
+if [ -x "$TARGET" ]; then
+  installed="$("$TARGET" version 2>/dev/null || true)"
+  if grep -Fq "$DOLT_VERSION" <<<"$installed"; then
+    echo "dolt $DOLT_VERSION already installed at $TARGET"
+    exit 0
+  fi
+fi
+
+os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+arch="$(uname -m | sed -e 's/^x86_64$/amd64/' -e 's/^aarch64$/arm64/')"
+
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+
+echo "Downloading dolt $DOLT_VERSION ($os/$arch) ..."
+curl -fsSL "https://github.com/dolthub/dolt/releases/download/v${DOLT_VERSION}/dolt-${os}-${arch}.tar.gz" \
+  | tar -xz -C "$tmp"
+
+mkdir -p "$TARGET_DIR"
+install -m 0755 "$tmp/dolt-${os}-${arch}/bin/dolt" "$TARGET"
+
+# Confirm we got the version we asked for (same SIGPIPE-safe pattern).
+installed="$("$TARGET" version 2>/dev/null || true)"
+if ! grep -Fq "$DOLT_VERSION" <<<"$installed"; then
+  echo "✗ installed dolt does not report $DOLT_VERSION:" >&2
+  echo "$installed" >&2
+  exit 1
+fi
+echo "Installed $(head -1 <<<"$installed") at $TARGET"
