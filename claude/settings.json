@@ -30,7 +30,8 @@
     "document-skills@anthropic-agent-skills": true,
     "simple-english@simple-english": true,
     "superpowers@claude-plugins-official": true,
-    "beads@beads-marketplace": true
+    "beads@beads-marketplace": true,
+    "tmux-agent-sidebar@hiroppy": true
   },
   "extraKnownMarketplaces": {
     "anthropic-agent-skills": {
@@ -55,6 +56,12 @@
       "source": {
         "source": "github",
         "repo": "gastownhall/beads"
+      }
+    },
+    "hiroppy": {
+      "source": {
+        "source": "directory",
+        "path": "/Users/jake/.local/share/tmux/plugins/tmux-agent-sidebar-e2084067ab62"
       }
     }
   },

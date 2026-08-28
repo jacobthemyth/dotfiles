@@ -1,8 +1,17 @@
 #!/usr/bin/env bash
 #
-# Sync Claude Code plugins to match ~/.dotfiles/claude-plugins.
-# Idempotent: safe to run repeatedly. Installs missing plugins/marketplaces
-# and uninstalls anything not declared in the manifest.
+# Sync Claude Code plugins to match ~/.claude/settings.json.
+# Idempotent: safe to run repeatedly. Installs missing marketplaces/plugins
+# and uninstalls anything not declared in settings.json.
+#
+# settings.json is the single source of truth:
+#   - .enabledPlugins  — the desired plugin set (a "plugin@marketplace" -> bool
+#     map). `true` = install + keep; `false` = keep installed but disabled;
+#     absent = uninstall.
+#   - .extraKnownMarketplaces — marketplace sources (owner/repo, path, or URL).
+#     A marketplace referenced by an enabled plugin but absent here is assumed
+#     to be a built-in known marketplace (e.g. claude-plugins-official): we
+#     skip adding it and let `claude plugin install` resolve it.
 
 set -eo pipefail
 
@@ -15,37 +24,40 @@ if [ "${BASH_VERSINFO[0]}" -lt 4 ]; then
   exit 1
 fi
 
-manifest="$HOME/.dotfiles/claude-plugins"
+settings_file="$HOME/.claude/settings.json"
 
 command -v claude >/dev/null 2>&1 || exit 0
-[ -f "$manifest" ] || exit 0
+[ -f "$settings_file" ] || exit 0
 
 if ! command -v jq >/dev/null 2>&1; then
   echo "claude-plugins hook requires jq" >&2
   exit 1
 fi
 
-declare -a desired_plugins=()
+# enabled: plugins to install and keep (enabledPlugins == true).
+# present: plugins to keep installed (any enabledPlugins key, true or false);
+#          `false` means "installed but disabled" — never uninstall those.
+declare -a enabled_plugins=()
+declare -a present_plugins=()
 declare -A marketplace_source=()
 declare -A desired_marketplaces=()
 
-while IFS= read -r line || [ -n "$line" ]; do
-  line="${line%%#*}"
-  line="${line#"${line%%[![:space:]]*}"}"
-  line="${line%"${line##*[![:space:]]}"}"
-  [ -z "$line" ] && continue
+while IFS= read -r spec; do
+  [ -z "$spec" ] && continue
+  enabled_plugins+=("$spec")
+done < <(jq -r '.enabledPlugins // {} | to_entries[] | select(.value == true) | .key' "$settings_file")
 
-  read -r spec src _rest <<< "$line"
-  case "$spec" in
-    *@*) ;;
-    *) echo "claude-plugins: invalid spec '$spec' (expected plugin@marketplace)" >&2; exit 1 ;;
-  esac
+while IFS= read -r spec; do
+  [ -z "$spec" ] && continue
+  present_plugins+=("$spec")
+  # A kept-but-disabled plugin still needs its marketplace available.
+  desired_marketplaces["${spec##*@}"]=1
+done < <(jq -r '.enabledPlugins // {} | keys[]' "$settings_file")
 
-  desired_plugins+=("$spec")
-  mp="${spec##*@}"
-  desired_marketplaces["$mp"]=1
-  [ -n "${src:-}" ] && marketplace_source["$mp"]="$src"
-done < "$manifest"
+while IFS=$'\t' read -r mp src; do
+  [ -z "$mp" ] && continue
+  [ -n "$src" ] && marketplace_source["$mp"]="$src"
+done < <(jq -r '.extraKnownMarketplaces // {} | to_entries[] | "\(.key)\t\(.value.source.repo // .value.source.path // .value.source.url // "")"' "$settings_file")
 
 known="$HOME/.claude/plugins/known_marketplaces.json"
 installed_file="$HOME/.claude/plugins/installed_plugins.json"
@@ -65,54 +77,34 @@ contains() {
   [ -n "$haystack" ] && grep -qxF "$needle" <<< "$haystack"
 }
 
-# Drift check: warn (don't act) if settings.json declares a plugin enabled
-# that isn't in this manifest. enabledPlugins can't express "should not be
-# installed" — false only disables an already-installed plugin — so it
-# can't be the sync source of truth. But "enabled there, absent here" is
-# almost always an oversight (e.g. installed ad hoc via `/plugin`), and
-# left unchecked it gets silently uninstalled below.
-settings_file="$HOME/.claude/settings.json"
-if [ -f "$settings_file" ]; then
-  desired_plugins_str="$(printf '%s\n' "${desired_plugins[@]}")"
-  while IFS= read -r enabled_spec; do
-    [ -z "$enabled_spec" ] && continue
-    if ! contains "$enabled_spec" "$desired_plugins_str"; then
-      echo "claude-plugins: WARNING: '$enabled_spec' is enabled in $settings_file but missing from $manifest — it will be uninstalled below unless added there" >&2
-    fi
-  done < <(jq -r '.enabledPlugins // {} | to_entries[] | select(.value == true) | .key' "$settings_file")
-fi
-
-# Every desired marketplace needs a source — either declared in the manifest
-# or already configured.
+# Add missing marketplaces. A marketplace with no declared source that isn't
+# already configured is assumed built-in (e.g. claude-plugins-official) — skip
+# it and let `claude plugin install` resolve it rather than failing the sync.
 for mp in "${!desired_marketplaces[@]}"; do
-  if [ -z "${marketplace_source[$mp]:-}" ] && ! contains "$mp" "$existing_marketplaces"; then
-    echo "claude-plugins: marketplace '$mp' has no source declared and is not configured" >&2
-    exit 1
+  contains "$mp" "$existing_marketplaces" && continue
+  if [ -z "${marketplace_source[$mp]:-}" ]; then
+    echo "claude-plugins: marketplace '$mp' has no source in settings.json; assuming built-in"
+    continue
   fi
-done
-
-# Add missing marketplaces.
-for mp in "${!marketplace_source[@]}"; do
-  if ! contains "$mp" "$existing_marketplaces"; then
-    echo "claude-plugins: adding marketplace $mp (${marketplace_source[$mp]})"
-    claude plugin marketplace add "${marketplace_source[$mp]}"
-  fi
+  echo "claude-plugins: adding marketplace $mp (${marketplace_source[$mp]})"
+  claude plugin marketplace add "${marketplace_source[$mp]}"
 done
 
 # Install missing plugins.
-for spec in "${desired_plugins[@]}"; do
+for spec in "${enabled_plugins[@]}"; do
   if ! contains "$spec" "$installed_plugins"; then
     echo "claude-plugins: installing $spec"
     claude plugin install "$spec"
   fi
 done
 
-# Uninstall plugins not in the manifest.
+# Uninstall installed plugins absent from settings.json. Plugins present as
+# `false` are kept (installed but disabled), so only act on the present set.
 if [ -n "$installed_plugins" ]; then
   while IFS= read -r spec; do
     [ -z "$spec" ] && continue
     keep=0
-    for d in "${desired_plugins[@]}"; do
+    for d in "${present_plugins[@]}"; do
       [ "$d" = "$spec" ] && keep=1 && break
     done
     if [ "$keep" -eq 0 ]; then

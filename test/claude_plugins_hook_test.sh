@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Unit test for hooks/shared/post-up/claude-plugins.
-# Stubs a fake `claude` on PATH and an isolated fixture $HOME so the drift
-# check (enabledPlugins vs the manifest) can be exercised without touching
-# real Claude Code state or hitting the network.
+# Stubs a fake `claude` on PATH and an isolated fixture $HOME so the sync logic
+# (derived from ~/.claude/settings.json) can be exercised without touching real
+# Claude Code state or hitting the network.
 
 set -eo pipefail
 
@@ -20,7 +20,7 @@ trap 'rm -rf "$fixture"' EXIT
 
 fake_home="$fixture/home"
 fake_bin="$fixture/bin"
-mkdir -p "$fake_home/.dotfiles" "$fake_home/.claude/plugins" "$fake_bin"
+mkdir -p "$fake_home/.claude/plugins" "$fake_bin"
 
 cat > "$fake_bin/claude" <<'EOF'
 #!/usr/bin/env bash
@@ -28,17 +28,6 @@ cat > "$fake_bin/claude" <<'EOF'
 echo "$*" >> "$FAKE_CLAUDE_CALLS"
 EOF
 chmod +x "$fake_bin/claude"
-
-cat > "$fake_home/.dotfiles/claude-plugins" <<'EOF'
-superpowers@claude-plugins-official anthropics/claude-plugins-official
-EOF
-
-cat > "$fake_home/.claude/plugins/known_marketplaces.json" <<'EOF'
-{"claude-plugins-official": {}}
-EOF
-cat > "$fake_home/.claude/plugins/installed_plugins.json" <<'EOF'
-{"plugins": {"superpowers@claude-plugins-official": {}}}
-EOF
 
 # bash "$hook" would resolve `bash` via this shell's own ambient PATH,
 # which may put macOS's bash 3.2 first (the exact issue this hook's own
@@ -56,45 +45,71 @@ run_hook() {
   PATH="$fake_bin:$PATH" HOME="$fake_home" FAKE_CLAUDE_CALLS="$fixture/calls" "$test_bash" "$hook"
 }
 
-echo "==> no drift: manifest and enabledPlugins agree, no warning, no CLI calls"
-cat > "$fake_home/.claude/settings.json" <<'EOF'
-{"enabledPlugins": {"superpowers@claude-plugins-official": true}}
-EOF
+write_state() {
+  # $1 = settings.json, $2 = known_marketplaces.json, $3 = installed_plugins.json
+  printf '%s' "$1" > "$fake_home/.claude/settings.json"
+  printf '%s' "$2" > "$fake_home/.claude/plugins/known_marketplaces.json"
+  printf '%s' "$3" > "$fake_home/.claude/plugins/installed_plugins.json"
+}
+
+echo "==> in sync: enabled plugins installed, marketplaces known, no CLI calls"
+write_state \
+  '{"enabledPlugins": {"superpowers@claude-plugins-official": true}}' \
+  '{"claude-plugins-official": {}}' \
+  '{"plugins": {"superpowers@claude-plugins-official": {}}}'
 if ! out="$(run_hook 2>&1)"; then
-  echo "FAIL: hook exited non-zero unexpectedly:"
-  echo "$out"
-  exit 1
-fi
-if echo "$out" | grep -q "WARNING"; then
-  echo "FAIL: unexpected drift warning:"
-  echo "$out"
-  exit 1
+  echo "FAIL: hook exited non-zero unexpectedly:"; echo "$out"; exit 1
 fi
 if [ -s "$fixture/calls" ]; then
-  echo "FAIL: expected no claude CLI calls (already in sync), got:"
-  cat "$fixture/calls"
-  exit 1
+  echo "FAIL: expected no claude CLI calls (already in sync), got:"; cat "$fixture/calls"; exit 1
 fi
 echo "  PASS"
 
-echo "==> drift: enabledPlugins has a plugin missing from the manifest warns, still no CLI calls"
-cat > "$fake_home/.claude/settings.json" <<'EOF'
-{"enabledPlugins": {"superpowers@claude-plugins-official": true, "extra@somewhere": true}}
-EOF
+echo "==> install path: enabled plugin with source in extraKnownMarketplaces, not yet known/installed"
+write_state \
+  '{"enabledPlugins": {"codex@openai-codex": true}, "extraKnownMarketplaces": {"openai-codex": {"source": {"source": "github", "repo": "openai/codex-plugin-cc"}}}}' \
+  '{}' \
+  '{"plugins": {}}'
 if ! out="$(run_hook 2>&1)"; then
-  echo "FAIL: hook exited non-zero unexpectedly:"
-  echo "$out"
-  exit 1
+  echo "FAIL: hook exited non-zero unexpectedly:"; echo "$out"; exit 1
 fi
-if ! echo "$out" | grep -q "WARNING.*extra@somewhere.*missing from"; then
-  echo "FAIL: expected a drift warning for extra@somewhere, got:"
-  echo "$out"
-  exit 1
+if ! grep -qxF "plugin marketplace add openai/codex-plugin-cc" "$fixture/calls"; then
+  echo "FAIL: expected marketplace add for openai/codex-plugin-cc, got:"; cat "$fixture/calls"; exit 1
 fi
-if [ -s "$fixture/calls" ]; then
-  echo "FAIL: drift check should only warn, not act, got CLI calls:"
-  cat "$fixture/calls"
-  exit 1
+if ! grep -qxF "plugin install codex@openai-codex" "$fixture/calls"; then
+  echo "FAIL: expected install of codex@openai-codex, got:"; cat "$fixture/calls"; exit 1
+fi
+echo "  PASS"
+
+echo "==> trust built-in: enabled plugin whose marketplace has no source and isn't known"
+write_state \
+  '{"enabledPlugins": {"superpowers@claude-plugins-official": true}}' \
+  '{}' \
+  '{"plugins": {}}'
+if ! out="$(run_hook 2>&1)"; then
+  echo "FAIL: hook should not error on a missing built-in marketplace source:"; echo "$out"; exit 1
+fi
+if grep -q "marketplace add" "$fixture/calls"; then
+  echo "FAIL: should not add a sourceless (built-in) marketplace, got:"; cat "$fixture/calls"; exit 1
+fi
+if ! grep -qxF "plugin install superpowers@claude-plugins-official" "$fixture/calls"; then
+  echo "FAIL: expected install of superpowers@claude-plugins-official, got:"; cat "$fixture/calls"; exit 1
+fi
+echo "  PASS"
+
+echo "==> uninstall path: installed plugin absent from settings is removed; false-valued plugin is kept"
+write_state \
+  '{"enabledPlugins": {"superpowers@claude-plugins-official": true, "keep@claude-plugins-official": false}}' \
+  '{"claude-plugins-official": {}}' \
+  '{"plugins": {"superpowers@claude-plugins-official": {}, "keep@claude-plugins-official": {}, "stale@claude-plugins-official": {}}}'
+if ! out="$(run_hook 2>&1)"; then
+  echo "FAIL: hook exited non-zero unexpectedly:"; echo "$out"; exit 1
+fi
+if ! grep -qxF "plugin uninstall stale@claude-plugins-official" "$fixture/calls"; then
+  echo "FAIL: expected uninstall of stale@claude-plugins-official, got:"; cat "$fixture/calls"; exit 1
+fi
+if grep -q "uninstall keep@claude-plugins-official" "$fixture/calls"; then
+  echo "FAIL: false-valued plugin should be kept, not uninstalled, got:"; cat "$fixture/calls"; exit 1
 fi
 echo "  PASS"
 

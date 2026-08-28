@@ -2,6 +2,7 @@ return {
   "airblade/vim-gitgutter",
   "christoomey/vim-tmux-navigator",
   "christoomey/vim-tmux-runner",
+  "cue-lang/vim-cue",
   { "dstein64/vim-startuptime", cmd = "StartupTime", },
   { "dhruvasagar/vim-table-mode", ft = {"markdown", "org"} },
   { "fatih/vim-go", ft = {"go", "gohtmltmpl"} },
