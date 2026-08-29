@@ -8,9 +8,17 @@
         "color": "cyan"
       },
       {
+        "id": "700afbb7-081f-4020-85eb-dbd90743388e",
+        "type": "thinking-effort",
+        "backgroundColor": "bgBrightBlack"
+      },
+      {
         "id": "3",
         "type": "context-percentage-usable",
-        "color": "brightBlack"
+        "color": "brightBlack",
+        "metadata": {
+          "inverse": "false"
+        }
       },
       {
         "id": "5",
@@ -27,14 +35,17 @@
         "color": "yellow"
       }
     ],
-    [],
     []
   ],
   "flexMode": "full-minus-40",
   "compactThreshold": 60,
-  "colorLevel": 2,
+  "colorLevel": 3,
+  "defaultPadding": " ",
+  "defaultPaddingSide": "both",
   "inheritSeparatorColors": false,
-  "globalBold": false,
+  "globalBold": true,
+  "gitCacheTtlSeconds": 5,
+  "minimalistMode": false,
   "powerline": {
     "enabled": true,
     "separators": [
@@ -45,8 +56,8 @@
     ],
     "startCaps": [],
     "endCaps": [],
-    "autoAlign": false,
-    "theme": "minimal"
-  },
-  "defaultPadding": " "
+    "theme": "minimal",
+    "autoAlign": true,
+    "continueThemeAcrossLines": true
+  }
 }
