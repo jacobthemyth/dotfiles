@@ -39,8 +39,6 @@
   old = red bold
   new = green bold
   whitespace = red reverse
-[commit]
-  template = ~/.gitmessage
 [core]
   autocrlf = input
 [diff]
@@ -59,11 +57,6 @@
 [rebase]
   autosquash = true
 	instructionFormat = (%an <%ae>) %s
-[user]
-  name = Jacob Smith
-  email = jacob@jacobsmith.io
-[github]
-  user = jacobthemyth
 [filter "lfs"]
 	clean = git-lfs clean -- %f
 	smudge = git-lfs smudge -- %f
@@ -71,12 +64,8 @@
 	required = true
 [pull]
 	rebase = true
-[hub]
-	protocol = https
 [init]
 	defaultBranch = main
-[include]
-	path = ~/.config/git/config.local
 [interactive]
 	diffFilter = delta --color-only
 [delta]
@@ -84,8 +73,16 @@
 	pager = moor -mousemode scroll -wrap
 	width = -2
 	wrap-max-lines = unlimited
-[credential]
-	helper = 
-	helper = /usr/local/share/gcm-core/git-credential-manager
-[credential "https://dev.azure.com"]
-	useHttpPath = true
+[user]
+  name = Jake Smith
+  email = jacob@smithjs.org
+[github]
+  user = jacobthemyth
+[credential "https://github.com"]
+	helper =
+	helper = !/opt/homebrew/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+	helper =
+	helper = !/opt/homebrew/bin/gh auth git-credential
+[include]
+	path = ~/.config/git/config.local
