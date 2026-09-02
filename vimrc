@@ -143,8 +143,8 @@ vnoremap <Leader>p "+p
 nnoremap <Leader>p "+p
 nnoremap <Leader>P "+P
 
-nmap <Leader>y <Plug>OSCYankOperator
-vmap <Leader>y <Plug>OSCYankVisual
+nnoremap <Leader>y "+y
+xnoremap <Leader>y "+y
 " }}}
 
 " Plugins {{{
