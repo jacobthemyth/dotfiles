@@ -13,7 +13,9 @@ return {
     },
   },
   -- if you want to build from source then do `make BUILD_FROM_SOURCE=true`
-  build = "make",
+  -- nvim-resign re-signs the freshly built native modules so macOS does not
+  -- SIGKILL nvim on dlopen ("Code Signature Invalid"); no-op off macOS.
+  build = "make && nvim-resign .",
   -- build = "powershell -ExecutionPolicy Bypass -File Build.ps1 -BuildFromSource false" -- for windows
   dependencies = {
     "nvim-treesitter/nvim-treesitter",

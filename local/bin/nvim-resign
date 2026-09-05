@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Re-sign Neovim native modules (.so/.dylib) ad-hoc on macOS.
+#
+# Why: macOS SIGKILLs nvim with "Code Signature Invalid" (namespace
+# CODESIGNING, "Invalid Page") the moment LuaJIT dlopen()s a freshly
+# linker-signed native module. This happens after any native rebuild —
+# :Lazy sync/update, :TSUpdate, or a Homebrew LuaJIT/nvim upgrade — because
+# the linker's ad-hoc signature fails macOS's per-page hash check. Re-signing
+# each module with `codesign --force --sign -` clears it. See the dotfiles
+# nvim notes / crash reports in ~/Library/Logs/DiagnosticReports/nvim-*.ips.
+#
+# Usage: nvim-resign [DIR ...]
+#   No args: signs the standard Neovim native-module dirs (lazy tree +
+#            site/parser). Pass one or more dirs to narrow the scope, e.g.
+#            a single plugin's directory from a lazy.nvim `build` hook.
+#
+# No-op on non-macOS, so it is safe to chain into cross-platform `build`
+# commands (`make && nvim-resign .`).
+set -euo pipefail
+
+[ "$(uname -s)" = "Darwin" ] || exit 0
+
+data="${XDG_DATA_HOME:-$HOME/.local/share}/nvim"
+dirs=("$@")
+if [ "${#dirs[@]}" -eq 0 ]; then
+  # site/parser holds treesitter's main-branch parsers, which live outside the
+  # lazy tree; both nvim-treesitter and orgmode parsers live under lazy/.
+  dirs=("$data/lazy" "$data/site/parser")
+fi
+
+count=0
+for dir in "${dirs[@]}"; do
+  [ -d "$dir" ] || continue
+  while IFS= read -r -d '' f; do
+    if codesign --force --sign - "$f" 2>/dev/null; then
+      count=$((count + 1))
+    fi
+  done < <(find "$dir" \( -name '*.so' -o -name '*.dylib' \) -type f -print0)
+done
+
+echo "nvim-resign: re-signed $count native module(s)"
