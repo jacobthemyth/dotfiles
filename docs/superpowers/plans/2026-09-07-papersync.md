@@ -1082,6 +1082,11 @@ def test_too_many_labels_raises() -> None:
         engine.render_item(_item(""), "3x5", opts, TODAY)
 
 
+def test_auto_moves_up_when_labels_do_not_fit() -> None:
+    opts = engine.RenderOptions(labels=[str(i) for i in range(7)], boxes_id=1)
+    assert engine.render_auto(_item("x"), opts, TODAY).size == "4x6"
+
+
 def test_new_cards() -> None:
     cards = engine.render_new(2, "3x5", OPTS, TODAY)
     assert len(cards) == 2 and all(c.item is None and c.pages == 1 for c in cards)
@@ -1230,9 +1235,8 @@ def render_auto(item: Item, opts: RenderOptions, today: date) -> RenderedItem:
     for name in L.SIZE_ORDER[:-1]:
         try:
             return render_item(item, name, RenderOptions(opts.labels, opts.boxes_id, name, "fail"), today)
-        except RenderOverflow as exc:
-            if "box labels" in str(exc):
-                raise
+        except RenderOverflow:
+            continue  # content or box labels do not fit: try the next size
     return render_item(item, "letter", RenderOptions(opts.labels, opts.boxes_id, "letter", "paginate"), today)
 
 
@@ -1260,7 +1264,7 @@ def write_outputs(rendered: list[RenderedItem], out_dir: Path, stamp: str) -> li
     return paths
 ```
 
-Note on `render_auto`: the 3x5 and 4x6 attempts use `overflow="fail"` so a multi-page result moves to the next size, and letter always paginates. A label-count overflow is re-raised because a larger size will not fix a wrong `--boxes` list on 3x5 when the user asked for auto (keep this behavior: it is the spec's "render exits nonzero if the set has more labels than fit at the chosen size").
+Note on `render_auto`: the 3x5 and 4x6 attempts use `overflow="fail"` so a multi-page result moves to the next size, and letter always paginates. A label-count overflow also moves to the next size, because larger sizes fit more boxes (6, 8 and 13); only a letter overflow raises.
 
 - [ ] **Step 5: Run tests, lint, types** — all pass. If `typst.compile` type stubs make ty complain about `sys_inputs`, add a `# ty: ignore` on that call with a comment naming the missing stub.
 
