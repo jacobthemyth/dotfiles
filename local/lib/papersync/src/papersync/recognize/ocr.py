@@ -30,9 +30,10 @@ class OcrmacBackend:
 
         image = Image.fromarray(gray)
         raw = ocrmac.OCR(image, recognition_level="accurate").recognize(px=True)
+        # ocrmac's px=True returns PIL corners (x1, y1, x2, y2), not (x, y, w, h).
         lines = [
-            OcrLine(t, float(c), float(x), float(y), float(w), float(h))
-            for t, c, (x, y, w, h) in raw
+            OcrLine(t, float(c), float(x1), float(y1), float(x2 - x1), float(y2 - y1))
+            for t, c, (x1, y1, x2, y2) in raw
         ]
         return sorted(lines, key=lambda line: (line.y, line.x))
 
