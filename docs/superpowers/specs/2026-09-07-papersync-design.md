@@ -103,7 +103,7 @@ Dev: pytest, ruff, ty (mypy `--strict` as fallback if ty cannot type the depende
 papersync things export <inbox|next|someday|things:///show?id=UUID>
 papersync things auth                      # store or rotate the token
 papersync render [ITEMS.json|-] [--size auto|3x5|4x6|letter]
-                 [--overflow fail|paginate|truncate] [--boxes ID]
+                 [--overflow fail|paginate|truncate] [--boxes LABEL,...]
                  [--new N] [-o DIR] [--open]
 papersync print <things-selector> [render flags]     # export | render
 papersync recognize SCAN... [--review annotated.pdf]
@@ -127,18 +127,34 @@ Human output goes to stderr. Data goes to stdout.
 [render]
 size = "auto"
 overflow = "fail"
-boxes = 1
+boxes = ["A", "B", "C", "D"]
 output_dir = "."
 open = true
 
-[things.boxes]
-1 = ["A", "B", "C", "D"]
-2 = ["waiting", "delegate", "someday"]
+[things.actions]
+today = { when = "today" }
+someday = { when = "someday" }
+waiting = { tags = ["waiting"] }
 ```
 
 Flags override the file.
 
-`[things.boxes]` defines the box sets. A set is a numbered list of labels owned by the Things integration. The set number goes into the QR, so the recognizer never needs the labels from the command line. Sets are append-only: to change labels, add a new number. Editing an existing set silently changes the tags that old cards produce. If the file has no `[things.boxes]`, set 1 is `["A", "B", "C", "D"]`.
+### Box labels, box sets and actions
+
+`--boxes` (or `[render] boxes`) is a list of labels. The labels print under the meta boxes.
+
+The QR cannot hold the labels, so it holds a box set number. papersync manages the registry at `~/.config/papersync/boxsets.toml`:
+
+```toml
+[[sets]]
+id = 1
+labels = ["A", "B", "C", "D"]
+created = 2026-09-07T10:00:00Z
+```
+
+On render, the engine looks up the label list. If an identical list exists, it reuses that id. If not, it appends a new set with the next id. The code never edits or removes an existing set, so an old card always resolves to the labels it was printed with. The file lives in the config directory so that the dotfiles repo versions it. On recognize, an unknown id is a plan error for that page.
+
+A checked label resolves to an action at apply time through `[things.actions]`. An action is a table with any of the Things `update` parameters `tags`, `when`, `deadline`, `list`, `completed` and `canceled`. A label with no entry adds the tag `papersync:meta:<label>`. The done box left of the title is fixed in the template and its action is always `completed`. If two checked labels set the same parameter, the last label in print order wins and the plan display carries a warning. Actions resolve from the current configuration, so a label keeps its meaning across reprints while its effect is free to change.
 
 ## Core model
 
@@ -146,7 +162,7 @@ Flags override the file.
 class Item:        source: str; ref: str; title: str; notes: str
 class BoxResult:   fill: float; checked: bool; uncertain: bool
 class Change:      kind: "update" | "create"; source; ref | None; title
-                   complete: bool; add_tags: list[str]; append_notes: str | None
+                   complete: bool; marks: list[str]; append_notes: str | None
                    notes: str | None (create only); boxes: dict[str, BoxResult]
                    pages: list[int]
 class PlanError:   page: int; message: str
@@ -154,7 +170,7 @@ class Plan:        papersync_plan: 1; created: datetime; inputs: list[str]
                    changes: list[Change]; errors: list[PlanError]
 ```
 
-`ref` is opaque to the core. Only the integration interprets it.
+`ref` is opaque to the core. Only the integration interprets it. `marks` is the list of checked labels, which is what the user edits by hand. `boxes` keeps the raw scores for every box, keyed by label, with `done` for the title box.
 
 ### Integration protocols
 
@@ -185,7 +201,7 @@ papersync:///v1/things/new?size=3x5&boxes=2
 - `v1` is the template version. It selects the geometry for recognition. A layout that moves any box is `v2`. Old cards keep scanning.
 - The Things UUID is used directly. No short-ID mapping exists.
 - `size` names the layout variant. `page` and `pages` appear only on paginated items.
-- `boxes` is the Things box set number. The integration maps it to labels and tags.
+- `boxes` is the box set number from the registry. It maps to the printed labels.
 - `new` marks a blank card for a new item.
 
 The longest payload is 82 bytes. The template always renders QR version 5 with a 0.38 mm module, about 14 mm square plus the quiet zone, so the QR footprint is constant across payloads. Error correction is level M, which holds 84 bytes, and falls back to level L (106 bytes) for a longer payload.
@@ -217,7 +233,7 @@ New-item cards (`--new N`) use the same geometry with faint ruled lines in the t
 
 ### Ledger
 
-Every rendered item appends `{"ts", "event": "render", "source", "ref", "title", "size", "boxes", "file"}` to `~/.local/state/papersync/prints.jsonl` (`$XDG_STATE_HOME` respected). Every applied change appends an `apply` event with the same keys. `status` lists refs with a render event and no later apply event, marks the ones Things already shows as complete, and `--forget REF` appends a `forget` event to drop one.
+Every rendered item appends `{"ts", "event": "render", "source", "ref", "title", "size", "boxes": <set id>, "file"}` to `~/.local/state/papersync/prints.jsonl` (`$XDG_STATE_HOME` respected). Every applied change appends an `apply` event with the same keys. `status` lists refs with a render event and no later apply event, marks the ones Things already shows as complete, and `--forget REF` appends a `forget` event to drop one.
 
 ## Recognition
 
@@ -231,7 +247,7 @@ Per page:
 4. Compute the homography from template millimeters to pixels.
 5. Page 1 of an item: crop the interior of every box (border excluded), binarize, and compute the dark-pixel fill ratio. Below the low threshold is unchecked, above the high threshold is checked, between is uncertain. Thresholds live in `layout.py`. Continuation pages have no boxes.
 
-The `boxes` number in the QR selects the box set, and the Things integration maps box index to label and tag. An unknown set number is a plan error for that page.
+The `boxes` number in the QR selects the box set in the registry, which gives the label for each box index. An unknown set number is a plan error for that page.
 
 A handwriting page is OCRed through the `OcrBackend` protocol. The only implementation is ocrmac at the accurate recognition level. The text is appended to the most recent card in the batch. Several handwriting pages after one card are joined in order with a blank line. A handwriting page before any card is a plan error.
 
@@ -257,11 +273,11 @@ One block per change:
 ```
 FOO  things:///show?id=UUID  (pages 1)
 + completed
-+ tag papersync:meta:A
++ A        tag papersync:meta:A
 
 BAR  things:///show?id=UUID  (pages 2-3)
-+ tag papersync:meta:B
-? meta C  fill 0.31, treated as unchecked
++ today    when=today
+? waiting  fill 0.31, treated as unchecked
 --- notes
 +++ notes
 @@ -1 +1,5 @@
@@ -276,13 +292,13 @@ The notes diff is a unified diff of the current notes (read from the source) aga
 
 ## Apply
 
-The Things sink issues one `things:///update?id=…&auth-token=…` URL per `update` change through `open -g`, combining `completed=true`, `add-tags=papersync:meta:<label>,…` and `append-notes=<block>` as needed. A `create` change issues `things:///add?title=…&notes=…&tags=…&completed=…`, which needs no token.
+The Things sink resolves `marks` to actions, then issues one `things:///update?id=…&auth-token=…` URL per `update` change through `open -g`, combining `completed=true`, `add-tags`, `when`, `deadline`, `list`, `canceled` and `append-notes=<block>` as needed. A `create` change issues `things:///add?title=…&notes=…` with the same action parameters, which needs no token.
 
-Before issuing URLs, the sink reads the database and drops parts that already hold: an item that is already complete, a tag the item already has, or a notes block already present verbatim. A second run of the same plan is a no-op.
+Before issuing URLs, the sink reads the database and drops parts that already hold: an item that is already complete or canceled, a tag the item already has, a notes block already present verbatim, a deadline already set to that date, or a `when` of today, someday or anytime that the start fields already show. A `list` parameter is always sent. A second run of the same plan is a no-op apart from `list`.
 
 The token comes from `keyring` (service `papersync`, account `things-auth-token`). If it is missing, `apply` prompts with `getpass`, stores it, and continues. `things auth` stores a new one.
 
-The URL scheme returns nothing, so after issuing the URLs the sink waits two seconds, re-reads the database, and reports every change that did not land. `--no-verify` skips this. A verify failure exits nonzero.
+The URL scheme returns nothing, so after issuing the URLs the sink waits two seconds, re-reads the database, and reports every change that did not land. Verification covers the same fields as the skip logic. `--no-verify` skips this. A verify failure exits nonzero.
 
 ## Error handling
 
@@ -297,7 +313,8 @@ The URL scheme returns nothing, so after issuing the URLs the sink waits two sec
 - Size selection and every `--overflow` mode on short, medium and long fixtures, including the two-pass page count.
 - QR payload parsing, including rejection of unknown versions, integrations and box set numbers.
 - Things source against a fixture sqlite built from the real schema subset. Things sink with an injected opener that captures URLs, and with a fixture database for the skip and verify logic.
-- Ledger and status against a temporary state directory.
+- Ledger and status against a temporary state directory. Box set registry: reuse of an identical list, append of a new list, and refusal to rewrite.
+- Action resolution: default tag, configured actions, and the conflict warning.
 - One opt-in test that runs real ocrmac on a checked-in handwriting image, skipped unless `PAPERSYNC_REAL_OCR=1`.
 - `ruff check`, `ruff format --check` and `ty check` pass with no ignores in the source tree.
 
