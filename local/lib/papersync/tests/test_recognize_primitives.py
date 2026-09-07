@@ -1,5 +1,6 @@
 from datetime import date
 
+import cv2
 import numpy as np
 
 from papersync.model import Item
@@ -26,7 +27,8 @@ def test_qr_and_homography_recover_geometry() -> None:
     decoded = find_payload(gray)
     assert decoded is not None and decoded.payload.ref == "A" * 22 and decoded.payload.size == "3x5"
     h0 = geometry.homography_from_qr(decoded, SIZE)
-    h = geometry.refine_with_fiducials(gray, h0, SIZE)
+    assert np.array_equal(h0, geometry.homography_from_qr(decoded, SIZE))  # deterministic fit
+    h = geometry.refine_with_fiducials(gray, h0, SIZE, qr_corners=decoded.corners)
     assert h is not None
     # the top-left fiducial center must land on dark pixels
     cx, cy = geometry.mm_to_px(h, *L.fiducials(SIZE)[0].center)
@@ -37,7 +39,9 @@ def test_box_fill_distinguishes_marked_boxes() -> None:
     gray = _card([L.done_box(SIZE), L.meta_box(SIZE, 1)])
     decoded = find_payload(gray)
     assert decoded is not None
-    h = geometry.refine_with_fiducials(gray, geometry.homography_from_qr(decoded, SIZE), SIZE)
+    h = geometry.refine_with_fiducials(
+        gray, geometry.homography_from_qr(decoded, SIZE), SIZE, qr_corners=decoded.corners
+    )
     assert h is not None
     assert marks.classify(marks.box_fill(gray, h, L.done_box(SIZE))).checked
     assert marks.classify(marks.box_fill(gray, h, L.meta_box(SIZE, 1))).checked
@@ -56,7 +60,6 @@ def test_classify_bands() -> None:
 def test_foreign_qr_is_ignored() -> None:
     import io
 
-    import cv2
     import segno
 
     page = np.full((900, 1500), 255, dtype=np.uint8)
@@ -76,3 +79,19 @@ def test_lines_in_and_join() -> None:
     kept = ocr.lines_in([outside, inside], h, region)
     assert [line.text for line in kept] == ["in"]
     assert ocr.join_text([inside, ocr.OcrLine("two", 0.9, 0, 999, 1, 1)]) == "in\ntwo"
+
+
+def test_lines_in_handles_a_rotated_homography() -> None:
+    # Under rotation a box built from two projected corners is not the region: it
+    # drops lines near the far corners of the real quadrilateral.
+    rot = np.eye(3)
+    rot[:2] = cv2.getRotationMatrix2D((750.0, 450.0), 10.0, 1.0)
+    h = rot @ synthetic.identity_h()
+    region = L.notes_region(SIZE)
+    near = ocr.OcrLine("near", 0.9, *geometry.mm_to_px(h, region.x + 5, region.y + 5), 0, 0)
+    far = ocr.OcrLine(
+        "far", 0.9, *geometry.mm_to_px(h, region.x + region.w - 5, region.y + 3), 0, 0
+    )
+    outside = ocr.OcrLine("out", 0.9, *geometry.mm_to_px(h, 1, 1), 0, 0)
+    kept = ocr.lines_in([outside, near, far], h, region)
+    assert [line.text for line in kept] == ["near", "far"]

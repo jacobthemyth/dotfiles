@@ -38,15 +38,19 @@ class OcrmacBackend:
 
 
 def lines_in(lines: list[OcrLine], h: np.ndarray, region: L.Rect) -> list[OcrLine]:
-    tl = mm_to_px(h, region.x, region.y)
-    br = mm_to_px(h, region.x + region.w, region.y + region.h)
-    x0, x1 = sorted((tl[0], br[0]))
-    y0, y1 = sorted((tl[1], br[1]))
-    return [
-        line
-        for line in lines
-        if x0 <= line.x + line.w / 2 <= x1 and y0 <= line.y + line.h / 2 <= y1
-    ]
+    """Keep lines whose pixel center falls inside ``region`` (mm).
+
+    The center is mapped back through the inverse homography rather than comparing
+    against a box built from two projected corners: the pipeline's homographies are
+    rotated, so an axis-aligned box in pixel space is not the region.
+    """
+    inv = np.linalg.inv(h)
+    kept = []
+    for line in lines:
+        mx, my = mm_to_px(inv, line.x + line.w / 2, line.y + line.h / 2)
+        if region.x <= mx <= region.x + region.w and region.y <= my <= region.y + region.h:
+            kept.append(line)
+    return kept
 
 
 def join_text(lines: list[OcrLine]) -> str:

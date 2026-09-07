@@ -20,12 +20,22 @@ def homography_from_qr(decoded: DecodedQr, size: L.PageSize) -> np.ndarray:
     extrapolates cleanly, which is all the seed has to do -- it only has to put the
     fiducial search windows on target, and ``refine_with_fiducials`` fits the real
     homography afterwards.
+
+    The fit is the closed-form Umeyama similarity, so the same corners always give
+    the same matrix; a randomized estimator would jitter the search windows.
     """
-    src = np.array(L.qr_rect(size).corners(), dtype=np.float32)
-    affine, _ = cv2.estimateAffinePartial2D(src, decoded.corners, method=cv2.LMEDS)
-    if affine is None:
-        return cv2.getPerspectiveTransform(src, decoded.corners).astype(np.float64)
-    return np.vstack([affine, [0.0, 0.0, 1.0]]).astype(np.float64)
+    src = np.array(L.qr_rect(size).corners(), dtype=np.float64)
+    dst = np.asarray(decoded.corners, dtype=np.float64)
+    src_mean, dst_mean = src.mean(axis=0), dst.mean(axis=0)
+    src_c, dst_c = src - src_mean, dst - dst_mean
+    u, sigma, vt = np.linalg.svd(dst_c.T @ src_c / len(src))
+    d = np.diag([1.0, float(np.sign(np.linalg.det(u @ vt)))])
+    rotation = u @ d @ vt
+    scale = float((sigma * np.diag(d)).sum() / (src_c**2).sum() * len(src))
+    h = np.eye(3, dtype=np.float64)
+    h[:2, :2] = scale * rotation
+    h[:2, 2] = dst_mean - h[:2, :2] @ src_mean
+    return h
 
 
 def _find_square(gray: np.ndarray, h0: np.ndarray, rect: L.Rect) -> tuple[float, float] | None:
@@ -52,13 +62,27 @@ def _find_square(gray: np.ndarray, h0: np.ndarray, rect: L.Rect) -> tuple[float,
     return None if best is None else (best[1], best[2])
 
 
-def refine_with_fiducials(gray: np.ndarray, h0: np.ndarray, size: L.PageSize) -> np.ndarray | None:
-    src = [r.center for r in L.fiducials(size)]
-    dst = [_find_square(gray, h0, r) for r in L.fiducials(size)]
-    if any(d is None for d in dst):
+def refine_with_fiducials(
+    gray: np.ndarray,
+    h0: np.ndarray,
+    size: L.PageSize,
+    qr_corners: np.ndarray | None = None,
+) -> np.ndarray | None:
+    """Fit the real mm->px homography from the four fiducial centers.
+
+    ``qr_corners`` are the measured symbol corners from the decoder (4x2, TL TR BR
+    BL). When given they join the fit as four more correspondences. Never
+    substitute points projected through ``h0``: those carry no information the seed
+    does not already have and would only pull the fit back toward it.
+    """
+    rects = L.fiducials(size)
+    found = [_find_square(gray, h0, r) for r in rects]
+    if any(d is None for d in found):
         return None
-    src_pts = np.array(src + L.qr_rect(size).corners(), dtype=np.float32)
-    qr_corners = [mm_to_px(h0, x, y) for x, y in L.qr_rect(size).corners()]
-    dst_pts = np.array([d for d in dst if d is not None] + qr_corners, dtype=np.float32)
-    h, _ = cv2.findHomography(src_pts, dst_pts, 0)
+    src = [r.center for r in rects]
+    dst = [d for d in found if d is not None]
+    if qr_corners is not None:
+        src += L.qr_rect(size).corners()
+        dst += [(float(x), float(y)) for x, y in np.asarray(qr_corners, dtype=np.float64)]
+    h, _ = cv2.findHomography(np.array(src, dtype=np.float32), np.array(dst, dtype=np.float32), 0)
     return None if h is None else h.astype(np.float64)
