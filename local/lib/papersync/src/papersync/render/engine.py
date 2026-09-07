@@ -64,9 +64,9 @@ def compile_pages(
     return pdf, pymupdf.open("pdf", pdf).page_count
 
 
-def _payloads(ref: str, size: str, boxes_id: int, pages: int) -> list[str]:
+def _payloads(source: str, ref: str, size: str, boxes_id: int, pages: int) -> list[str]:
     return [
-        qr_svg(Payload(L.TEMPLATE_VERSION, "things", ref, size, boxes_id, p, pages).to_url())
+        qr_svg(Payload(L.TEMPLATE_VERSION, source, ref, size, boxes_id, p, pages).to_url())
         for p in range(1, pages + 1)
     ]
 
@@ -80,14 +80,14 @@ def _compile_item(
         opts.labels,
         item.title,
         notes,
-        _payloads(item.ref, size.name, opts.boxes_id, 1),
+        _payloads(item.source, item.ref, size.name, opts.boxes_id, 1),
         f"{item.title} (cont.)",
         footer_base,
         False,
     )
     if pages == 1:
         return pdf, 1
-    qrs = _payloads(item.ref, size.name, opts.boxes_id, pages)
+    qrs = _payloads(item.source, item.ref, size.name, opts.boxes_id, pages)
     return compile_pages(
         size, opts.labels, item.title, notes, qrs, f"{item.title} (cont.)", footer_base, False
     )
@@ -140,7 +140,9 @@ def render_auto(item: Item, opts: RenderOptions, today: date) -> RenderedItem:
 def render_new(count: int, size_name: str, opts: RenderOptions, today: date) -> list[RenderedItem]:
     size = L.SIZES[size_name]
     _check_labels(size, opts)
-    qrs = _payloads(NEW_REF, size_name, opts.boxes_id, 1)
+    # A blank card has no item, so it has no source yet; which integration a new
+    # card belongs to is a CLI concern, and "things" is the only one today.
+    qrs = _payloads("things", NEW_REF, size_name, opts.boxes_id, 1)
     pdf, pages = compile_pages(size, opts.labels, "", "", qrs, "", today.isoformat(), True)
     return [RenderedItem(None, size_name, pdf, pages) for _ in range(count)]
 

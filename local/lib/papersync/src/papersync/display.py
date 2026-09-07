@@ -10,11 +10,11 @@ def _pages(change: Change) -> str:
     return f"(pages {change.pages[0]}-{change.pages[-1]})"
 
 
-def _header(change: Change) -> str:
+def _header(change: Change, ref_url: Callable[[Change], str]) -> str:
     if change.kind == "create":
         parts = [f"NEW  {change.title}", _pages(change)]
     else:
-        parts = [f"{change.title}  things:///show?id={change.ref}", _pages(change)]
+        parts = [change.title, ref_url(change), _pages(change)]
     return "  ".join(p for p in parts if p)
 
 
@@ -29,10 +29,11 @@ def format_plan(
     plan: Plan,
     describe: Callable[[Change], list[str]],
     current_notes: Callable[[Change], str],
+    ref_url: Callable[[Change], str],
 ) -> str:
     blocks: list[str] = []
     for change in plan.changes:
-        lines = [_header(change), *describe(change)]
+        lines = [_header(change, ref_url), *describe(change)]
         for label, box in change.boxes.items():
             if box.uncertain:
                 lines.append(f"? {label:<8} fill {box.fill:.2f}, treated as unchecked")

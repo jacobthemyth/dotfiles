@@ -4,6 +4,10 @@ from papersync.display import format_plan
 from papersync.model import BoxResult, Change, Plan, PlanError, scanned_block
 
 
+def _ref_url(change: Change) -> str:
+    return f"things:///show?id={change.ref}"
+
+
 def test_format_plan() -> None:
     bar = Change(
         kind="update",
@@ -29,7 +33,7 @@ def test_format_plan() -> None:
     def describe(ch: Change) -> list[str]:
         return (["+ completed"] if ch.complete else []) + [f"+ {m:<8} tag x" for m in ch.marks]
 
-    out = format_plan(plan, describe, lambda ch: "BAZ" if ch.ref == "U2" else "")
+    out = format_plan(plan, describe, lambda ch: "BAZ" if ch.ref == "U2" else "", _ref_url)
     assert out == (
         "FOO  things:///show?id=U1  (page 1)\n"
         "+ completed\n"
@@ -56,19 +60,19 @@ def test_format_plan() -> None:
 
 def test_format_plan_empty() -> None:
     plan = Plan(created=datetime(2026, 9, 7), inputs=[], changes=[], errors=[])
-    out = format_plan(plan, lambda ch: [], lambda ch: "")
+    out = format_plan(plan, lambda ch: [], lambda ch: "", _ref_url)
     assert out == ""
 
 
 def test_header_omits_trailing_whitespace_when_pages_missing() -> None:
     foo = Change(kind="update", source="things", ref="U1", title="FOO", pages=[])
     plan = Plan(created=datetime(2026, 9, 7), inputs=[], changes=[foo], errors=[])
-    out = format_plan(plan, lambda ch: [], lambda ch: "")
+    out = format_plan(plan, lambda ch: [], lambda ch: "", _ref_url)
     assert out == "FOO  things:///show?id=U1\n"
 
 
 def test_create_header_omits_trailing_whitespace_when_pages_and_notes_missing() -> None:
     new = Change(kind="create", source="things", title="Call mom", pages=[])
     plan = Plan(created=datetime(2026, 9, 7), inputs=[], changes=[new], errors=[])
-    out = format_plan(plan, lambda ch: [], lambda ch: "")
+    out = format_plan(plan, lambda ch: [], lambda ch: "", _ref_url)
     assert out == "NEW  Call mom\n"

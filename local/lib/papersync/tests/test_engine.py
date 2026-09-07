@@ -77,3 +77,14 @@ def test_write_outputs_groups_by_size(tmp_path: Path) -> None:
 
 def test_max_boxes_matches_layout() -> None:
     assert L.max_boxes(L.SIZES["3x5"]) == 6
+
+
+def test_qr_carries_the_item_source() -> None:
+    import zxingcpp
+
+    from tests import synthetic
+
+    item = Item(source="other", ref="Z" * 22, title="Elsewhere", notes="")
+    gray = synthetic.rasterize(engine.render_item(item, "3x5", OPTS, TODAY).pdf)
+    texts = [b.text for b in zxingcpp.read_barcodes(gray)]
+    assert any(t.startswith("papersync:///v1/other/") for t in texts), texts

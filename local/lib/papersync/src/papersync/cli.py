@@ -288,7 +288,12 @@ def _display(cfg: Config, plan: Plan) -> str:
         row = db.get(change.ref) if change.ref else None
         return row.notes if row else ""
 
-    return format_plan(plan, sink.describe, current_notes)
+    def ref_url(change: Change) -> str:
+        if change.source == "things":
+            return f"things:///show?id={change.ref}"
+        return change.ref or ""
+
+    return format_plan(plan, sink.describe, current_notes, ref_url)
 
 
 @main.command()
