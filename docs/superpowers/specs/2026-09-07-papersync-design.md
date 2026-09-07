@@ -104,7 +104,7 @@ papersync things export <inbox|next|someday|things:///show?id=UUID>
 papersync things auth                      # store or rotate the token
 papersync render [ITEMS.json|-] [--size auto|3x5|4x6|letter]
                  [--overflow fail|paginate|truncate] [--boxes LABEL,...]
-                 [--new N] [-o DIR] [--open]
+                 [--new N] [-o DIR] [--open] [--tag/--no-tag]
 papersync print <things-selector> [render flags]     # export | render
 papersync recognize SCAN... [--review annotated.pdf]
 papersync apply <plan.json|-> [--auto-approve] [--no-verify]
@@ -130,6 +130,7 @@ overflow = "fail"
 boxes = ["A", "B", "C", "D"]
 output_dir = "."
 open = true
+tag = true
 
 [things.actions]
 today = { when = "today" }
@@ -182,9 +183,10 @@ class Source(Protocol):
 
 class Sink(Protocol):
     name: str
-    def describe(self, change: Change) -> str: ...
+    def describe(self, change: Change) -> list[str]: ...
     def apply(self, changes: list[Change]) -> None: ...
     def verify(self, changes: list[Change]) -> list[str]: ...   # unmet changes
+    def mark_printed(self, refs: list[str]) -> None: ...        # state tag on render
     def check(self) -> list[str]: ...                          # for doctor
 ```
 
@@ -230,6 +232,22 @@ Per page:
 - A `2/3` page marker in the footer on paginated items, and the print date in the footer on every page.
 
 New-item cards (`--new N`) use the same geometry with faint ruled lines in the title and notes areas.
+
+### State tags in Things
+
+Each printed item carries one live state tag in Things. `render` adds `papersync:printed` to every item it prints, `apply` swaps it for `papersync:scanned`, and a reprint swaps back. A Things filter on `papersync:printed` is therefore a live "on my desk" view. The ledger keeps the dated history.
+
+`render` calls `Sink.mark_printed(refs)` for every source it printed items for, after the PDFs are written. `--no-tag` or `tag = false` in the configuration skips this. The Things sink swaps the state tag through the update URL's `tags` parameter, which replaces the whole tag list: it reads the item's current tags from the database, drops any `papersync:printed` or `papersync:scanned`, appends the new state tag, and sends the result. `render` and `print` therefore need the auth token and a running Things.
+
+The Things URL scheme never creates a tag and silently ignores an unknown one. Before it writes tags, the sink reads the tag titles from the database and creates the missing ones with one AppleScript call through `osascript`:
+
+```
+tell application "Things3"
+  make new tag with properties {name:"papersync:printed"}
+end tell
+```
+
+This covers the state tags and the `papersync:meta:*` tags alike. No token is needed for AppleScript.
 
 ### Ledger
 
@@ -292,9 +310,9 @@ The notes diff is a unified diff of the current notes (read from the source) aga
 
 ## Apply
 
-The Things sink resolves `marks` to actions, then issues one `things:///update?id=…&auth-token=…` URL per `update` change through `open -g`, combining `completed=true`, `add-tags`, `when`, `deadline`, `list`, `canceled` and `append-notes=<block>` as needed. A `create` change issues `things:///add?title=…&notes=…` with the same action parameters, which needs no token.
+The Things sink resolves `marks` to actions, then issues one `things:///update?id=…&auth-token=…` URL per `update` change through `open -g`, combining `completed=true`, `tags`, `when`, `deadline`, `list`, `canceled` and `append-notes=<block>` as needed. The `tags` value is the item's current tags plus the action tags, with `papersync:printed` replaced by `papersync:scanned`. A `create` change issues `things:///add?title=…&notes=…` with the same action parameters, which needs no token.
 
-Before issuing URLs, the sink reads the database and drops parts that already hold: an item that is already complete or canceled, a tag the item already has, a notes block already present verbatim, a deadline already set to that date, or a `when` of today, someday or anytime that the start fields already show. A `list` parameter is always sent. A second run of the same plan is a no-op apart from `list`.
+Before issuing URLs, the sink reads the database and drops parts that already hold: an item that is already complete or canceled, a tag list that would not change, a notes block already present verbatim, a deadline already set to that date, or a `when` of today, someday or anytime that the start fields already show. A `list` parameter is always sent. A second run of the same plan is a no-op apart from `list`.
 
 The token comes from `keyring` (service `papersync`, account `things-auth-token`). If it is missing, `apply` prompts with `getpass`, stores it, and continues. `things auth` stores a new one.
 
@@ -312,7 +330,7 @@ The URL scheme returns nothing, so after issuing the URLs the sink waits two sec
 - Round trip without a scanner: render fixture items, rasterize with pymupdf, draw synthetic marks into chosen boxes at the template coordinates, rotate by a few degrees, scale by a few percent, add a handwriting page image, then recognize with a fake OCR backend and assert the exact plan.
 - Size selection and every `--overflow` mode on short, medium and long fixtures, including the two-pass page count.
 - QR payload parsing, including rejection of unknown versions, integrations and box set numbers.
-- Things source against a fixture sqlite built from the real schema subset. Things sink with an injected opener that captures URLs, and with a fixture database for the skip and verify logic.
+- Things source against a fixture sqlite built from the real schema subset. Things sink with an injected opener that captures URLs, an injected AppleScript runner that captures tag creation, and a fixture database for the skip, state-tag swap and verify logic.
 - Ledger and status against a temporary state directory. Box set registry: reuse of an identical list, append of a new list, and refusal to rewrite.
 - Action resolution: default tag, configured actions, and the conflict warning.
 - One opt-in test that runs real ocrmac on a checked-in handwriting image, skipped unless `PAPERSYNC_REAL_OCR=1`.

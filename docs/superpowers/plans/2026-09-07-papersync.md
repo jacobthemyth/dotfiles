@@ -17,7 +17,7 @@
 - macOS only for OCR and Things. The render path must still import and run without ocrmac being importable (import ocrmac lazily).
 - QR payload form: `papersync:///v1/things/<ref>?size=<size>&boxes=<n>[&page=<p>&pages=<n>]`. Query keys in exactly that order. QR is always version 5, module 0.38 mm, error level M with fallback to L.
 - Template version is a plain integer. v1 geometry lives in `src/papersync/render/templates/v1/layout.py`.
-- Tags default to `papersync:meta:<label>`. Appended notes block: `\n\n## Scanned YYYY-MM-DD\n\n> line\n> line`.
+- Tags default to `papersync:meta:<label>`. State tags: `papersync:printed` on render, swapped for `papersync:scanned` on apply; the Things URL scheme never creates tags, so missing ones are created through `osascript` first. Appended notes block: `\n\n## Scanned YYYY-MM-DD\n\n> line\n> line`.
 - Human output to stderr, data to stdout. `apply` requires a literal `yes` unless `--auto-approve`.
 - Fill thresholds: below `FILL_LOW = 0.06` unchecked, above `FILL_HIGH = 0.20` checked, between uncertain. Uncertain is treated as unchecked and warned, never an error.
 - `ruff check`, `ruff format --check`, `ty check` and `pytest` must pass after every task. Run them from `local/lib/papersync` as `uv run ruff check .`, `uv run ruff format --check .`, `uv run ty check`, `uv run pytest -q`.
@@ -46,7 +46,6 @@ local/lib/papersync/src/papersync/config.py           config.toml, XDG dirs, Act
 local/lib/papersync/src/papersync/boxsets.py          box set registry
 local/lib/papersync/src/papersync/ledger.py           prints.jsonl, status
 local/lib/papersync/src/papersync/display.py          diff-style plan display
-local/lib/papersync/src/papersync/registry.py         integration lookup
 local/lib/papersync/src/papersync/render/qr.py        segno SVG
 local/lib/papersync/src/papersync/render/engine.py    size selection, pagination, output files
 local/lib/papersync/src/papersync/render/templates/v1/layout.py
@@ -64,7 +63,7 @@ local/lib/papersync/src/papersync/integrations/things/db.py
 local/lib/papersync/src/papersync/integrations/things/source.py
 local/lib/papersync/src/papersync/integrations/things/auth.py
 local/lib/papersync/src/papersync/integrations/things/actions.py
-local/lib/papersync/src/papersync/integrations/things/sink.py
+local/lib/papersync/src/papersync/integrations/things/sink.py   URL scheme, state tags, AppleScript tag creation
 local/lib/papersync/tests/...                         one test file per module
 ```
 
@@ -1379,7 +1378,7 @@ class Ledger:
 ### Task 8: Things database reader and source
 
 **Files:**
-- Create: `src/papersync/integrations/__init__.py`, `src/papersync/integrations/base.py`, `src/papersync/integrations/things/__init__.py`, `src/papersync/integrations/things/db.py`, `src/papersync/integrations/things/source.py`, `src/papersync/registry.py`, `tests/things_fixture.py`, `tests/test_things_db.py`, `tests/test_things_source.py`
+- Create: `src/papersync/integrations/__init__.py`, `src/papersync/integrations/base.py`, `src/papersync/integrations/things/__init__.py`, `src/papersync/integrations/things/db.py`, `src/papersync/integrations/things/source.py`, `tests/__init__.py`, `tests/things_fixture.py`, `tests/test_things_db.py`, `tests/test_things_source.py`
 
 **Interfaces:**
 - Produces:
@@ -1395,6 +1394,7 @@ class Sink(Protocol):
     def describe(self, change: Change) -> list[str]: ...      # display lines after the header
     def apply(self, changes: list[Change]) -> None: ...
     def verify(self, changes: list[Change]) -> list[str]: ...
+    def mark_printed(self, refs: list[str]) -> None: ...      # state tag on render
     def check(self) -> list[str]: ...
 # db.py
 STATUS_TODO, STATUS_CANCELED, STATUS_DONE = 0, 2, 3
@@ -1409,11 +1409,12 @@ class ThingsDb:
     def select(self, selector: str) -> list[TaskRow]   # inbox|next|someday|things:///show?id=UUID, raises ValueError
     def get(self, uuid: str) -> TaskRow | None
     def get_many(self, uuids: list[str]) -> dict[str, TaskRow]
+    def tag_titles(self) -> set[str]                   # every tag title in TMTag
 # source.py
 class ThingsSource: name = "things"; __init__(db: ThingsDb); export; lookup
-# registry.py
-def source_for(name: str) -> Source; def sink_for(name: str, ...) -> Sink   (sink wiring lands in Task 10)
 ```
+
+There is no `registry.py`: with one integration a name lookup module is dead code. The CLI constructs `ThingsSource` and `ThingsSink` directly.
 
 - [ ] **Step 1: Write the fixture and failing tests**
 
@@ -1445,8 +1446,14 @@ def make_db(path: Path) -> Path:
         ("T6", 7.0, 0, 0, None, 0, "Dated", "", 1, (2026 << 16) | (9 << 12) | (7 << 7), (2026 << 16) | (9 << 12) | (10 << 7), None, None),
     ]
     conn.executemany("INSERT INTO TMTask VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", rows)
-    conn.executemany("INSERT INTO TMTag VALUES (?,?)", [("G1", "waiting"), ("G2", "papersync:meta:A")])
-    conn.executemany("INSERT INTO TMTaskTag VALUES (?,?)", [("T2", "G1"), ("T1", "G2")])
+    conn.executemany(
+        "INSERT INTO TMTag VALUES (?,?)",
+        [("G1", "waiting"), ("G2", "papersync:meta:A"), ("G3", "papersync:scanned")],
+    )
+    conn.executemany(
+        "INSERT INTO TMTaskTag VALUES (?,?)",
+        [("T2", "G1"), ("T1", "G2"), ("T1", "G3"), ("T4", "G3"), ("T6", "G3")],
+    )
     conn.commit()
     conn.close()
     return path
@@ -1496,10 +1503,16 @@ def test_select_rejects_unknown(db: ThingsDb) -> None:
 def test_get_includes_tags_and_dates(db: ThingsDb) -> None:
     t2 = db.get("T2")
     assert t2 is not None and t2.tags == ["waiting"] and t2.notes == "BAZ"
+    t1 = db.get("T1")
+    assert t1 is not None and t1.tags == ["papersync:meta:A", "papersync:scanned"]
     t6 = db.get("T6")
     assert t6 is not None and t6.start_date == date(2026, 9, 7) and t6.deadline == date(2026, 9, 10)
     assert db.get("nope") is None
     assert set(db.get_many(["T1", "T2", "zz"])) == {"T1", "T2"}
+
+
+def test_tag_titles(db: ThingsDb) -> None:
+    assert db.tag_titles() == {"waiting", "papersync:meta:A", "papersync:scanned"}
 ```
 
 `tests/test_things_source.py`:
@@ -1547,6 +1560,7 @@ class Sink(Protocol):
     def describe(self, change: Change) -> list[str]: ...
     def apply(self, changes: list[Change]) -> None: ...
     def verify(self, changes: list[Change]) -> list[str]: ...
+    def mark_printed(self, refs: list[str]) -> None: ...
     def check(self) -> list[str]: ...
 ```
 
@@ -1663,6 +1677,9 @@ class ThingsDb:
 
     def get_many(self, uuids: list[str]) -> dict[str, TaskRow]:
         return {u: row for u in uuids if (row := self.get(u)) is not None}
+
+    def tag_titles(self) -> set[str]:
+        return {str(title) for (title,) in self._conn.execute("SELECT title FROM TMTag")}
 ```
 
 `source.py`:
@@ -1686,20 +1703,6 @@ class ThingsSource:
             u: Item(source=self.name, ref=u, title=t.title, notes=t.notes)
             for u, t in self.db.get_many(refs).items()
         }
-```
-
-`registry.py` (sink half is added in Task 10):
-
-```python
-from papersync.integrations.base import Source
-from papersync.integrations.things.db import ThingsDb, find_db_path
-from papersync.integrations.things.source import ThingsSource
-
-
-def source_for(name: str) -> Source:
-    if name == "things":
-        return ThingsSource(ThingsDb(find_db_path()))
-    raise KeyError(f"unknown integration {name!r}")
 ```
 
 - [ ] **Step 4: Run tests, lint, types** — all pass.
@@ -1874,35 +1877,40 @@ def resolve(change: Change, cfg: ThingsConfig) -> tuple[ThingsUpdate, list[str]]
 
 ---
 
-### Task 10: Things sink (URLs, skip logic, verify)
+### Task 10: Things sink (URLs, state tags, skip logic, verify)
 
 **Files:**
 - Create: `src/papersync/integrations/things/sink.py`, `tests/test_things_sink.py`
-- Modify: `src/papersync/registry.py`
 
 **Interfaces:**
-- Consumes: `ThingsDb`, `resolve`, `get_token`, `Change`.
+- Consumes: `ThingsDb` (`get`, `tag_titles`), `resolve`, `get_token`, `Change`.
 - Produces:
 
 ```python
+STATE_PRINTED = "papersync:printed"; STATE_SCANNED = "papersync:scanned"; STATE_TAGS = {both}
 class ThingsSink:
     name = "things"
     def __init__(self, db: ThingsDb, cfg: ThingsConfig, opener: Callable[[str], None] = _open_url,
-                 token_provider: Callable[[], str] = get_token, sleeper: Callable[[float], None] = time.sleep)
+                 token_provider: Callable[[], str] = get_token, sleeper: Callable[[float], None] = time.sleep,
+                 runner: Callable[[str], None] = _run_osascript)
     def describe(self, change) -> list[str]
     def plan_urls(self, changes) -> list[tuple[Change, str | None]]     # None when nothing remains to do
+    def ensure_tags(self, names: Iterable[str]) -> None                  # AppleScript-creates missing tags
     def apply(self, changes) -> None
+    def mark_printed(self, refs: list[str]) -> None
     def verify(self, changes) -> list[str]
     def check(self) -> list[str]
-def build_update_url(ref: str, token: str, upd: ThingsUpdate, append_notes: str | None) -> str
-def build_add_url(title: str, notes: str | None, upd: ThingsUpdate) -> str
-# registry.py
-def sink_for(name: str, cfg: Config) -> Sink
+def create_tags_script(names: list[str]) -> str
+def build_update_url(ref: str, token: str, upd: ThingsUpdate, tags: list[str] | None, append_notes: str | None) -> str
+def build_add_url(title: str, notes: str | None, upd: ThingsUpdate, tags: list[str]) -> str
 ```
+
+State tags: an item carries exactly one of `papersync:printed` or `papersync:scanned`. `mark_printed` sets `printed`; `apply` sets `scanned`. Because the Things URL scheme's `tags` parameter replaces the whole list, the sink always sends the item's current tags (read from the database) with the state tags stripped, the action tags added, and the new state tag appended. Because the URL scheme silently ignores tags that do not exist, `ensure_tags` creates missing ones through `osascript` first.
 
 - [ ] **Step 1: Write the failing tests**
 
 ```python
+import sqlite3
 from datetime import date
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
@@ -1911,74 +1919,121 @@ import pytest
 
 from papersync.config import Action, ThingsConfig
 from papersync.integrations.things.db import ThingsDb
-from papersync.integrations.things.sink import ThingsSink
+from papersync.integrations.things.sink import (
+    STATE_PRINTED,
+    STATE_SCANNED,
+    ThingsSink,
+    create_tags_script,
+)
 from papersync.model import Change, scanned_block
 from tests.things_fixture import make_db
 
 
+class Captured:
+    def __init__(self) -> None:
+        self.urls: list[str] = []
+        self.scripts: list[str] = []
+
+
 @pytest.fixture
-def sink(tmp_path: Path) -> tuple[ThingsSink, list[str]]:
-    opened: list[str] = []
+def cap() -> Captured:
+    return Captured()
+
+
+@pytest.fixture
+def sink(tmp_path: Path, cap: Captured) -> ThingsSink:
     cfg = ThingsConfig(actions={"today": Action(when="today"), "due": Action(deadline="2026-09-10")})
-    s = ThingsSink(ThingsDb(make_db(tmp_path / "main.sqlite")), cfg, opener=opened.append,
-                   token_provider=lambda: "TOK", sleeper=lambda _s: None)
-    return s, opened
+    return ThingsSink(
+        ThingsDb(make_db(tmp_path / "main.sqlite")), cfg, opener=cap.urls.append,
+        token_provider=lambda: "TOK", sleeper=lambda _s: None, runner=cap.scripts.append,
+    )
 
 
 def _q(url: str) -> dict[str, str]:
     return {k: v[0] for k, v in parse_qs(urlsplit(url).query).items()}
 
 
-def test_update_url(sink: tuple[ThingsSink, list[str]]) -> None:
-    s, opened = sink
+def test_update_url_replaces_tags_and_sets_scanned(sink: ThingsSink, cap: Captured) -> None:
+    # T1 currently has papersync:meta:A and papersync:scanned
     ch = Change(kind="update", source="things", ref="T1", title="FOO", complete=True, marks=["B", "today"],
                 append_notes=scanned_block("hi there", date(2026, 9, 7)))
-    s.apply([ch])
-    assert len(opened) == 1 and opened[0].startswith("things:///update?")
-    q = _q(opened[0])
+    sink.apply([ch])
+    assert len(cap.urls) == 1 and cap.urls[0].startswith("things:///update?")
+    q = _q(cap.urls[0])
     assert q["id"] == "T1" and q["auth-token"] == "TOK" and q["completed"] == "true"
-    assert q["add-tags"] == "papersync:meta:B" and q["when"] == "today"
+    assert q["tags"] == "papersync:meta:A,papersync:meta:B,papersync:scanned"
+    assert q["when"] == "today"
     assert q["append-notes"] == "\n\n## Scanned 2026-09-07\n\n> hi there"
+    assert "add-tags" not in q
 
 
-def test_skips_what_already_holds(sink: tuple[ThingsSink, list[str]]) -> None:
-    s, opened = sink
-    # T1 already has tag papersync:meta:A; T4 is already complete; T6 already has deadline 2026-09-10
-    s.apply([
+def test_swaps_printed_for_scanned(sink: ThingsSink, cap: Captured) -> None:
+    # T2 has only "waiting"; give it the printed state first
+    sink.mark_printed(["T2"])
+    assert _q(cap.urls[0])["tags"] == f"waiting,{STATE_PRINTED}"
+    with sqlite3.connect(sink.db.path) as c:
+        c.execute("INSERT INTO TMTag VALUES ('G4', ?)", (STATE_PRINTED,))
+        c.execute("INSERT INTO TMTaskTag VALUES ('T2', 'G4')")
+    sink.apply([Change(kind="update", source="things", ref="T2", title="BAR")])
+    assert _q(cap.urls[1])["tags"] == f"waiting,{STATE_SCANNED}"
+
+
+def test_skips_what_already_holds(sink: ThingsSink, cap: Captured) -> None:
+    # T1 already has tag papersync:meta:A and scanned; T4 is complete and scanned; T6 has deadline 2026-09-10 and scanned
+    sink.apply([
         Change(kind="update", source="things", ref="T1", title="FOO", marks=["A"]),
         Change(kind="update", source="things", ref="T4", title="Done", complete=True),
         Change(kind="update", source="things", ref="T6", title="Dated", marks=["due"]),
     ])
-    assert opened == []
+    assert cap.urls == [] and cap.scripts == []
 
 
-def test_skips_notes_block_already_present(tmp_path: Path) -> None:
-    opened: list[str] = []
+def test_skips_notes_block_already_present(tmp_path: Path, cap: Captured) -> None:
     db_path = make_db(tmp_path / "main.sqlite")
-    import sqlite3
     block = scanned_block("x", date(2026, 9, 7))
     with sqlite3.connect(db_path) as c:
-        c.execute("UPDATE TMTask SET notes = notes || ? WHERE uuid = 'T2'", (block,))
-    s = ThingsSink(ThingsDb(db_path), ThingsConfig(), opener=opened.append, token_provider=lambda: "T", sleeper=lambda _s: None)
-    s.apply([Change(kind="update", source="things", ref="T2", title="BAR", append_notes=block)])
-    assert opened == []
+        c.execute("UPDATE TMTask SET notes = notes || ? WHERE uuid = 'T1'", (block,))
+    s = ThingsSink(ThingsDb(db_path), ThingsConfig(), opener=cap.urls.append,
+                   token_provider=lambda: "T", sleeper=lambda _s: None, runner=cap.scripts.append)
+    s.apply([Change(kind="update", source="things", ref="T1", title="FOO", append_notes=block)])
+    assert cap.urls == []
 
 
-def test_create_url_needs_no_token(sink: tuple[ThingsSink, list[str]]) -> None:
-    s, opened = sink
-    s.apply([Change(kind="create", source="things", title="New one", notes="body", marks=["A"], complete=False)])
-    q = _q(opened[0])
-    assert opened[0].startswith("things:///add?") and "auth-token" not in q
-    assert q["title"] == "New one" and q["notes"] == "body" and q["tags"] == "papersync:meta:A"
+def test_creates_missing_tags_once(sink: ThingsSink, cap: Captured) -> None:
+    sink.apply([
+        Change(kind="update", source="things", ref="T2", title="BAR", marks=["B"]),
+        Change(kind="update", source="things", ref="T3", title="Someday", marks=["B", "C"]),
+    ])
+    assert len(cap.scripts) == 1
+    assert cap.scripts[0] == create_tags_script(["papersync:meta:B", "papersync:meta:C"])
+    assert create_tags_script(["x"]) == 'tell application "Things3"\n  make new tag with properties {name:"x"}\nend tell'
 
 
-def test_describe_and_verify(sink: tuple[ThingsSink, list[str]]) -> None:
-    s, _ = sink
-    ch = Change(kind="update", source="things", ref="T1", title="FOO", complete=True, marks=["today", "B"])
-    assert s.describe(ch) == ["+ completed", "+ today    when=today", "+ B        tag papersync:meta:B"]
+def test_mark_printed(sink: ThingsSink, cap: Captured) -> None:
+    sink.mark_printed(["T1", "T2", "missing"])
+    assert cap.scripts == [create_tags_script([STATE_PRINTED])]
+    assert [_q(u)["tags"] for u in cap.urls] == [f"papersync:meta:A,{STATE_PRINTED}", f"waiting,{STATE_PRINTED}"]
+    assert all("auth-token=TOK" in u for u in cap.urls)
+
+
+def test_create_url_needs_no_token(sink: ThingsSink, cap: Captured) -> None:
+    sink.apply([Change(kind="create", source="things", title="New one", notes="body", marks=["A"])])
+    q = _q(cap.urls[0])
+    assert cap.urls[0].startswith("things:///add?") and "auth-token" not in q
+    assert q["title"] == "New one" and q["notes"] == "body"
+    assert q["tags"] == f"papersync:meta:A,{STATE_SCANNED}"
+
+
+def test_describe_and_verify(sink: ThingsSink) -> None:
+    ch = Change(kind="update", source="things", ref="T2", title="BAR", complete=True, marks=["today", "B"])
+    assert sink.describe(ch) == [
+        "+ completed", "+ today    when=today", "+ B        tag papersync:meta:B", f"+ state    {STATE_SCANNED}",
+    ]
     # nothing was applied to the fixture, so verify reports every unmet part
-    unmet = s.verify([ch])
-    assert unmet == ["FOO: not completed", "FOO: when=today not set", "FOO: tag papersync:meta:B missing"]
+    assert sink.verify([ch]) == [
+        "BAR: not completed", "BAR: when=today not set", "BAR: tag papersync:meta:B missing",
+        f"BAR: tag {STATE_SCANNED} missing",
+    ]
 ```
 
 - [ ] **Step 2: Run to verify failure** — ImportError.
@@ -1990,11 +2045,12 @@ def test_describe_and_verify(sink: tuple[ThingsSink, list[str]]) -> None:
 ```python
 import subprocess
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from datetime import date
+from urllib.parse import quote
 
 from papersync.config import ThingsConfig
-from papersync.integrations.things.actions import ThingsUpdate, resolve
+from papersync.integrations.things.actions import ThingsUpdate, default_tag, resolve
 from papersync.integrations.things.auth import get_token
 from papersync.integrations.things.db import (
     START_ANYTIME,
@@ -2005,51 +2061,71 @@ from papersync.integrations.things.db import (
     ThingsDb,
 )
 from papersync.model import Change
-from urllib.parse import quote
 
 VERIFY_DELAY_S = 2.0
+STATE_PRINTED = "papersync:printed"
+STATE_SCANNED = "papersync:scanned"
+STATE_TAGS = {STATE_PRINTED, STATE_SCANNED}
 
 
 def _open_url(url: str) -> None:
     subprocess.run(["open", "-g", url], check=True)
 
 
+def _run_osascript(script: str) -> None:
+    subprocess.run(["osascript", "-e", script], check=True, capture_output=True)
+
+
+def create_tags_script(names: list[str]) -> str:
+    body = "\n".join(
+        '  make new tag with properties {name:"' + n.replace('"', '\\"') + '"}' for n in names
+    )
+    return 'tell application "Things3"\n' + body + "\nend tell"
+
+
 def _encode(params: list[tuple[str, str]]) -> str:
     return "&".join(f"{k}={quote(v, safe='')}" for k, v in params)
 
 
-def build_update_url(ref: str, token: str, upd: ThingsUpdate, append_notes: str | None) -> str:
-    params = [("id", ref), ("auth-token", token)]
-    if upd.completed:
-        params.append(("completed", "true"))
-    if upd.canceled:
-        params.append(("canceled", "true"))
-    if upd.tags:
-        params.append(("add-tags", ",".join(upd.tags)))
+def _action_params(upd: ThingsUpdate) -> list[tuple[str, str]]:
+    params: list[tuple[str, str]] = []
     for key in ("when", "deadline", "list"):
         value = getattr(upd, key)
         if value:
             params.append((key, value))
+    if upd.completed:
+        params.append(("completed", "true"))
+    if upd.canceled:
+        params.append(("canceled", "true"))
+    return params
+
+
+def build_update_url(
+    ref: str, token: str, upd: ThingsUpdate, tags: list[str] | None, append_notes: str | None
+) -> str:
+    params = [("id", ref), ("auth-token", token), *_action_params(upd)]
+    if tags is not None:
+        params.append(("tags", ",".join(tags)))
     if append_notes:
         params.append(("append-notes", append_notes))
     return "things:///update?" + _encode(params)
 
 
-def build_add_url(title: str, notes: str | None, upd: ThingsUpdate) -> str:
+def build_add_url(title: str, notes: str | None, upd: ThingsUpdate, tags: list[str]) -> str:
     params = [("title", title)]
     if notes:
         params.append(("notes", notes))
-    if upd.tags:
-        params.append(("tags", ",".join(upd.tags)))
-    for key in ("when", "deadline", "list"):
-        value = getattr(upd, key)
-        if value:
-            params.append((key, value))
-    if upd.completed:
-        params.append(("completed", "true"))
-    if upd.canceled:
-        params.append(("canceled", "true"))
+    params.append(("tags", ",".join(tags)))
+    params += _action_params(upd)
     return "things:///add?" + _encode(params)
+
+
+def _new_tags(current: list[str], add: list[str], state: str) -> list[str] | None:
+    """Current tags with state tags stripped, action tags added, and the new state tag. None if unchanged."""
+    out = [t for t in current if t not in STATE_TAGS]
+    out += [t for t in add if t not in out and t not in STATE_TAGS]
+    out.append(state)
+    return None if set(out) == set(current) else out
 
 
 def _when_holds(row: TaskRow, when: str, today: date) -> bool:
@@ -2072,29 +2148,39 @@ class ThingsSink:
         opener: Callable[[str], None] = _open_url,
         token_provider: Callable[[], str] = get_token,
         sleeper: Callable[[float], None] = time.sleep,
+        runner: Callable[[str], None] = _run_osascript,
     ) -> None:
-        self.db, self.cfg, self.opener, self.token_provider, self.sleeper = db, cfg, opener, token_provider, sleeper
+        self.db = db
+        self.cfg = cfg
+        self.opener = opener
+        self.token_provider = token_provider
+        self.sleeper = sleeper
+        self.runner = runner
 
-    def _remaining(self, change: Change, upd: ThingsUpdate) -> tuple[ThingsUpdate, str | None]:
+    def ensure_tags(self, names: Iterable[str]) -> None:
+        missing = sorted(set(names) - self.db.tag_titles())
+        if missing:
+            self.runner(create_tags_script(missing))
+
+    def _remaining(self, change: Change, upd: ThingsUpdate) -> tuple[ThingsUpdate, list[str] | None, str | None]:
         """Drop the parts of an update that the database already shows."""
         row = self.db.get(change.ref or "")
         if row is None:
-            return upd, change.append_notes
-        today = date.today()
+            return upd, [*upd.tags, STATE_SCANNED], change.append_notes
         left = upd.model_copy()
         if row.status == STATUS_DONE:
             left.completed = False
         if row.status == STATUS_CANCELED:
             left.canceled = False
-        left.tags = [t for t in upd.tags if t not in row.tags]
-        if upd.when and _when_holds(row, upd.when, today):
+        if upd.when and _when_holds(row, upd.when, date.today()):
             left.when = None
         if upd.deadline and row.deadline is not None and row.deadline.isoformat() == upd.deadline:
             left.deadline = None
+        tags = _new_tags(row.tags, upd.tags, STATE_SCANNED)
         notes = change.append_notes
         if notes and notes in row.notes:
             notes = None
-        return left, notes
+        return left, tags, notes
 
     def plan_urls(self, changes: list[Change]) -> list[tuple[Change, str | None]]:
         out: list[tuple[Change, str | None]] = []
@@ -2102,20 +2188,36 @@ class ThingsSink:
         for change in changes:
             upd, _ = resolve(change, self.cfg)
             if change.kind == "create":
-                out.append((change, build_add_url(change.title, change.notes, upd)))
+                out.append((change, build_add_url(change.title, change.notes, upd, [*upd.tags, STATE_SCANNED])))
                 continue
-            left, notes = self._remaining(change, upd)
-            if not (left.completed or left.canceled or left.tags or left.when or left.deadline or left.list or notes):
+            left, tags, notes = self._remaining(change, upd)
+            if not (left.completed or left.canceled or left.when or left.deadline or left.list or tags or notes):
                 out.append((change, None))
                 continue
             token = token or self.token_provider()
-            out.append((change, build_update_url(change.ref or "", token, left, notes)))
+            out.append((change, build_update_url(change.ref or "", token, left, tags, notes)))
         return out
 
     def apply(self, changes: list[Change]) -> None:
-        for _change, url in self.plan_urls(changes):
-            if url:
-                self.opener(url)
+        planned = [(c, u) for c, u in self.plan_urls(changes) if u]
+        if not planned:
+            return
+        wanted = {STATE_SCANNED}
+        for change, _url in planned:
+            wanted.update(resolve(change, self.cfg)[0].tags)
+        self.ensure_tags(wanted)
+        for _change, url in planned:
+            self.opener(url)
+
+    def mark_printed(self, refs: list[str]) -> None:
+        rows = [row for ref in refs if (row := self.db.get(ref)) is not None]
+        updates = [(row.uuid, tags) for row in rows if (tags := _new_tags(row.tags, [], STATE_PRINTED))]
+        if not updates:
+            return
+        self.ensure_tags([STATE_PRINTED])
+        token = self.token_provider()
+        for uuid, tags in updates:
+            self.opener(build_update_url(uuid, token, ThingsUpdate(), tags, None))
 
     def describe(self, change: Change) -> list[str]:
         upd, warnings = resolve(change, self.cfg)
@@ -2123,13 +2225,17 @@ class ThingsSink:
         for label in change.marks:
             action = self.cfg.actions.get(label)
             if action is None:
-                lines.append(f"+ {label:<8} tag papersync:meta:{label}")
+                lines.append(f"+ {label:<8} tag {default_tag(label)}")
                 continue
             parts = [f"tag {t}" for t in action.tags]
-            parts += [f"{k}={getattr(action, k)}" for k in ("when", "deadline", "list", "completed", "canceled")
-                      if getattr(action, k) is not None]
+            parts += [
+                f"{k}={getattr(action, k)}"
+                for k in ("when", "deadline", "list", "completed", "canceled")
+                if getattr(action, k) is not None
+            ]
             lines.append(f"+ {label:<8} {' '.join(parts)}")
         lines += [f"! {w}" for w in warnings]
+        lines.append(f"+ state    {STATE_SCANNED}")
         return lines
 
     def verify(self, changes: list[Change]) -> list[str]:
@@ -2152,7 +2258,9 @@ class ThingsSink:
                 unmet.append(f"{change.title}: when={upd.when} not set")
             if upd.deadline and (row.deadline is None or row.deadline.isoformat() != upd.deadline):
                 unmet.append(f"{change.title}: deadline {upd.deadline} not set")
-            unmet += [f"{change.title}: tag {t} missing" for t in upd.tags if t not in row.tags]
+            unmet += [f"{change.title}: tag {t} missing" for t in [*upd.tags, STATE_SCANNED] if t not in row.tags]
+            if STATE_PRINTED in row.tags:
+                unmet.append(f"{change.title}: tag {STATE_PRINTED} still present")
             if change.append_notes and change.append_notes not in row.notes:
                 unmet.append(f"{change.title}: notes not appended")
         return unmet
@@ -2166,25 +2274,11 @@ class ThingsSink:
         return problems
 ```
 
-Note the `_remaining` freshness rule: `self.db.get` opens a read-only connection made at construction. sqlite sees Things' commits on each new statement, so no reconnect is needed for `verify`.
+Note the freshness rule: `self.db` holds one read-only sqlite connection; sqlite sees Things' commits on each new statement, so no reconnect is needed for `verify`.
 
-`registry.py` addition:
+- [ ] **Step 4: Run tests, lint, types** — all pass.
 
-```python
-from papersync.config import Config
-from papersync.integrations.base import Sink
-from papersync.integrations.things.sink import ThingsSink
-
-
-def sink_for(name: str, cfg: Config) -> Sink:
-    if name == "things":
-        return ThingsSink(ThingsDb(find_db_path()), cfg.things)
-    raise KeyError(f"unknown integration {name!r}")
-```
-
-- [ ] **Step 4: Run tests, lint, types** — all pass. Move the `urllib.parse` import into sorted order if ruff's isort rule complains.
-
-- [ ] **Step 5: Commit** — `git commit -m "papersync: Things URL-scheme sink with skip and verify"`
+- [ ] **Step 5: Commit** — `git commit -m "papersync: Things URL-scheme sink with state tags, skip and verify"`
 
 ---
 
@@ -3026,8 +3120,8 @@ The header uses `things:///show?id=` for the `things` source only; that is fine 
 ### Task 14: CLI commands
 
 **Files:**
-- Modify: `src/papersync/cli.py`
-- Create: `tests/test_cli.py` (extend), `tests/test_cli_render.py`
+- Modify: `src/papersync/cli.py`, `src/papersync/config.py` (add `tag: bool = True` to `RenderConfig`), `tests/test_config.py` (assert `cfg.render.tag is True` in `test_defaults_when_file_missing`)
+- Create: `tests/test_cli.py` (extend)
 
 **Interfaces:**
 - Consumes: everything above.
@@ -3078,6 +3172,11 @@ def test_render_from_stdin_and_ledger(tmp_path: Path) -> None:
     assert r.exit_code == 0, r.output
     out = sorted((tmp_path / "out").glob("*.pdf"))
     assert len(out) == 1 and out[0].name.endswith("-3x5.pdf")
+    # state tag: opener "none" prints the update URL; runner "none" prints the AppleScript
+    assert "things:///update?" in r.output and "papersync%3Aprinted" in r.output
+    assert 'osascript: tell application "Things3"' in r.output
+    r2 = CliRunner().invoke(main, ["render", "-", "--boxes", "A,B", "--no-tag"], input=items, env=env)
+    assert r2.exit_code == 0 and "things:///update?" not in r2.output
     ledger = (tmp_path / "state" / "papersync" / "prints.jsonl").read_text()
     assert '"event":"render"' in ledger and '"ref":"T1"' in ledger
     boxsets = (tmp_path / "cfg" / "papersync" / "boxsets.toml").read_text()
@@ -3146,7 +3245,7 @@ def test_doctor_runs(tmp_path: Path) -> None:
     assert "uv" in r.output and "Things database" in r.output
 ```
 
-`result.stdout` is used where a test parses data, because Click 8.2+ interleaves stderr into `result.output`. Two test seams are introduced in the CLI: `PAPERSYNC_THINGS_DB` overrides `find_db_path()`, and `PAPERSYNC_OPENER=none` makes the sink print URLs to stdout instead of calling `open`. Both are read only in `cli.py`.
+`result.stdout` is used where a test parses data, because Click 8.2+ interleaves stderr into `result.output`. Two test seams are introduced in the CLI: `PAPERSYNC_THINGS_DB` overrides `find_db_path()`, and `PAPERSYNC_OPENER=none` makes the sink print URLs to stdout instead of calling `open` and print AppleScript as `osascript: <script>` instead of running it. Both are read only in `cli.py`.
 
 - [ ] **Step 2: Run to verify failure** — commands missing.
 
@@ -3198,7 +3297,10 @@ def _db() -> ThingsDb:
 
 def _sink(cfg: Config) -> ThingsSink:
     if os.environ.get("PAPERSYNC_OPENER") == "none":
-        return ThingsSink(_db(), cfg.things, opener=click.echo, token_provider=lambda: "TEST", sleeper=lambda _s: None)
+        return ThingsSink(
+            _db(), cfg.things, opener=click.echo, token_provider=lambda: "TEST",
+            sleeper=lambda _s: None, runner=lambda script: click.echo(f"osascript: {script}"),
+        )
     return ThingsSink(_db(), cfg.things)
 
 
@@ -3252,7 +3354,9 @@ def _render_options(cfg: Config, size: str | None, overflow: str | None, boxes: 
     return opts, labels
 
 
-def _do_render(cfg: Config, items: list[Item], opts: engine.RenderOptions, new: int, out: Path, open_pdf: bool) -> list[Path]:
+def _do_render(
+    cfg: Config, items: list[Item], opts: engine.RenderOptions, new: int, out: Path, open_pdf: bool, tag: bool
+) -> list[Path]:
     today = date.today()
     rendered: list[engine.RenderedItem] = []
     try:
@@ -3277,6 +3381,10 @@ def _do_render(cfg: Config, items: list[Item], opts: engine.RenderOptions, new: 
         _err(f"wrote {p}")
         if open_pdf:
             subprocess.run(["open", str(p)], check=False)
+    things_refs = [r.item.ref for r in rendered if r.item is not None and r.item.source == "things"]
+    if tag and things_refs:
+        _sink(cfg).mark_printed(things_refs)
+        _err(f"tagged {len(things_refs)} item(s) papersync:printed")
     return paths
 
 
@@ -3288,6 +3396,7 @@ def _render_common(f):  # type: ignore[no-untyped-def]
         click.option("--new", "new", type=int, default=0, help="also print N blank new-item cards"),
         click.option("-o", "--output-dir", default=None),
         click.option("--open/--no-open", "open_pdf", default=None),
+        click.option("--tag/--no-tag", "tag", default=None, help="add papersync:printed in Things"),
     ]):
         f = opt(f)
     return f
@@ -3296,19 +3405,19 @@ def _render_common(f):  # type: ignore[no-untyped-def]
 @main.command()
 @click.argument("items_file", default="-")
 @_render_common
-def render(items_file: str, size: str | None, overflow: str | None, boxes: str | None, new: int, output_dir: str | None, open_pdf: bool | None) -> None:
+def render(items_file: str, size: str | None, overflow: str | None, boxes: str | None, new: int, output_dir: str | None, open_pdf: bool | None, tag: bool | None) -> None:
     """Render items JSON (file or -) to one PDF per page size."""
     cfg = load_config()
     opts, _ = _render_options(cfg, size, overflow, boxes)
     items = _read_items(items_file)
     _do_render(cfg, items, opts, new, Path(output_dir or cfg.render.output_dir),
-               cfg.render.open if open_pdf is None else open_pdf)
+               cfg.render.open if open_pdf is None else open_pdf, cfg.render.tag if tag is None else tag)
 
 
 @main.command("print")
 @click.argument("selector")
 @_render_common
-def print_cmd(selector: str, size: str | None, overflow: str | None, boxes: str | None, new: int, output_dir: str | None, open_pdf: bool | None) -> None:
+def print_cmd(selector: str, size: str | None, overflow: str | None, boxes: str | None, new: int, output_dir: str | None, open_pdf: bool | None, tag: bool | None) -> None:
     """Export a Things selector and render it."""
     cfg = load_config()
     opts, _ = _render_options(cfg, size, overflow, boxes)
@@ -3317,7 +3426,7 @@ def print_cmd(selector: str, size: str | None, overflow: str | None, boxes: str 
     except ValueError as exc:
         raise click.ClickException(str(exc)) from exc
     _do_render(cfg, items, opts, new, Path(output_dir or cfg.render.output_dir),
-               cfg.render.open if open_pdf is None else open_pdf)
+               cfg.render.open if open_pdf is None else open_pdf, cfg.render.tag if tag is None else tag)
 
 
 def _recognize(scans: tuple[str, ...], review: str | None) -> Plan:
@@ -3510,7 +3619,7 @@ Run: `PAPERSYNC_REAL_OCR=1 uv run pytest tests/test_ocr_real.py -q` — passes. 
 
 - [ ] **Step 3: README and CLAUDE.md**
 
-README: describe the round trip in four commands (`print`, mark cards, `scan`, `status`), the configuration file with `[things.actions]`, where the token, ledger and box set registry live, and `PAPERSYNC_REAL_OCR=1`. Keep every sentence under 20 words.
+README: describe the round trip in four commands (`print`, mark cards, `scan`, `status`), the `papersync:printed` and `papersync:scanned` state tags, the configuration file with `[things.actions]`, where the token, ledger and box set registry live, and `PAPERSYNC_REAL_OCR=1`. Keep every sentence under 20 words.
 
 CLAUDE.md: in Key Commands add `- **papersync**: \`local/lib/papersync\` is a uv project; run its checks with \`./script/test\` or \`cd local/lib/papersync && uv run pytest\``.
 
