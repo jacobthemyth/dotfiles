@@ -6,7 +6,7 @@ import sys
 from collections.abc import Callable
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, TextIO
 
 import click
 
@@ -297,7 +297,30 @@ def recognize(scans: tuple[str, ...], review: str | None) -> None:
     click.echo(plan.to_json())
 
 
-def _apply(cfg: Config, plan: Plan, auto_approve: bool, verify: bool) -> None:
+def _open_tty() -> TextIO:
+    return open("/dev/tty")
+
+
+def _confirm(prompt_text: str, use_tty: bool) -> str:
+    """Read the confirmation answer.
+
+    When the plan arrived on stdin, stdin is exhausted and cannot be prompted
+    on, so the question goes to the controlling terminal instead.
+    """
+    if not use_tty:
+        return click.prompt(prompt_text, default="", show_default=False)
+    try:
+        tty = _open_tty()
+    except OSError as exc:
+        raise click.ClickException("stdin is the plan; use --auto-approve or a plan file") from exc
+    with tty:
+        click.echo(f"{prompt_text}: ", err=True, nl=False)
+        return tty.readline()
+
+
+def _apply(
+    cfg: Config, plan: Plan, auto_approve: bool, verify: bool, plan_on_stdin: bool = False
+) -> None:
     click.echo(_display(cfg, plan), err=True)
     if plan.errors:
         raise click.ClickException(
@@ -307,9 +330,7 @@ def _apply(cfg: Config, plan: Plan, auto_approve: bool, verify: bool) -> None:
         _err("nothing to do")
         return
     if not auto_approve:
-        answer = click.prompt(
-            "Apply these changes? Only 'yes' is accepted", default="", show_default=False
-        )
+        answer = _confirm("Apply these changes? Only 'yes' is accepted", plan_on_stdin)
         if answer.strip() != "yes":
             raise click.ClickException("aborted")
     sink = _sink(cfg)
@@ -346,7 +367,7 @@ def apply(plan_file: str, auto_approve: bool, verify: bool) -> None:
         plan = Plan.from_json(text)
     except ValueError as exc:
         raise click.ClickException(f"invalid plan: {exc}") from exc
-    _apply(load_config(), plan, auto_approve, verify)
+    _apply(load_config(), plan, auto_approve, verify, plan_on_stdin=plan_file == "-")
 
 
 @main.command()

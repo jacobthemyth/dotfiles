@@ -184,3 +184,36 @@ def test_render_invalid_items_json_is_a_clean_error(tmp_path: Path) -> None:
     r = CliRunner().invoke(main, ["render", "-"], input='[{"nope": 1}]', env=_env(tmp_path))
     assert r.exit_code != 0 and "invalid items JSON" in r.output
     assert "Traceback" not in r.output
+
+
+def _plan_json() -> str:
+    return Plan(
+        created=datetime.now(),
+        inputs=[],
+        errors=[],
+        changes=[
+            Change(kind="update", source="things", ref="T1", title="FOO", complete=True, pages=[1])
+        ],
+    ).to_json()
+
+
+def test_apply_from_stdin_without_a_tty_explains_itself(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    import papersync.cli as cli_module
+
+    def no_tty() -> object:
+        raise OSError("no controlling terminal")
+
+    monkeypatch.setattr(cli_module, "_open_tty", no_tty)
+    r = CliRunner().invoke(
+        main, ["apply", "-", "--no-verify"], input=_plan_json(), env=_env(tmp_path)
+    )
+    assert r.exit_code != 0 and "--auto-approve" in r.output
+
+
+def test_apply_from_stdin_with_auto_approve_succeeds(tmp_path: Path) -> None:
+    env = _env(tmp_path)
+    r = CliRunner().invoke(
+        main, ["apply", "-", "--auto-approve", "--no-verify"], input=_plan_json(), env=env
+    )
+    assert r.exit_code == 0, r.output
+    assert "things:///update?" in r.output
