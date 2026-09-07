@@ -18,6 +18,7 @@ The round trip is four commands:
 4. `papersync status` lists cards that were printed but never scanned back.
 
 `print` tags each exported item `papersync:printed` in Things by default.
+`print` and `things export` skip items that already carry that tag. Pass `--no-skip-printed` to include them.
 `scan` tags each recognized item `papersync:scanned` once its changes apply.
 Both tags mark state. Neither one controls what papersync selects or renders.
 

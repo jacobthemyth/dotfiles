@@ -246,3 +246,21 @@ def test_render_new_card_qr(tmp_path: Path) -> None:
     assert pymupdf.open(pdf).page_count == 1
     texts = [b.text for b in zxingcpp.read_barcodes(synthetic.rasterize(pdf.read_bytes()))]
     assert texts == ["papersync:///v1/things/new?size=3x5&boxes=1"]
+
+
+def test_export_and_print_skip_printed_unless_asked(tmp_path: Path) -> None:
+    import sqlite3
+
+    env = _env(tmp_path)
+    with sqlite3.connect(env["PAPERSYNC_THINGS_DB"]) as c:
+        c.execute("INSERT INTO TMTag VALUES ('G5', 'papersync:printed')")
+        c.execute("INSERT INTO TMTaskTag VALUES ('T1', 'G5')")
+    r = CliRunner().invoke(main, ["things", "export", "inbox"], env=env)
+    assert r.exit_code == 0 and json.loads(r.stdout) == []
+    assert "skipped 1" in r.output
+    r = CliRunner().invoke(main, ["things", "export", "inbox", "--no-skip-printed"], env=env)
+    assert [d["title"] for d in json.loads(r.stdout)] == ["FOO"]
+    r = CliRunner().invoke(main, ["print", "inbox", "--no-tag"], env=env)
+    assert r.exit_code == 0 and "skipped 1" in r.output and "wrote" not in r.output
+    r = CliRunner().invoke(main, ["print", "inbox", "--no-tag", "--no-skip-printed"], env=env)
+    assert r.exit_code == 0 and "wrote" in r.output

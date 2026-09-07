@@ -91,14 +91,33 @@ def things() -> None:
     """Things integration."""
 
 
-@things.command("export")
-@click.argument("selector")
-def things_export(selector: str) -> None:
-    """Export open items as JSON: inbox | next | someday | things:///show?id=UUID."""
+_SKIP_PRINTED = click.option(
+    "--skip-printed/--no-skip-printed",
+    default=True,
+    help="leave out items already tagged papersync:printed (default: skip)",
+)
+
+
+def _export(selector: str, skip_printed: bool) -> list[Item]:
+    source = ThingsSource(_db())
     try:
-        items = ThingsSource(_db()).export(selector)
+        items = source.export(selector, skip_printed=skip_printed)
     except ValueError as exc:
         raise click.ClickException(str(exc)) from exc
+    if source.skipped_printed:
+        _err(
+            f"skipped {source.skipped_printed} item(s) already tagged papersync:printed"
+            " (use --no-skip-printed to include them)"
+        )
+    return items
+
+
+@things.command("export")
+@click.argument("selector")
+@_SKIP_PRINTED
+def things_export(selector: str, skip_printed: bool) -> None:
+    """Export open items as JSON: inbox | next | someday | things:///show?id=UUID."""
+    items = _export(selector, skip_printed)
     click.echo(json.dumps([i.model_dump() for i in items], indent=2))
 
 
@@ -149,6 +168,9 @@ def _do_render(
             )
     except engine.RenderOverflow as exc:
         raise click.ClickException(str(exc)) from exc
+    if not rendered:
+        _err("nothing to print")
+        return []
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     paths = engine.write_outputs(rendered, out, stamp)
     ledger = _ledger()
@@ -235,9 +257,11 @@ def render(
 
 @main.command("print")
 @click.argument("selector")
+@_SKIP_PRINTED
 @_render_common
 def print_cmd(
     selector: str,
+    skip_printed: bool,
     size: str | None,
     overflow: str | None,
     boxes: str | None,
@@ -249,10 +273,7 @@ def print_cmd(
     """Export a Things selector and render it."""
     cfg = load_config()
     opts = _render_options(cfg, size, overflow, boxes)
-    try:
-        items = ThingsSource(_db()).export(selector)
-    except ValueError as exc:
-        raise click.ClickException(str(exc)) from exc
+    items = _export(selector, skip_printed)
     _do_render(
         cfg,
         items,
