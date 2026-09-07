@@ -2896,7 +2896,9 @@ def recognize_pages(
         if size is None:
             errors.append(PlanError(page=page_no, message=f"unknown size {payload.size!r}"))
             continue
-        h = geometry.refine_with_fiducials(page.gray, geometry.homography_from_qr(decoded, size), size)
+        h = geometry.refine_with_fiducials(
+            page.gray, geometry.homography_from_qr(decoded, size), size, qr_corners=decoded.corners
+        )
         if h is None:
             errors.append(PlanError(page=page_no, message="corner marks not found"))
             overlay.note = "no fiducials"
