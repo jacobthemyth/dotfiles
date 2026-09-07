@@ -130,9 +130,8 @@ def render_auto(item: Item, opts: RenderOptions, today: date) -> RenderedItem:
             return render_item(
                 item, name, RenderOptions(opts.labels, opts.boxes_id, name, "fail"), today
             )
-        except RenderOverflow as exc:
-            if "box labels" in str(exc):
-                raise
+        except RenderOverflow:
+            continue  # content or box labels do not fit: try the next size
     return render_item(
         item, "letter", RenderOptions(opts.labels, opts.boxes_id, "letter", "paginate"), today
     )

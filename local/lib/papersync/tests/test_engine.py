@@ -55,6 +55,11 @@ def test_too_many_labels_raises() -> None:
         engine.render_item(_item(""), "3x5", opts, TODAY)
 
 
+def test_auto_moves_up_when_labels_do_not_fit() -> None:
+    opts = engine.RenderOptions(labels=[str(i) for i in range(7)], boxes_id=1)
+    assert engine.render_auto(_item("x"), opts, TODAY).size == "4x6"
+
+
 def test_new_cards() -> None:
     cards = engine.render_new(2, "3x5", OPTS, TODAY)
     assert len(cards) == 2 and all(c.item is None and c.pages == 1 for c in cards)
