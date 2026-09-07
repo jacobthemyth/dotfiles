@@ -210,3 +210,32 @@ def test_page_error_does_not_attach_handwriting_to_the_previous_card(tmp_path: P
     messages = [e.message for e in plan.errors]
     assert any("unknown item" in m for m in messages)
     assert any("no card before it" in m for m in messages)
+
+
+def test_one_bit_scan_decodes_through_the_blur_ladder(tmp_path: Path) -> None:
+    """A real 600 dpi 1-bit scanner image: modules are eroded and the squares dithered.
+
+    zxing cannot read the raw raster; the recognizer must fall back to a light blur
+    and then use that image for the fiducials and box fills as well.
+    """
+    import cv2
+
+    from papersync.recognize.qr import find_payload
+
+    gray = cv2.imread(
+        str(Path(__file__).parent / "fixtures" / "scan-1bit-3x5.png"), cv2.IMREAD_GRAYSCALE
+    )
+    assert gray is not None and find_payload(gray) is None  # the raw raster really is unreadable
+    reg = BoxSetRegistry(tmp_path / "boxsets.toml")
+    reg.id_for(["A", "B", "C", "D"])
+    ref = "9Xx98M4gh3Eww1mQStZCo5"
+
+    def lookup(refs: list[str]) -> dict[str, Item]:
+        return {ref: Item(source="things", ref=ref, title="hello world")}
+
+    plan = recognize_pages(
+        [RasterPage("scan.png", 0, gray)], FakeOcr(), reg, lookup, TODAY, ["scan.png"]
+    ).plan
+    assert plan.errors == []
+    (change,) = plan.changes
+    assert change.ref == ref and change.complete and change.marks == ["B"]

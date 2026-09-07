@@ -8,7 +8,7 @@ from papersync.boxsets import BoxSetRegistry
 from papersync.model import BoxResult, Change, Item, Plan, PlanError, scanned_block
 from papersync.recognize import geometry, marks
 from papersync.recognize.ocr import OcrBackend, join_text, lines_in
-from papersync.recognize.qr import DecodedQr, ForeignPayload, find_payload
+from papersync.recognize.qr import DecodedQr, ForeignPayload, decode_with_fallback
 from papersync.recognize.raster import RasterPage
 from papersync.render.templates.v1 import layout as L  # noqa: N812
 
@@ -106,7 +106,8 @@ def recognize_pages(
         overlay = PageOverlay(page)
         overlays.append(overlay)
         try:
-            decoded: DecodedQr | None = find_payload(page.gray)
+            decoded: DecodedQr | None
+            decoded, gray = decode_with_fallback(page.gray)
         except ForeignPayload as exc:
             fail(f"unreadable papersync QR: {exc}", "bad QR", overlay)
             continue
@@ -126,7 +127,7 @@ def recognize_pages(
             fail(f"unknown size {payload.size!r}", "unknown size", overlay)
             continue
         h = geometry.refine_with_fiducials(
-            page.gray, geometry.homography_from_qr(decoded, size), size, qr_corners=decoded.corners
+            gray, geometry.homography_from_qr(decoded, size), size, qr_corners=decoded.corners
         )
         if h is None:
             fail("corner marks not found", "no fiducials", overlay)
@@ -155,10 +156,10 @@ def recognize_pages(
             fail(f"unknown item {payload.ref}", "unknown item", overlay)
             continue
         _finish(pending, today, changes, errors)
-        boxes = _score_boxes(page.gray, h, size, labels, overlay)
+        boxes = _score_boxes(gray, h, size, labels, overlay)
         marked = [lb for lb in labels if boxes[lb].checked]
         if payload.is_new:
-            lines = ocr.recognize(page.gray)
+            lines = ocr.recognize(gray)
             title_lines = lines_in(lines, h, L.title_bar(size))
             note_lines = lines_in(lines, h, L.notes_region(size))
             body = title_lines + note_lines
