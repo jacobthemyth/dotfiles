@@ -111,6 +111,7 @@ def recognize_pages(
         size = L.SIZES.get(payload.size)
         if size is None:
             errors.append(PlanError(page=page_no, message=f"unknown size {payload.size!r}"))
+            overlay.note = "unknown size"
             continue
         h = geometry.refine_with_fiducials(
             page.gray, geometry.homography_from_qr(decoded, size), size, qr_corners=decoded.corners
@@ -123,15 +124,14 @@ def recognize_pages(
         overlay.size = size
         if payload.page > 1:
             if pending is None or pending.change.ref != payload.ref:
+                tail = "without its first page" if pending is None else "follows a different card"
                 errors.append(
                     PlanError(
                         page=page_no,
-                        message=(
-                            f"continuation page {payload.page} of {payload.ref} "
-                            "without its first page"
-                        ),
+                        message=f"continuation page {payload.page} of {payload.ref} {tail}",
                     )
                 )
+                overlay.note = "stray continuation"
                 continue
             pending.seen_pages.add(payload.page)
             pending.change.pages.append(page_no)
@@ -140,6 +140,14 @@ def recognize_pages(
         labels = registry.labels_for(payload.boxes)
         if labels is None:
             errors.append(PlanError(page=page_no, message=f"unknown box set {payload.boxes}"))
+            overlay.note = "unknown box set"
+            continue
+        item = None if payload.is_new else lookup([payload.ref]).get(payload.ref)
+        if item is None and not payload.is_new:
+            # Resolved before flushing ``pending``: an unrecognized card is a plan error,
+            # not a Change, and must not cut short the card that came before it.
+            errors.append(PlanError(page=page_no, message=f"unknown item {payload.ref}"))
+            overlay.note = "unknown item"
             continue
         _finish(pending, today, changes, errors)
         boxes = _score_boxes(page.gray, h, size, labels, overlay)
@@ -163,8 +171,8 @@ def recognize_pages(
             )
             overlay.note = "new"
         else:
-            item = lookup([payload.ref]).get(payload.ref)
-            title = item.title if item else f"(unknown {payload.ref})"
+            assert item is not None
+            title = item.title
             change = Change(
                 kind="update",
                 source=payload.source,

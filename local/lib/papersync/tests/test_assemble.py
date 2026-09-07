@@ -126,3 +126,73 @@ def test_write_review(tmp_path: Path) -> None:
     out = tmp_path / "review.pdf"
     write_review(rec.overlays, out)
     assert pymupdf.open(out).page_count == 1
+
+
+def _qr_page(url: str, height: int = 900, width: int = 1500) -> np.ndarray:
+    """A blank page carrying just ``url`` as a QR: no fiducials, no card content."""
+    import io
+
+    import cv2
+    import segno
+
+    buf = io.BytesIO()
+    segno.make(url, error="m", mode="byte").save(buf, kind="png", border=2, scale=8)
+    code = cv2.imdecode(np.frombuffer(buf.getvalue(), dtype=np.uint8), cv2.IMREAD_GRAYSCALE)
+    assert code is not None
+    page = np.full((height, width), 255, dtype=np.uint8)
+    ch, cw = code.shape
+    page[80 : 80 + ch, 80 : 80 + cw] = code
+    return page
+
+
+def test_bad_papersync_qr_is_an_error(tmp_path: Path) -> None:
+    page = _qr_page("papersync:///v9/things/X?size=3x5&boxes=1")
+    plan = recognize_pages(
+        [RasterPage("scan.pdf", 0, page)], FakeOcr(), _registry(tmp_path), _lookup, TODAY, ["s.pdf"]
+    ).plan
+    assert plan.changes == []
+    (err,) = plan.errors
+    assert err.page == 1 and "unreadable papersync QR" in err.message
+
+
+def test_unknown_size_is_an_error(tmp_path: Path) -> None:
+    page = _qr_page(f"papersync:///v1/things/{'F' * 22}?size=9x9&boxes=1")
+    plan = recognize_pages(
+        [RasterPage("scan.pdf", 0, page)], FakeOcr(), _registry(tmp_path), _lookup, TODAY, ["s.pdf"]
+    ).plan
+    assert plan.changes == []
+    (err,) = plan.errors
+    assert err.page == 1 and "unknown size" in err.message
+
+
+def test_missing_fiducials_is_an_error(tmp_path: Path) -> None:
+    page = _qr_page(f"papersync:///v1/things/{'F' * 22}?size=3x5&boxes=1")
+    plan = recognize_pages(
+        [RasterPage("scan.pdf", 0, page)], FakeOcr(), _registry(tmp_path), _lookup, TODAY, ["s.pdf"]
+    ).plan
+    assert plan.changes == []
+    (err,) = plan.errors
+    assert err.page == 1 and "corner marks not found" in err.message
+
+
+def test_unknown_item_is_an_error(tmp_path: Path) -> None:
+    pages = [RasterPage("scan.pdf", 0, _card("Z" * 22, "ZED", "", [L.done_box(SIZE)]))]
+    plan = recognize_pages(pages, FakeOcr(), _registry(tmp_path), _lookup, TODAY, ["scan.pdf"]).plan
+    assert plan.changes == []
+    (err,) = plan.errors
+    assert err.page == 1 and "unknown item" in err.message
+
+
+def test_continuation_of_a_different_card_is_an_error(tmp_path: Path) -> None:
+    opts = engine.RenderOptions(labels=["A"], boxes_id=1, overflow="paginate")
+    item = Item(source="things", ref="L" * 22, title="Long", notes="\n".join(["x"] * 60))
+    page2 = synthetic.rasterize(engine.render_item(item, "3x5", opts, TODAY).pdf, page=1)
+    pages = [
+        RasterPage("scan.pdf", 0, _card("F" * 22, "FOO", "", [])),
+        RasterPage("scan.pdf", 1, page2),
+    ]
+    plan = recognize_pages(pages, FakeOcr(), _registry(tmp_path), _lookup, TODAY, ["scan.pdf"]).plan
+    (foo,) = plan.changes
+    assert foo.title == "FOO"
+    (err,) = plan.errors
+    assert err.page == 2 and "continuation" in err.message
