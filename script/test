@@ -78,6 +78,19 @@ else
   echo "  SKIP: test/tinty_hook_test.sh not present yet"
 fi
 
+echo "==> papersync lint + tests"
+if command -v uv >/dev/null 2>&1; then
+  (
+    cd local/lib/papersync &&
+    uv run --frozen ruff check . &&
+    uv run --frozen ruff format --check . &&
+    uv run --frozen ty check &&
+    uv run --frozen pytest -q
+  ) || fail=1
+else
+  echo "  SKIP: uv not installed"
+fi
+
 if [ "$fail" -ne 0 ]; then
   echo
   echo "FAIL"

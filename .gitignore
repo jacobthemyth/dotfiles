@@ -2,3 +2,6 @@
 __pycache__/
 .claude/worktrees/
 .superpowers/
+.venv/
+.ruff_cache/
+.pytest_cache/

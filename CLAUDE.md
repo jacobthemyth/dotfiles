@@ -29,6 +29,7 @@ Personal dotfiles managed with [rcm](https://github.com/thoughtbot/rcm) (RC file
 - `tag-encrypted/` — git-crypt encrypted files
 - `zsh/configs/*.zsh` — sourced by zshrc; `zsh/functions/` — custom shell functions added to FPATH
 - `local/bin/` — user scripts (symlinked to `~/.local/bin/`)
+- `local/lib/papersync/` — uv project behind `~/.local/bin/papersync` (see docs/superpowers/specs/2026-09-07-papersync-design.md)
 
 ## Shell Environment
 

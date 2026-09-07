@@ -1,0 +1,41 @@
+[project]
+name = "papersync"
+version = "0.1.0"
+description = "Print Things items to index cards and scan them back."
+requires-python = ">=3.12"
+dependencies = [
+  "click>=8.1",
+  "pydantic>=2.7",
+  "typst>=0.13",
+  "segno>=1.6",
+  "pymupdf>=1.24",
+  "zxing-cpp>=2.2",
+  "opencv-python-headless>=4.9",
+  "numpy>=1.26",
+  "ocrmac>=1.0; sys_platform == 'darwin'",
+  "pillow>=10",
+  "keyring>=25",
+]
+
+[project.scripts]
+papersync = "papersync.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/papersync"]
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6", "ty"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N", "SIM", "RUF"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
