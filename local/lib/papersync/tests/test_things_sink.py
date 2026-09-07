@@ -22,6 +22,7 @@ class Captured:
     def __init__(self) -> None:
         self.urls: list[str] = []
         self.scripts: list[str] = []
+        self.sleeps: list[float] = []
 
 
 @pytest.fixture
@@ -39,7 +40,7 @@ def sink(tmp_path: Path, cap: Captured) -> ThingsSink:
         cfg,
         opener=cap.urls.append,
         token_provider=lambda: "TOK",
-        sleeper=lambda _s: None,
+        sleeper=cap.sleeps.append,
         runner=cap.scripts.append,
     )
 
@@ -179,3 +180,10 @@ def test_opener_failure_does_not_leak_the_token(tmp_path: Path) -> None:
     message = str(exc.value)
     assert "auth-token" not in message and "TOK" not in message
     assert "open" in message and "1" in message
+
+
+def test_mark_printed_paces_and_verifies(sink: ThingsSink, cap: Captured) -> None:
+    # the fixture database never changes, so neither item ends up tagged
+    assert sink.mark_printed(["T1", "T2"]) == ["T1", "T2"]
+    assert len(cap.urls) == 2
+    assert len(cap.sleeps) >= 3  # one pace per URL plus the verify delay

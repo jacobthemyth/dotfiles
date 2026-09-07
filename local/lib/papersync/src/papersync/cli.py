@@ -173,9 +173,11 @@ def _do_render(
     things_refs = [r.item.ref for r in rendered if r.item is not None and r.item.source == "things"]
     if tag and things_refs:
         try:
-            _sink(cfg).mark_printed(things_refs)
+            untagged = _sink(cfg).mark_printed(things_refs)
         except RuntimeError as exc:
             raise click.ClickException(str(exc)) from exc
+        for ref in untagged:
+            _err(f"NOT TAGGED: {ref}")
         _err(f"tagged {len(things_refs)} item(s) papersync:printed")
     return paths
 

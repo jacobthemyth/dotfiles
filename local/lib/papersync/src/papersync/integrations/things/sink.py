@@ -18,6 +18,7 @@ from papersync.integrations.things.db import (
 from papersync.model import Change
 
 VERIFY_DELAY_S = 2.0
+MARK_PRINTED_PACE_S = 0.15
 STATE_PRINTED = "papersync:printed"
 STATE_SCANNED = "papersync:scanned"
 STATE_TAGS = {STATE_PRINTED, STATE_SCANNED}
@@ -212,17 +213,25 @@ class ThingsSink:
         for _change, url in planned:
             self._open(url)
 
-    def mark_printed(self, refs: list[str]) -> None:
+    def mark_printed(self, refs: list[str]) -> list[str]:
+        """Tag the printed items and return the refs the tag did not reach."""
         rows = [row for ref in refs if (row := self.db.get(ref)) is not None]
         updates = [
             (row.uuid, tags) for row in rows if (tags := _new_tags(row.tags, [], STATE_PRINTED))
         ]
         if not updates:
-            return
+            return []
         self.ensure_tags([STATE_PRINTED])
         token = self.token_provider()
         for uuid, tags in updates:
             self._open(build_update_url(uuid, token, ThingsUpdate(), tags, None))
+            self.sleeper(MARK_PRINTED_PACE_S)  # Things drops URLs sent back to back
+        self.sleeper(VERIFY_DELAY_S)
+        return [
+            uuid
+            for uuid, _tags in updates
+            if (row := self.db.get(uuid)) is None or STATE_PRINTED not in row.tags
+        ]
 
     def describe(self, change: Change) -> list[str]:
         _upd, warnings = resolve(change, self.cfg)
