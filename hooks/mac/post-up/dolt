@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+# hooks/shared/post-up/dolt installs a pinned dolt to ~/.local/bin. Drop any
+# Homebrew-managed dolt so it can't win on PATH or drift off the pin. dolt is
+# not in the Brewfile, so `brew bundle` won't reinstall it.
+command -v brew >/dev/null || exit 0
+
+if brew list dolt >/dev/null 2>&1; then
+  echo "Removing Homebrew dolt (superseded by the pinned build in ~/.local/bin) ..."
+  brew uninstall --ignore-dependencies dolt
+fi

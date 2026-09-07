@@ -16,14 +16,7 @@ TARGET="$TARGET_DIR/dolt"
 
 echo "Configuring Dolt (pinned $DOLT_VERSION) ..."
 
-# On mac, drop any Homebrew-managed dolt so it can't win on PATH or drift off
-# the pin. dolt is not in the Brewfile, so `brew bundle` won't reinstall it.
-if [[ "$(uname -s)" == "Darwin" ]] && command -v brew >/dev/null; then
-  if brew list dolt >/dev/null 2>&1; then
-    echo "Removing Homebrew dolt (superseded by pinned $DOLT_VERSION) ..."
-    brew uninstall --ignore-dependencies dolt
-  fi
-fi
+# hooks/mac/post-up/dolt removes any Homebrew-managed dolt after this runs.
 
 # Idempotent: skip the download if the pinned version is already in place.
 # Capture into a variable rather than piping `dolt version` into `grep -q`:
