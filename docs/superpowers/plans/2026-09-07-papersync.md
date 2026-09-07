@@ -2932,10 +2932,13 @@ def recognize_pages(
             overlay.note = "new"
         else:
             item = lookup([payload.ref]).get(payload.ref)
-            title = item.title if item else f"(unknown {payload.ref})"
-            change = Change(kind="update", source=payload.source, ref=payload.ref, title=title,
+            if item is None:
+                errors.append(PlanError(page=page_no, message=f"unknown item {payload.ref}"))
+                overlay.note = "unknown item"
+                continue
+            change = Change(kind="update", source=payload.source, ref=payload.ref, title=item.title,
                             complete=boxes["done"].checked, marks=marked, boxes=boxes, pages=[page_no])
-            overlay.note = title
+            overlay.note = item.title
         pending = _Pending(change, [], payload.pages, {1})
     _finish(pending, today, changes, errors)
     plan = Plan(created=datetime.now(), inputs=inputs, changes=changes, errors=errors)
