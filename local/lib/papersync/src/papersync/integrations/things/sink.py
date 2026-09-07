@@ -23,12 +23,30 @@ STATE_SCANNED = "papersync:scanned"
 STATE_TAGS = {STATE_PRINTED, STATE_SCANNED}
 
 
+def _command_error(name: str, exc: BaseException) -> RuntimeError:
+    """An error that names the command but never its argument.
+
+    The argument is a Things URL carrying the auth token, or an AppleScript.
+    subprocess repeats the whole command line in its own message and in the
+    ``__context__`` traceback, so the cause is dropped with ``from None``.
+    """
+    if isinstance(exc, subprocess.CalledProcessError):
+        return RuntimeError(f"{name} failed with exit status {exc.returncode}")
+    return RuntimeError(f"{name} failed: {type(exc).__name__}")
+
+
 def _open_url(url: str) -> None:
-    subprocess.run(["open", "-g", url], check=True)
+    try:
+        subprocess.run(["open", "-g", url], check=True)
+    except (subprocess.CalledProcessError, OSError) as exc:
+        raise _command_error("open", exc) from None
 
 
 def _run_osascript(script: str) -> None:
-    subprocess.run(["osascript", "-e", script], check=True, capture_output=True)
+    try:
+        subprocess.run(["osascript", "-e", script], check=True, capture_output=True)
+    except (subprocess.CalledProcessError, OSError) as exc:
+        raise _command_error("osascript", exc) from None
 
 
 def create_tags_script(names: list[str]) -> str:
@@ -115,10 +133,22 @@ class ThingsSink:
         self.sleeper = sleeper
         self.runner = runner
 
+    def _open(self, url: str) -> None:
+        try:
+            self.opener(url)
+        except (subprocess.CalledProcessError, OSError) as exc:
+            raise _command_error("open", exc) from None
+
+    def _run(self, script: str) -> None:
+        try:
+            self.runner(script)
+        except (subprocess.CalledProcessError, OSError) as exc:
+            raise _command_error("osascript", exc) from None
+
     def ensure_tags(self, names: Iterable[str]) -> None:
         missing = sorted(set(names) - self.db.tag_titles())
         if missing:
-            self.runner(create_tags_script(missing))
+            self._run(create_tags_script(missing))
 
     def _remaining(
         self, change: Change, upd: ThingsUpdate
@@ -180,7 +210,7 @@ class ThingsSink:
             wanted.update(resolve(change, self.cfg)[0].tags)
         self.ensure_tags(wanted)
         for _change, url in planned:
-            self.opener(url)
+            self._open(url)
 
     def mark_printed(self, refs: list[str]) -> None:
         rows = [row for ref in refs if (row := self.db.get(ref)) is not None]
@@ -192,7 +222,7 @@ class ThingsSink:
         self.ensure_tags([STATE_PRINTED])
         token = self.token_provider()
         for uuid, tags in updates:
-            self.opener(build_update_url(uuid, token, ThingsUpdate(), tags, None))
+            self._open(build_update_url(uuid, token, ThingsUpdate(), tags, None))
 
     def describe(self, change: Change) -> list[str]:
         _upd, warnings = resolve(change, self.cfg)

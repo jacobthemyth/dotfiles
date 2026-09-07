@@ -161,3 +161,26 @@ def test_doctor_reports_unreadable_database_and_continues(tmp_path: Path) -> Non
     env["PAPERSYNC_THINGS_DB"] = str(junk)
     r = CliRunner().invoke(main, ["doctor"], env=env)
     assert "FAIL Things database" in r.output and "Typst template" in r.output
+
+
+def test_render_missing_file_is_a_clean_error(tmp_path: Path) -> None:
+    r = CliRunner().invoke(main, ["render", "/nope.json"], env=_env(tmp_path))
+    assert r.exit_code != 0 and "no such file" in r.output
+    assert "Traceback" not in r.output
+
+
+def test_apply_missing_file_is_a_clean_error(tmp_path: Path) -> None:
+    r = CliRunner().invoke(main, ["apply", "/nope.json"], env=_env(tmp_path))
+    assert r.exit_code != 0 and "no such file" in r.output
+    assert "Traceback" not in r.output
+
+
+def test_recognize_missing_scan_is_a_usage_error(tmp_path: Path) -> None:
+    r = CliRunner().invoke(main, ["recognize", "/nope.pdf"], env=_env(tmp_path))
+    assert r.exit_code == 2 and "Traceback" not in r.output
+
+
+def test_render_invalid_items_json_is_a_clean_error(tmp_path: Path) -> None:
+    r = CliRunner().invoke(main, ["render", "-"], input='[{"nope": 1}]', env=_env(tmp_path))
+    assert r.exit_code != 0 and "invalid items JSON" in r.output
+    assert "Traceback" not in r.output

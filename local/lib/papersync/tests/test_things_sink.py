@@ -1,4 +1,5 @@
 import sqlite3
+import subprocess
 from datetime import date
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
@@ -159,3 +160,22 @@ def test_describe_and_verify(sink: ThingsSink) -> None:
         "BAR: tag papersync:meta:B missing",
         f"BAR: tag {STATE_SCANNED} missing",
     ]
+
+
+def test_opener_failure_does_not_leak_the_token(tmp_path: Path) -> None:
+    def boom(url: str) -> None:
+        raise subprocess.CalledProcessError(1, ["open", "-g", url])
+
+    s = ThingsSink(
+        ThingsDb(make_db(tmp_path / "main.sqlite")),
+        ThingsConfig(),
+        opener=boom,
+        token_provider=lambda: "TOK",
+        sleeper=lambda _s: None,
+        runner=lambda _script: None,
+    )
+    with pytest.raises(RuntimeError) as exc:
+        s.apply([Change(kind="update", source="things", ref="T2", title="BAR", complete=True)])
+    message = str(exc.value)
+    assert "auth-token" not in message and "TOK" not in message
+    assert "open" in message and "1" in message

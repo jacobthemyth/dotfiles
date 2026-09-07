@@ -65,9 +65,19 @@ def _registry() -> BoxSetRegistry:
     return BoxSetRegistry(config_dir() / "boxsets.toml")
 
 
+def _require_file(path: str) -> str:
+    """Check a path argument that also accepts ``-`` for stdin."""
+    if path != "-" and not Path(path).is_file():
+        raise click.ClickException(f"no such file: {path}")
+    return path
+
+
 def _read_items(src: str) -> list[Item]:
     text = sys.stdin.read() if src == "-" else Path(src).read_text()
-    return [Item.model_validate(d) for d in json.loads(text)]
+    try:
+        return [Item.model_validate(d) for d in json.loads(text)]
+    except (ValueError, TypeError) as exc:
+        raise click.ClickException(f"invalid items JSON: {exc}") from exc
 
 
 @click.group()
@@ -162,7 +172,10 @@ def _do_render(
             subprocess.run(["open", str(p)], check=False)
     things_refs = [r.item.ref for r in rendered if r.item is not None and r.item.source == "things"]
     if tag and things_refs:
-        _sink(cfg).mark_printed(things_refs)
+        try:
+            _sink(cfg).mark_printed(things_refs)
+        except RuntimeError as exc:
+            raise click.ClickException(str(exc)) from exc
         _err(f"tagged {len(things_refs)} item(s) papersync:printed")
     return paths
 
@@ -203,7 +216,7 @@ def render(
     """Render items JSON (file or -) to one PDF per page size."""
     cfg = load_config()
     opts = _render_options(cfg, size, overflow, boxes)
-    items = _read_items(items_file)
+    items = _read_items(_require_file(items_file))
     _do_render(
         cfg,
         items,
@@ -274,7 +287,7 @@ def _display(cfg: Config, plan: Plan) -> str:
 
 
 @main.command()
-@click.argument("scans", nargs=-1, required=True)
+@click.argument("scans", nargs=-1, required=True, type=click.Path(exists=True, dir_okay=False))
 @click.option("--review", default=None, help="write an annotated PDF for debugging")
 def recognize(scans: tuple[str, ...], review: str | None) -> None:
     """Recognize scanned cards and write the plan JSON to stdout."""
@@ -300,7 +313,10 @@ def _apply(cfg: Config, plan: Plan, auto_approve: bool, verify: bool) -> None:
         if answer.strip() != "yes":
             raise click.ClickException("aborted")
     sink = _sink(cfg)
-    sink.apply(plan.changes)
+    try:
+        sink.apply(plan.changes)
+    except RuntimeError as exc:
+        raise click.ClickException(str(exc)) from exc
     ledger = _ledger()
     for ch in plan.changes:
         if ch.ref:
@@ -324,6 +340,7 @@ def _apply(cfg: Config, plan: Plan, auto_approve: bool, verify: bool) -> None:
 @click.option("--verify/--no-verify", default=True)
 def apply(plan_file: str, auto_approve: bool, verify: bool) -> None:
     """Apply a plan JSON (file or -) to Things after confirmation."""
+    _require_file(plan_file)
     text = sys.stdin.read() if plan_file == "-" else Path(plan_file).read_text()
     try:
         plan = Plan.from_json(text)
@@ -333,7 +350,7 @@ def apply(plan_file: str, auto_approve: bool, verify: bool) -> None:
 
 
 @main.command()
-@click.argument("scans", nargs=-1, required=True)
+@click.argument("scans", nargs=-1, required=True, type=click.Path(exists=True, dir_okay=False))
 @click.option("--review", default=None)
 @click.option("--auto-approve", is_flag=True)
 @click.option("--verify/--no-verify", default=True)
