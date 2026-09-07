@@ -20,6 +20,7 @@ class RenderConfig(BaseModel):
     boxes: list[str] = Field(default_factory=lambda: ["A", "B", "C", "D"])
     output_dir: str = "."
     open: bool = True
+    tag: bool = True
 
 
 class ThingsConfig(BaseModel):

@@ -7,6 +7,7 @@ def test_defaults_when_file_missing(tmp_path: Path) -> None:
     cfg = load_config(tmp_path / "missing.toml")
     assert cfg.render.size == "auto"
     assert cfg.render.boxes == ["A", "B", "C", "D"]
+    assert cfg.render.tag is True
     assert cfg.things.actions == {}
 
 
