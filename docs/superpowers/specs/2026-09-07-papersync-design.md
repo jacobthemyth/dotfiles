@@ -103,10 +103,10 @@ Dev: pytest, ruff, ty (mypy `--strict` as fallback if ty cannot type the depende
 papersync things export <inbox|next|someday|things:///show?id=UUID>
 papersync things auth                      # store or rotate the token
 papersync render [ITEMS.json|-] [--size auto|3x5|4x6|letter]
-                 [--overflow fail|paginate|truncate] [--boxes A,B,C]
+                 [--overflow fail|paginate|truncate] [--boxes ID]
                  [--new N] [-o DIR] [--open]
 papersync print <things-selector> [render flags]     # export | render
-papersync recognize SCAN... [--review annotated.pdf] [--boxes A,B,C]
+papersync recognize SCAN... [--review annotated.pdf]
 papersync apply <plan.json|-> [--auto-approve] [--no-verify]
 papersync scan SCAN... [apply flags]                  # recognize | apply
 papersync status [--forget REF]
@@ -127,12 +127,18 @@ Human output goes to stderr. Data goes to stdout.
 [render]
 size = "auto"
 overflow = "fail"
-boxes = ["A", "B", "C"]
+boxes = 1
 output_dir = "."
 open = true
+
+[things.boxes]
+1 = ["A", "B", "C", "D"]
+2 = ["waiting", "delegate", "someday"]
 ```
 
 Flags override the file.
+
+`[things.boxes]` defines the box sets. A set is a numbered list of labels owned by the Things integration. The set number goes into the QR, so the recognizer never needs the labels from the command line. Sets are append-only: to change labels, add a new number. Editing an existing set silently changes the tags that old cards produce. If the file has no `[things.boxes]`, set 1 is `["A", "B", "C", "D"]`.
 
 ## Core model
 
@@ -171,17 +177,18 @@ class Sink(Protocol):
 ## QR payload
 
 ```
-papersync:///v1/things/<uuid>?size=3x5
-papersync:///v1/things/<uuid>?size=letter&page=2&pages=3
-papersync:///v1/things/new?size=3x5
+papersync:///v1/things/<uuid>?size=3x5&boxes=1
+papersync:///v1/things/<uuid>?size=letter&boxes=1&page=2&pages=3
+papersync:///v1/things/new?size=3x5&boxes=2
 ```
 
 - `v1` is the template version. It selects the geometry for recognition. A layout that moves any box is `v2`. Old cards keep scanning.
 - The Things UUID is used directly. No short-ID mapping exists.
 - `size` names the layout variant. `page` and `pages` appear only on paginated items.
+- `boxes` is the Things box set number. The integration maps it to labels and tags.
 - `new` marks a blank card for a new item.
 
-The longest payload is about 70 bytes. The template always renders QR version 5 at error-correction level M with a 0.38 mm module, about 14 mm square plus the quiet zone, so the QR footprint is constant across payloads.
+The longest payload is 82 bytes. The template always renders QR version 5 with a 0.38 mm module, about 14 mm square plus the quiet zone, so the QR footprint is constant across payloads. Error correction is level M, which holds 84 bytes, and falls back to level L (106 bytes) for a longer payload.
 
 ## Rendering
 
@@ -201,7 +208,7 @@ Per page:
 
 - Four black 5 mm squares in the corners, inset 4 mm. These are the fiducials.
 - The QR at bottom right, inside the fiducial frame.
-- Page 1 only: a checkbox left of the title, the title in bold sans on a light grey bar (the SDAPS heading look), and the meta checkbox row at bottom left with the printed labels under the boxes. The number of boxes is the number of labels given, up to the count that fits at that size (four on 3x5).
+- Page 1 only: a checkbox left of the title, the title in bold sans on a light grey bar (the SDAPS heading look), and the meta checkbox row at bottom left with the printed labels under the boxes. The number of boxes is the number of labels in the selected set. `render` exits nonzero if the set has more labels than fit at the chosen size (four on 3x5).
 - Notes in New Computer Modern serif, plain text, line breaks preserved.
 - Continuation pages: the title bar with "(cont.)", the notes overflow, no boxes.
 - A `2/3` page marker in the footer on paginated items, and the print date in the footer on every page.
@@ -210,7 +217,7 @@ New-item cards (`--new N`) use the same geometry with faint ruled lines in the t
 
 ### Ledger
 
-Every rendered item appends `{"ts", "event": "render", "source", "ref", "title", "size", "file", "boxes"}` to `~/.local/state/papersync/prints.jsonl` (`$XDG_STATE_HOME` respected). Every applied change appends an `apply` event with the same keys. `status` lists refs with a render event and no later apply event, marks the ones Things already shows as complete, and `--forget REF` appends a `forget` event to drop one.
+Every rendered item appends `{"ts", "event": "render", "source", "ref", "title", "size", "boxes", "file"}` to `~/.local/state/papersync/prints.jsonl` (`$XDG_STATE_HOME` respected). Every applied change appends an `apply` event with the same keys. `status` lists refs with a render event and no later apply event, marks the ones Things already shows as complete, and `--forget REF` appends a `forget` event to drop one.
 
 ## Recognition
 
@@ -224,7 +231,7 @@ Per page:
 4. Compute the homography from template millimeters to pixels.
 5. Page 1 of an item: crop the interior of every box (border excluded), binarize, and compute the dark-pixel fill ratio. Below the low threshold is unchecked, above the high threshold is checked, between is uncertain. Thresholds live in `layout.py`. Continuation pages have no boxes.
 
-Meta box labels are not in the QR. The recognizer takes them from the ledger entry for that ref when one exists, then from `--boxes`, then from the configuration file. If none of these is available the boxes are still scored and the plan lists them by index, with a warning that no tag can be derived.
+The `boxes` number in the QR selects the box set, and the Things integration maps box index to label and tag. An unknown set number is a plan error for that page.
 
 A handwriting page is OCRed through the `OcrBackend` protocol. The only implementation is ocrmac at the accurate recognition level. The text is appended to the most recent card in the batch. Several handwriting pages after one card are joined in order with a blank line. A handwriting page before any card is a plan error.
 
@@ -288,7 +295,7 @@ The URL scheme returns nothing, so after issuing the URLs the sink waits two sec
 
 - Round trip without a scanner: render fixture items, rasterize with pymupdf, draw synthetic marks into chosen boxes at the template coordinates, rotate by a few degrees, scale by a few percent, add a handwriting page image, then recognize with a fake OCR backend and assert the exact plan.
 - Size selection and every `--overflow` mode on short, medium and long fixtures, including the two-pass page count.
-- QR payload parsing, including rejection of unknown versions and integrations.
+- QR payload parsing, including rejection of unknown versions, integrations and box set numbers.
 - Things source against a fixture sqlite built from the real schema subset. Things sink with an injected opener that captures URLs, and with a fixture database for the skip and verify logic.
 - Ledger and status against a temporary state directory.
 - One opt-in test that runs real ocrmac on a checked-in handwriting image, skipped unless `PAPERSYNC_REAL_OCR=1`.
