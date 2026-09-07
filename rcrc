@@ -15,6 +15,6 @@ case "$OSTYPE" in
 esac
 
 export DOTFILES_DIRS="$HOME/.dotfiles"
-export SYMLINK_DIRS="agents/skills/* local/lib/papersync"
+export SYMLINK_DIRS="agents/skills/* local/lib/papersync config/papersync"
 export EXCLUDES="script/* README.md LICENSE docs docs/* test test/* *__pycache__*"
 export TAGS="$RCM_OS_TAG"

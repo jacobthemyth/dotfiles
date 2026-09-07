@@ -11,6 +11,7 @@ Personal dotfiles managed with [rcm](https://github.com/thoughtbot/rcm) (RC file
 - **Install/update dotfiles**: `./script/setup` — installs rcm if needed, then runs `rcup`
 - **After editing dotfiles**: `RCRC=~/.dotfiles/rcrc rcup` to re-symlink
 - **Run tests/lint**: `./script/test` — bash -n, shellcheck (if installed), guard assertion, dispatcher unit test. Non-destructive.
+- **papersync**: `local/lib/papersync` is a uv project; run its checks with `./script/test` or `cd local/lib/papersync && uv run pytest`
 
 ## How rcm Works Here
 

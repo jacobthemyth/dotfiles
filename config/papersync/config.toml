@@ -1,0 +1,13 @@
+# papersync configuration. See local/lib/papersync/README.md.
+[render]
+size = "auto"
+overflow = "fail"
+boxes = ["A", "B", "C", "D"]
+output_dir = "."
+open = true
+tag = true
+
+# [things.actions]
+# today = { when = "today" }
+# someday = { when = "someday" }
+# waiting = { tags = ["waiting"] }
