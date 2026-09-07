@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import subprocess
 import sys
 from collections.abc import Callable
@@ -101,15 +102,14 @@ def things_auth_cmd() -> None:
 
 def _render_options(
     cfg: Config, size: str | None, overflow: str | None, boxes: str | None
-) -> tuple[engine.RenderOptions, list[str]]:
+) -> engine.RenderOptions:
     labels = [b.strip() for b in boxes.split(",") if b.strip()] if boxes else list(cfg.render.boxes)
-    opts = engine.RenderOptions(
+    return engine.RenderOptions(
         labels=labels,
         boxes_id=_registry().id_for(labels),
         size=size or cfg.render.size,
         overflow=overflow or cfg.render.overflow,
     )
-    return opts, labels
 
 
 def _do_render(
@@ -202,7 +202,7 @@ def render(
 ) -> None:
     """Render items JSON (file or -) to one PDF per page size."""
     cfg = load_config()
-    opts, _ = _render_options(cfg, size, overflow, boxes)
+    opts = _render_options(cfg, size, overflow, boxes)
     items = _read_items(items_file)
     _do_render(
         cfg,
@@ -230,7 +230,7 @@ def print_cmd(
 ) -> None:
     """Export a Things selector and render it."""
     cfg = load_config()
-    opts, _ = _render_options(cfg, size, overflow, boxes)
+    opts = _render_options(cfg, size, overflow, boxes)
     try:
         items = ThingsSource(_db()).export(selector)
     except ValueError as exc:
@@ -374,17 +374,14 @@ def doctor() -> None:
         click.echo(f"{status} {name}{detail}")
         ok = ok and problem is None
 
-    report(
-        "uv",
-        None
-        if subprocess.run(["uv", "--version"], capture_output=True).returncode == 0
-        else "not on PATH",
-    )
+    report("uv", None if shutil.which("uv") else "not on PATH")
     try:
         _db().select("inbox")
         report("Things database", None)
     except click.ClickException as exc:
         report("Things database", exc.message)
+    except Exception as exc:
+        report("Things database", str(exc))
     try:
         import keyring
 

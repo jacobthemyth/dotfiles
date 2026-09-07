@@ -142,3 +142,22 @@ def test_recognize_round_trip(tmp_path: Path) -> None:
 def test_doctor_runs(tmp_path: Path) -> None:
     r = CliRunner().invoke(main, ["doctor"], env=_env(tmp_path))
     assert "uv" in r.output and "Things database" in r.output
+
+
+def test_doctor_reports_missing_uv_and_continues(tmp_path: Path) -> None:
+    env = _env(tmp_path)
+    empty = tmp_path / "emptybin"
+    empty.mkdir()
+    env["PATH"] = str(empty)
+    r = CliRunner().invoke(main, ["doctor"], env=env)
+    assert r.exit_code != 0
+    assert "FAIL uv" in r.output and "Things database" in r.output
+
+
+def test_doctor_reports_unreadable_database_and_continues(tmp_path: Path) -> None:
+    env = _env(tmp_path)
+    junk = tmp_path / "junk.sqlite"
+    junk.write_bytes(b"\x00not a database\xff" * 8)
+    env["PAPERSYNC_THINGS_DB"] = str(junk)
+    r = CliRunner().invoke(main, ["doctor"], env=env)
+    assert "FAIL Things database" in r.output and "Typst template" in r.output
