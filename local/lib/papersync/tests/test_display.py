@@ -52,3 +52,23 @@ def test_format_plan() -> None:
         "\n"
         "ERROR page 5: corner marks not found\n"
     )
+
+
+def test_format_plan_empty() -> None:
+    plan = Plan(created=datetime(2026, 9, 7), inputs=[], changes=[], errors=[])
+    out = format_plan(plan, lambda ch: [], lambda ch: "")
+    assert out == ""
+
+
+def test_header_omits_trailing_whitespace_when_pages_missing() -> None:
+    foo = Change(kind="update", source="things", ref="U1", title="FOO", pages=[])
+    plan = Plan(created=datetime(2026, 9, 7), inputs=[], changes=[foo], errors=[])
+    out = format_plan(plan, lambda ch: [], lambda ch: "")
+    assert out == "FOO  things:///show?id=U1\n"
+
+
+def test_create_header_omits_trailing_whitespace_when_pages_and_notes_missing() -> None:
+    new = Change(kind="create", source="things", title="Call mom", pages=[])
+    plan = Plan(created=datetime(2026, 9, 7), inputs=[], changes=[new], errors=[])
+    out = format_plan(plan, lambda ch: [], lambda ch: "")
+    assert out == "NEW  Call mom\n"

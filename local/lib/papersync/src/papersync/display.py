@@ -12,8 +12,10 @@ def _pages(change: Change) -> str:
 
 def _header(change: Change) -> str:
     if change.kind == "create":
-        return f"NEW  {change.title}  {_pages(change)}"
-    return f"{change.title}  things:///show?id={change.ref}  {_pages(change)}"
+        parts = [f"NEW  {change.title}", _pages(change)]
+    else:
+        parts = [f"{change.title}  things:///show?id={change.ref}", _pages(change)]
+    return "  ".join(p for p in parts if p)
 
 
 def _notes_diff(before: str, after: str) -> list[str]:
