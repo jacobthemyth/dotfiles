@@ -50,9 +50,20 @@ def _run_osascript(script: str) -> None:
         raise _command_error("osascript", exc) from None
 
 
+def _applescript_string(name: str) -> str:
+    """Escape a tag name for an AppleScript string literal.
+
+    Backslashes first: escaping the quotes first would then double the
+    backslash this adds.
+    """
+    if "\n" in name or "\r" in name:
+        raise ValueError(f"tag name contains a line break: {name!r}")
+    return name.replace("\\", "\\\\").replace('"', '\\"')
+
+
 def create_tags_script(names: list[str]) -> str:
     body = "\n".join(
-        '  make new tag with properties {name:"' + n.replace('"', '\\"') + '"}' for n in names
+        '  make new tag with properties {name:"' + _applescript_string(n) + '"}' for n in names
     )
     return 'tell application "Things3"\n' + body + "\nend tell"
 
@@ -102,6 +113,11 @@ def _new_tags(current: list[str], add: list[str], state: str) -> list[str] | Non
     out = [t for t in current if t not in STATE_TAGS]
     out += [t for t in add if t not in out and t not in STATE_TAGS]
     out.append(state)
+    for tag in out:
+        # ``tags`` is one comma-joined list that replaces every tag on the item,
+        # so a comma inside a name would split it into two wrong tags.
+        if "," in tag:
+            raise ValueError(f"tag name contains a comma: {tag!r}")
     return None if set(out) == set(current) else out
 
 
@@ -133,6 +149,7 @@ class ThingsSink:
         self.token_provider = token_provider
         self.sleeper = sleeper
         self.runner = runner
+        self.warnings: list[str] = []
 
     def _open(self, url: str) -> None:
         try:
@@ -176,6 +193,7 @@ class ThingsSink:
     def plan_urls(self, changes: list[Change]) -> list[tuple[Change, str | None]]:
         out: list[tuple[Change, str | None]] = []
         token: str | None = None
+        self.warnings = []
         for change in changes:
             upd, _ = resolve(change, self.cfg)
             if change.kind == "create":
@@ -186,7 +204,11 @@ class ThingsSink:
                     )
                 )
                 continue
-            left, tags, notes = self._remaining(change, upd)
+            try:
+                left, tags, notes = self._remaining(change, upd)
+            except ValueError as exc:
+                self.warnings.append(f"{change.title}: skipped, {exc}")
+                continue
             if not (
                 left.completed
                 or left.canceled
@@ -216,9 +238,15 @@ class ThingsSink:
     def mark_printed(self, refs: list[str]) -> list[str]:
         """Tag the printed items and return the refs the tag did not reach."""
         rows = [row for ref in refs if (row := self.db.get(ref)) is not None]
-        updates = [
-            (row.uuid, tags) for row in rows if (tags := _new_tags(row.tags, [], STATE_PRINTED))
-        ]
+        updates: list[tuple[str, list[str]]] = []
+        for row in rows:
+            try:
+                tags = _new_tags(row.tags, [], STATE_PRINTED)
+            except ValueError as exc:
+                self.warnings.append(f"{row.title}: skipped, {exc}")
+                continue
+            if tags:
+                updates.append((row.uuid, tags))
         if not updates:
             return []
         self.ensure_tags([STATE_PRINTED])

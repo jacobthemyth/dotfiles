@@ -187,3 +187,18 @@ def test_mark_printed_paces_and_verifies(sink: ThingsSink, cap: Captured) -> Non
     assert sink.mark_printed(["T1", "T2"]) == ["T1", "T2"]
     assert len(cap.urls) == 2
     assert len(cap.sleeps) >= 3  # one pace per URL plus the verify delay
+
+
+def test_a_comma_in_a_tag_name_skips_the_item(sink: ThingsSink, cap: Captured) -> None:
+    with sqlite3.connect(sink.db.path) as c:
+        c.execute("INSERT INTO TMTag VALUES ('G9', 'a,b')")
+        c.execute("INSERT INTO TMTaskTag VALUES ('T2', 'G9')")
+    assert sink.mark_printed(["T2"]) == []
+    assert cap.urls == []
+    assert len(sink.warnings) == 1 and "'a,b'" in sink.warnings[0]
+
+
+def test_create_tags_script_escapes_backslashes_and_quotes() -> None:
+    assert '{name:"a\\"b\\\\c"}' in create_tags_script(['a"b\\c'])
+    with pytest.raises(ValueError, match="line break"):
+        create_tags_script(["a\nb"])

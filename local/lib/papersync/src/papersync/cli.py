@@ -172,10 +172,13 @@ def _do_render(
             subprocess.run(["open", str(p)], check=False)
     things_refs = [r.item.ref for r in rendered if r.item is not None and r.item.source == "things"]
     if tag and things_refs:
+        sink = _sink(cfg)
         try:
-            untagged = _sink(cfg).mark_printed(things_refs)
+            untagged = sink.mark_printed(things_refs)
         except RuntimeError as exc:
             raise click.ClickException(str(exc)) from exc
+        for warning in sink.warnings:
+            _err(f"WARNING: {warning}")
         for ref in untagged:
             _err(f"NOT TAGGED: {ref}")
         _err(f"tagged {len(things_refs)} item(s) papersync:printed")
@@ -340,6 +343,8 @@ def _apply(
         sink.apply(plan.changes)
     except RuntimeError as exc:
         raise click.ClickException(str(exc)) from exc
+    for warning in sink.warnings:
+        _err(f"WARNING: {warning}")
     ledger = _ledger()
     for ch in plan.changes:
         if ch.ref:
