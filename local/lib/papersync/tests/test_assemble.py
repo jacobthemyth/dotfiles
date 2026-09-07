@@ -196,3 +196,17 @@ def test_continuation_of_a_different_card_is_an_error(tmp_path: Path) -> None:
     assert foo.title == "FOO"
     (err,) = plan.errors
     assert err.page == 2 and "continuation" in err.message
+
+
+def test_page_error_does_not_attach_handwriting_to_the_previous_card(tmp_path: Path) -> None:
+    pages = [
+        RasterPage("scan.pdf", 0, _card("F" * 22, "FOO", "", [])),
+        RasterPage("scan.pdf", 1, _card("Z" * 22, "ZED", "", [])),  # unknown item
+        RasterPage("scan.pdf", 2, synthetic.handwriting_page()),
+    ]
+    plan = recognize_pages(pages, FakeOcr(), _registry(tmp_path), _lookup, TODAY, ["scan.pdf"]).plan
+    (foo,) = plan.changes
+    assert foo.title == "FOO" and foo.append_notes is None
+    messages = [e.message for e in plan.errors]
+    assert any("unknown item" in m for m in messages)
+    assert any("no card before it" in m for m in messages)

@@ -87,6 +87,20 @@ def recognize_pages(
     overlays: list[PageOverlay] = []
     pending: _Pending | None = None
     page_no = 0
+
+    def fail(message: str, note: str, overlay: PageOverlay) -> None:
+        """Record a page-level error and close the card in progress.
+
+        The page is not part of any card, so a following handwriting page must
+        not append to the card before it: flushing ``pending`` turns that page
+        into its own "no card before it" error.
+        """
+        nonlocal pending
+        errors.append(PlanError(page=page_no, message=message))
+        overlay.note = note
+        _finish(pending, today, changes, errors)
+        pending = None
+
     for page in pages:
         page_no += 1
         overlay = PageOverlay(page)
@@ -94,8 +108,7 @@ def recognize_pages(
         try:
             decoded: DecodedQr | None = find_payload(page.gray)
         except ForeignPayload as exc:
-            errors.append(PlanError(page=page_no, message=f"unreadable papersync QR: {exc}"))
-            overlay.note = "bad QR"
+            fail(f"unreadable papersync QR: {exc}", "bad QR", overlay)
             continue
         if decoded is None:
             if pending is None:
@@ -110,28 +123,24 @@ def recognize_pages(
         payload = decoded.payload
         size = L.SIZES.get(payload.size)
         if size is None:
-            errors.append(PlanError(page=page_no, message=f"unknown size {payload.size!r}"))
-            overlay.note = "unknown size"
+            fail(f"unknown size {payload.size!r}", "unknown size", overlay)
             continue
         h = geometry.refine_with_fiducials(
             page.gray, geometry.homography_from_qr(decoded, size), size, qr_corners=decoded.corners
         )
         if h is None:
-            errors.append(PlanError(page=page_no, message="corner marks not found"))
-            overlay.note = "no fiducials"
+            fail("corner marks not found", "no fiducials", overlay)
             continue
         overlay.h = h
         overlay.size = size
         if payload.page > 1:
             if pending is None or pending.change.ref != payload.ref:
                 tail = "without its first page" if pending is None else "follows a different card"
-                errors.append(
-                    PlanError(
-                        page=page_no,
-                        message=f"continuation page {payload.page} of {payload.ref} {tail}",
-                    )
+                fail(
+                    f"continuation page {payload.page} of {payload.ref} {tail}",
+                    "stray continuation",
+                    overlay,
                 )
-                overlay.note = "stray continuation"
                 continue
             pending.seen_pages.add(payload.page)
             pending.change.pages.append(page_no)
@@ -139,15 +148,11 @@ def recognize_pages(
             continue
         labels = registry.labels_for(payload.boxes)
         if labels is None:
-            errors.append(PlanError(page=page_no, message=f"unknown box set {payload.boxes}"))
-            overlay.note = "unknown box set"
+            fail(f"unknown box set {payload.boxes}", "unknown box set", overlay)
             continue
         item = None if payload.is_new else lookup([payload.ref]).get(payload.ref)
         if item is None and not payload.is_new:
-            # Resolved before flushing ``pending``: an unrecognized card is a plan error,
-            # not a Change, and must not cut short the card that came before it.
-            errors.append(PlanError(page=page_no, message=f"unknown item {payload.ref}"))
-            overlay.note = "unknown item"
+            fail(f"unknown item {payload.ref}", "unknown item", overlay)
             continue
         _finish(pending, today, changes, errors)
         boxes = _score_boxes(page.gray, h, size, labels, overlay)
