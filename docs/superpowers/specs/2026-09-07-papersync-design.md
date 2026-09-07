@@ -224,7 +224,7 @@ Per page:
 
 - Four black 5 mm squares in the corners, inset 4 mm. These are the fiducials.
 - The QR at bottom right, inside the fiducial frame.
-- Page 1 only: a checkbox left of the title, the title in bold sans on a light grey bar (the SDAPS heading look), and the meta checkbox row at bottom left with the printed labels under the boxes. The number of boxes is the number of labels in the selected set. `render` exits nonzero if the set has more labels than fit at the chosen size (four on 3x5).
+- Page 1 only: a checkbox left of the title, the title in bold sans on a light grey bar (the SDAPS heading look), and the meta checkbox row at bottom left with the printed labels under the boxes. The number of boxes is the number of labels in the selected set. `render` exits nonzero if the set has more labels than fit at the chosen size (six on 3x5 with the v1 geometry).
 - Notes in New Computer Modern serif, plain text, line breaks preserved.
 - Continuation pages: the title bar with "(cont.)", the notes overflow, no boxes.
 - A `2/3` page marker in the footer on paginated items, and the print date in the footer on every page.
