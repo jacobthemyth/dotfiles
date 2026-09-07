@@ -307,6 +307,21 @@ def recognize(scans: tuple[str, ...], review: str | None) -> None:
     click.echo(plan.to_json())
 
 
+def _record_applied(ledger: Ledger, changes: list[Change], unmet: list[str]) -> int:
+    """Append an apply event for every change that verification did not report."""
+    recorded = 0
+    for ch in changes:
+        if not ch.ref or any(line.startswith(f"{ch.title}:") for line in unmet):
+            continue
+        ledger.record(
+            LedgerEntry(
+                ts=datetime.now(), event="apply", source=ch.source, ref=ch.ref, title=ch.title
+            )
+        )
+        recorded += 1
+    return recorded
+
+
 def _open_tty() -> TextIO:
     return open("/dev/tty")
 
@@ -350,20 +365,16 @@ def _apply(
         raise click.ClickException(str(exc)) from exc
     for warning in sink.warnings:
         _err(f"WARNING: {warning}")
-    ledger = _ledger()
-    for ch in plan.changes:
-        if ch.ref:
-            ledger.record(
-                LedgerEntry(
-                    ts=datetime.now(), event="apply", source=ch.source, ref=ch.ref, title=ch.title
-                )
-            )
+    unmet: list[str] = []
     if verify:
         unmet = sink.verify(plan.changes)
         for line in unmet:
             _err(f"NOT APPLIED: {line}")
-        if unmet:
-            raise click.ClickException(f"{len(unmet)} change(s) did not land")
+    # After verification: a change that did not land is not an applied change,
+    # and recording it would hide the card from ``status``.
+    _record_applied(_ledger(), plan.changes, unmet)
+    if unmet:
+        raise click.ClickException(f"{len(unmet)} change(s) did not land")
     _err(f"applied {len(plan.changes)} change(s)")
 
 

@@ -217,3 +217,17 @@ def test_apply_from_stdin_with_auto_approve_succeeds(tmp_path: Path) -> None:
     )
     assert r.exit_code == 0, r.output
     assert "things:///update?" in r.output
+
+
+def test_record_applied_skips_unmet_changes(tmp_path: Path) -> None:
+    from papersync.cli import _record_applied
+    from papersync.ledger import Ledger
+
+    ledger = Ledger(tmp_path / "prints.jsonl")
+    changes = [
+        Change(kind="update", source="things", ref="T1", title="FOO", pages=[1]),
+        Change(kind="update", source="things", ref="T2", title="BAR", pages=[2]),
+    ]
+    assert _record_applied(ledger, changes, ["FOO: not completed"]) == 1
+    written = (tmp_path / "prints.jsonl").read_text()
+    assert '"ref":"T2"' in written and '"ref":"T1"' not in written
