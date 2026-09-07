@@ -1,0 +1,1 @@
+New Computer Modern Sans by Antonis Tsolomitis, distributed under the GUST Font License (GFL). Source: CTAN package newcomputermodern.
