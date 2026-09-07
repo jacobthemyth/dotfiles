@@ -38,3 +38,16 @@ def test_rect_inset_and_corners() -> None:
     r = L.Rect(10, 20, 4, 4).inset(1)
     assert (r.x, r.y, r.w, r.h) == (11, 21, 2, 2)
     assert r.corners() == [(11, 21), (13, 21), (13, 23), (11, 23)]
+
+
+def test_title_bar_spans_to_right_margin_and_date_strip_sits_in_right_margin() -> None:
+    for size in L.SIZES.values():
+        tb = L.title_bar(size)
+        assert tb.x + tb.w == size.width - L.MARGIN_MM
+        f = L.footer_rect(size)
+        fid_tr = L.fiducials(size)[1]
+        assert f.x >= size.width - L.MARGIN_MM  # right of the text margin
+        assert f.x + f.w <= fid_tr.x  # left of the corner-square column
+        assert f.y >= fid_tr.y + fid_tr.h + 1.0  # below the top-right square
+        assert f.y + f.h <= L.qr_rect(size).y - 1.0  # above the QR
+        assert f.h >= 20.0  # room for "2026-09-07 · 12/12" at 6pt

@@ -9,8 +9,13 @@
   place(top + left, dx: mm(g.qr.x), dy: mm(g.qr.y), image(bytes(qr), width: mm(g.qr.w), height: mm(g.qr.h)))
   let total = d.qrs.len()
   let foot = if total > 1 { d.footer + " · " + str(page_no) + "/" + str(total) } else { d.footer }
-  place(top + left, dx: mm(g.footer.x), dy: mm(g.footer.y),
-    box(width: mm(g.footer.w), align(right, text(size: 6pt, fill: luma(110), font: "New Computer Modern Sans")[#foot])))
+  // Rotated 90 degrees clockwise down the right margin: the box's width runs
+  // down the strip and its height extends left of dx, so anchor at the strip's
+  // right edge.
+  place(top + left, dx: mm(g.footer.x + g.footer.w), dy: mm(g.footer.y),
+    rotate(90deg, origin: top + left, reflow: true,
+      box(width: mm(g.footer.h), height: mm(g.footer.w),
+        align(left + horizon, text(size: 6pt, fill: luma(110), font: "New Computer Modern Sans")[#foot]))))
   if page_no == 1 {
     rect_at(g.done_box, stroke: 0.4pt)
     place(top + left, dx: mm(g.title_bar.x), dy: mm(g.title_bar.y),

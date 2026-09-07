@@ -77,16 +77,20 @@ def done_box(size: PageSize) -> Rect:
 
 
 def title_bar(size: PageSize) -> Rect:
-    return Rect(
-        MARGIN_MM + BOX_MM + 2.0,
-        MARGIN_MM - 1.0,
-        size.width - MARGIN_MM - 28.0 - (MARGIN_MM + BOX_MM + 2.0),
-        6.0,
-    )
+    left = MARGIN_MM + BOX_MM + 2.0
+    return Rect(left, MARGIN_MM - 1.0, size.width - MARGIN_MM - left, 6.0)
 
 
 def footer_rect(size: PageSize) -> Rect:
-    return Rect(size.width - MARGIN_MM - 26.0, MARGIN_MM, 26.0, 4.0)
+    """Vertical strip in the right margin for the rotated date and page marker.
+
+    It runs from just below the top-right corner square to just above the QR,
+    between the text margin and the corner-square column, so it never
+    competes with the title bar or the meta boxes.
+    """
+    top = FIDUCIAL_INSET_MM + FIDUCIAL_MM + 2.0
+    bottom = qr_rect(size).y - 2.0
+    return Rect(size.width - MARGIN_MM + 0.5, top, 2.5, bottom - top)
 
 
 def notes_region(size: PageSize) -> Rect:
