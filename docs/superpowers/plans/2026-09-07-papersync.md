@@ -3596,8 +3596,8 @@ Expected: doctor passes every row except possibly the token; a PDF per size with
 ### Task 15: Opt-in real OCR test, README, cleanup of the old scripts
 
 **Files:**
-- Create: `tests/fixtures/handwriting.png`, `tests/test_ocr_real.py`
-- Modify: `local/lib/papersync/README.md`, `CLAUDE.md`
+- Create: `tests/fixtures/handwriting.png`, `tests/test_ocr_real.py`, `config/papersync/config.toml`
+- Modify: `local/lib/papersync/README.md`, `CLAUDE.md`, `rcrc` (add `config/papersync` to `SYMLINK_DIRS`)
 - Delete: `local/bin/things-export`, `local/bin/things-print`, `local/bin/things-pdf-matcher.py`
 
 - [ ] **Step 1: Make the handwriting fixture**
@@ -3626,13 +3626,38 @@ def test_ocrmac_reads_handwriting() -> None:
 
 Run: `PAPERSYNC_REAL_OCR=1 uv run pytest tests/test_ocr_real.py -q` — passes. `uv run pytest -q` without the variable reports it skipped.
 
-- [ ] **Step 3: README and CLAUDE.md**
+- [ ] **Step 3: Version the configuration directory**
+
+The spec says the box set registry lives in the config directory so the dotfiles repo versions it. rcm symlinks `config/*` file by file into real directories, so the registry that papersync writes would land outside the repo. Make the directory one symlink instead:
+
+1. Create `config/papersync/config.toml` with the documented defaults and one example action, all as comments except the render table:
+
+```toml
+# papersync configuration. See local/lib/papersync/README.md.
+[render]
+size = "auto"
+overflow = "fail"
+boxes = ["A", "B", "C", "D"]
+output_dir = "."
+open = true
+tag = true
+
+# [things.actions]
+# today = { when = "today" }
+# someday = { when = "someday" }
+# waiting = { tags = ["waiting"] }
+```
+
+2. In `rcrc`, change `SYMLINK_DIRS` to `"agents/skills/* local/lib/papersync config/papersync"`.
+3. If `~/.config/papersync/` already exists as a real directory (a smoke test created it), move any `boxsets.toml` it holds into `config/papersync/boxsets.toml` and remove the real directory before running `rcup`; `boxsets.toml` is then committed and grows in the repo as sets are added.
+
+- [ ] **Step 4: README and CLAUDE.md**
 
 README: describe the round trip in four commands (`print`, mark cards, `scan`, `status`), the `papersync:printed` and `papersync:scanned` state tags, the configuration file with `[things.actions]`, where the token, ledger and box set registry live, and `PAPERSYNC_REAL_OCR=1`. Keep every sentence under 20 words.
 
 CLAUDE.md: in Key Commands add `- **papersync**: \`local/lib/papersync\` is a uv project; run its checks with \`./script/test\` or \`cd local/lib/papersync && uv run pytest\``.
 
-- [ ] **Step 4: Delete the old scripts and run everything**
+- [ ] **Step 5: Delete the old scripts and run everything**
 
 ```bash
 git rm local/bin/things-export local/bin/things-print local/bin/things-pdf-matcher.py
@@ -3641,21 +3666,22 @@ git rm local/bin/things-export local/bin/things-print local/bin/things-pdf-match
 
 Expected: every block passes, including the papersync block.
 
-- [ ] **Step 5: Re-symlink and smoke test through rcm**
+- [ ] **Step 6: Re-symlink and smoke test through rcm**
 
 ```bash
 RCRC=~/.dotfiles/rcrc rcup
-ls -la ~/.local/lib/papersync ~/.local/bin/papersync
+ls -la ~/.local/lib/papersync ~/.local/bin/papersync ~/.config/papersync
 papersync --version
+papersync doctor
 ```
 
-Expected: `~/.local/lib/papersync` is a single symlink to the repo directory, and `papersync --version` prints the version through the shim.
+Expected: `~/.local/lib/papersync` and `~/.config/papersync` are single symlinks into the repo, `papersync --version` prints the version through the shim, and `doctor` passes every row except possibly the keychain token.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add -A local/lib/papersync CLAUDE.md
-git commit -m "papersync: real OCR test, docs, remove things-* scripts"
+git add -A local/lib/papersync config/papersync rcrc CLAUDE.md
+git commit -m "papersync: real OCR test, docs, versioned config, remove things-* scripts"
 ```
 
 ---
