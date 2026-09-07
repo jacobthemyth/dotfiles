@@ -231,3 +231,18 @@ def test_record_applied_skips_unmet_changes(tmp_path: Path) -> None:
     assert _record_applied(ledger, changes, ["FOO: not completed"]) == 1
     written = (tmp_path / "prints.jsonl").read_text()
     assert '"ref":"T2"' in written and '"ref":"T1"' not in written
+
+
+def test_render_new_card_qr(tmp_path: Path) -> None:
+    import pymupdf
+    import zxingcpp
+
+    env = _env(tmp_path)
+    r = CliRunner().invoke(
+        main, ["render", "-", "--new", "1", "--size", "3x5"], input="[]", env=env
+    )
+    assert r.exit_code == 0, r.output
+    pdf = next((tmp_path / "out").glob("*.pdf"))
+    assert pymupdf.open(pdf).page_count == 1
+    texts = [b.text for b in zxingcpp.read_barcodes(synthetic.rasterize(pdf.read_bytes()))]
+    assert texts == ["papersync:///v1/things/new?size=3x5&boxes=1"]

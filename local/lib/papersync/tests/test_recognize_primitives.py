@@ -2,6 +2,7 @@ from datetime import date
 
 import cv2
 import numpy as np
+import pytest
 
 from papersync.model import Item
 from papersync.recognize import geometry, marks, ocr
@@ -95,3 +96,22 @@ def test_lines_in_handles_a_rotated_homography() -> None:
     outside = ocr.OcrLine("out", 0.9, *geometry.mm_to_px(h, 1, 1), 0, 0)
     kept = ocr.lines_in([outside, near, far], h, region)
     assert [line.text for line in kept] == ["near", "far"]
+
+
+@pytest.mark.parametrize("angle_deg", [180.0, 10.0])
+def test_round_trip_survives_larger_rotations(angle_deg: float) -> None:
+    item = Item(source="things", ref="A" * 22, title="FOO", notes="n")
+    gray = synthetic.rasterize(engine.render_item(item, "3x5", OPTS, date(2026, 9, 7)).pdf)
+    synthetic.draw_x(gray, L.done_box(SIZE))
+    # a scan leaves margin around the card; without it a 10-degree rotation
+    # swings the bottom-left fiducial out of the frame
+    padded = cv2.copyMakeBorder(gray, 150, 150, 150, 150, cv2.BORDER_CONSTANT, value=255)
+    scan = synthetic.distort(padded, angle_deg=angle_deg, scale=1.0)
+    decoded = find_payload(scan)
+    assert decoded is not None and decoded.payload.ref == "A" * 22
+    h = geometry.refine_with_fiducials(
+        scan, geometry.homography_from_qr(decoded, SIZE), SIZE, qr_corners=decoded.corners
+    )
+    assert h is not None
+    assert marks.classify(marks.box_fill(scan, h, L.done_box(SIZE))).checked
+    assert not marks.classify(marks.box_fill(scan, h, L.meta_box(SIZE, 0))).checked
