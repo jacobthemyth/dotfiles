@@ -26,15 +26,15 @@ def test_qr_matrix_is_square_with_no_border() -> None:
     assert m[0][0] == 1
 
 
-def test_qr_matrix_falls_back_to_low_error_for_long_refs() -> None:
+def test_qr_matrix_grows_the_version_for_a_longer_ref() -> None:
     long_ref = "A" * 40
     m = qr_matrix(f"papersync:///v1/obsidian/{long_ref}?size=letter&boxes=1&page=1&pages=9")
-    assert len(m) == 41  # would be larger at error M; L keeps it smaller
+    assert len(m) == 41  # version 6 at error M, well under the cap
 
 
 def test_ref_needing_a_version_over_the_cap_at_m_falls_back_to_l_and_stays_under() -> None:
     """A ref long enough that error M would exceed the cap must still fit via L."""
-    ref = "x" * 352
+    ref = "x" * 240
     url = f"papersync:///v1/obsidian/{ref}?size=letter&boxes=1&page=10&pages=12"
     m = qr_matrix(url)
     modules = len(m)

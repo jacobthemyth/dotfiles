@@ -9,14 +9,16 @@ from papersync.payload import Payload, PayloadError
 # only shrinks the modules inside that fixed square, so it needs no geometry
 # change (chrome._draw_qr already derives its module pitch from len(matrix)).
 # What *does* change with version is whether a 300 dpi scan can still decode
-# it: measured empirically in
-# tests/test_chrome_roundtrip.py::test_deeply_nested_ref_survives_round_trip
-# and a throwaway stress harness (stamp -> rasterize at 300 dpi -> distort
-# with realistic scan rotation/scale -> recognize_pages), version 15 (77x77
-# modules, ~2.15 px/module at 300 dpi) decoded correctly in 200/200 randomized
-# trials (rotation +/-3 degrees, scale 0.95-1.06); version 16 already dropped
-# to 198/200. 15 is the cap.
-QR_VERSION_CAP = 15
+# it.
+#
+# The cap is 12 (65x65 modules, ~0.215 mm and ~2.5 px per module at 300 dpi).
+# An earlier cap of 15 came from a harness that applied only an affine warp
+# with linear interpolation: it measured resampling, not scanning. Re-measured
+# with a 5x5 Gaussian blur, which is still gentler than a real flatbed,
+# version 13 decoded 13 of 40 trials and version 15 decoded 0 of 40, while
+# version 12 stayed clean. A realistically deep vault path needs only version
+# 8, so the cap binds well above ordinary use.
+QR_VERSION_CAP = 12
 
 
 class QrCapacityError(ValueError):
