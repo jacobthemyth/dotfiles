@@ -1,9 +1,9 @@
-/* The @page margins reserve the band that papersync stamps chrome into.
-   They must match layout.py: TOP_MM, MARGIN_MM, BOTTOM_MM, MARGIN_MM. */
-@page {
-  size: 215.9mm 279.4mm;
-  margin: 22.0mm 12.0mm 27.0mm 12.0mm;
-}
+/* This file deliberately declares no @page rule. pageStyle() in main.js
+   is the single emitter of @page, built from the spec's page size and
+   margins_mm (which in turn come from layout.py via the spec Task 13
+   builds). Two @page rules in one stylesheet cascade by source order,
+   so a second one here could silently override the spec's page size —
+   invisible at Letter, but wrong for the 3x5 and 4x6 card sizes. */
 
 body {
   margin: 0;

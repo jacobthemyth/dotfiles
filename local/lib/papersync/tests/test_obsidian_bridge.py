@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -20,11 +21,15 @@ def test_the_bridge_ships_all_three_files() -> None:
         assert (bridge.BRIDGE_SRC / name).is_file()
 
 
-def test_page_css_reserves_the_chrome_band_from_the_layout() -> None:
-    from papersync.render.templates.v1 import layout as L  # noqa: N812
-
+def test_page_css_declares_no_page_rule() -> None:
+    # main.js's pageStyle() is the single emitter of @page, built from the
+    # spec (which traces back to layout.py). A second @page rule here would
+    # cascade by source order and could silently override the spec's page
+    # size for non-Letter documents, so page.css must never declare one.
+    # A rule is `@page` followed (ignoring whitespace) by `{`; explanatory
+    # prose mentioning "@page" in a comment is fine and not what this guards.
     css = (bridge.BRIDGE_SRC / "page.css").read_text()
-    assert f"{L.TOP_MM}mm {L.MARGIN_MM}mm {L.BOTTOM_MM}mm {L.MARGIN_MM}mm" in css
+    assert re.search(r"@page\s*\{", css) is None
 
 
 def test_install_copies_the_files_and_enables_the_plugin(tmp_path: Path) -> None:

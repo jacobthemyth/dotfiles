@@ -36,6 +36,9 @@ function frontmatterTable(pairs) {
   return `<table class="papersync-frontmatter"><tbody>${rows}</tbody></table>`;
 }
 
+// The single emitter of @page. page.css deliberately declares no @page
+// rule of its own, so there is exactly one source of truth for the page
+// box: this spec-derived rule, sourced from layout.py via the spec.
 function pageStyle(spec, css) {
   const p = spec.page;
   const m = spec.margins_mm;
