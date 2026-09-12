@@ -88,6 +88,25 @@ def test_stamped_pages_survive_rotation_and_scaling(tmp_path: Path) -> None:
     assert rec.plan.changes[0].ref == "Notes/Projects/Alpha"
 
 
+def test_deeply_nested_ref_survives_round_trip(tmp_path: Path) -> None:
+    """A short 20-char ref is what let the QR version-5 overflow through review.
+
+    This ref is 6 folders deep and 67 characters long -- realistic for an
+    Obsidian vault, and long enough that it overflowed the old fixed-version-5
+    QR (segno.DataOverflowError around 46 plain characters). It must still
+    stamp, survive a 300 dpi rasterization, and decode back intact.
+    """
+    ref = "Areas/Work/Projects/2026/Q3/Client Alpha/Meeting Notes 2026-09-12"
+    gray = synthetic.rasterize(_stamped(1, ref=ref))
+
+    rec = recognize_pages(
+        [RasterPage("fake.pdf", 0, gray)], NoOcr(), _registry(tmp_path), _lookup, TODAY, ["fake"]
+    )
+
+    assert rec.plan.errors == []
+    assert rec.plan.changes[0].ref == ref
+
+
 def test_continuation_pages_are_gathered_into_one_change(tmp_path: Path) -> None:
     pdf = _stamped(3)
     pages = [RasterPage("fake.pdf", i, synthetic.rasterize(pdf, page=i)) for i in range(3)]

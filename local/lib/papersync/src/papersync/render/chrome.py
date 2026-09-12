@@ -11,7 +11,7 @@ from pathlib import Path
 import pymupdf
 
 from papersync.payload import Payload
-from papersync.render.qr import qr_matrix
+from papersync.render.qr import QrCapacityError, qr_matrix
 from papersync.render.templates.v1 import layout as L  # noqa: N812
 
 PT = 72.0 / 25.4
@@ -65,7 +65,10 @@ def _check_page(page: pymupdf.Page, size: L.PageSize, number: int) -> None:
 
 def _draw_qr(page: pymupdf.Page, size: L.PageSize, payload: Payload) -> None:
     """Draw modules as filled rectangles, merging runs so no seam shows."""
-    matrix = qr_matrix(payload.to_url())
+    try:
+        matrix = qr_matrix(payload.to_url())
+    except QrCapacityError as exc:
+        raise ChromeError(str(exc)) from exc
     q = L.qr_rect(size)
     step = q.w / len(matrix)
     for row, bits in enumerate(matrix):
