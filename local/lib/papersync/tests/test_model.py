@@ -30,3 +30,18 @@ def test_scanned_block() -> None:
     assert (
         scanned_block("one\ntwo", date(2026, 9, 7)) == "\n\n## Scanned 2026-09-07\n\n> one\n> two"
     )
+
+
+def test_item_meta_defaults_to_empty_and_round_trips() -> None:
+    from papersync.model import Item
+
+    plain = Item(source="things", ref="T1", title="Foo")
+    assert plain.meta == {}
+
+    rich = Item(
+        source="obsidian",
+        ref="Notes/Alpha",
+        title="Alpha",
+        meta={"tags": ["project", "active"], "status": "open"},
+    )
+    assert Item.model_validate_json(rich.model_dump_json()) == rich

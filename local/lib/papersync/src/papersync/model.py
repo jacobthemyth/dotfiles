@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -9,6 +9,7 @@ class Item(BaseModel):
     ref: str
     title: str
     notes: str = ""
+    meta: dict[str, Any] = Field(default_factory=dict)
 
 
 class BoxResult(BaseModel):
