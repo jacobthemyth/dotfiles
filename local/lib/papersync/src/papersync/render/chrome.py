@@ -25,6 +25,15 @@ FOOTER_GRAY = (0.431, 0.431, 0.431)  # luma 110, matching card.typ
 TITLE_PT = 10
 LABEL_PT = 6
 FOOTER_PT = 6
+# PyMuPDF-builtin CJK fonts, tried in this order when NewCMSans cannot render
+# a title. Each is a full CID-keyed font that also covers ASCII, so it can
+# stand in for the whole title, not just its CJK characters.
+CJK_FALLBACK_FONTS = ("china-s", "china-t", "japan", "korea")
+# Substituted for a character no available font can render (an emoji, say),
+# so the title bar shows a visible mark instead of dropping the character or,
+# worse, going blank.
+GLYPH_PLACEHOLDER = "?"
+_FONT_CACHE: dict[str, pymupdf.Font] = {}
 # NewCMSans's own line-height metric reserves far more vertical room than its
 # glyphs need (a math-font legacy: tall accents/stacks), so PyMuPDF's default
 # `insert_textbox` fit check reports every one of these tightly sized boxes as
@@ -121,6 +130,42 @@ def stamp_marks(
             page.draw_rect(rect(L.meta_box(size, i)), color=BLACK, width=0.4)
 
 
+def _font_object(name: str, fontfile: Path | None = None) -> pymupdf.Font:
+    """A cached ``pymupdf.Font``, for ``has_glyph`` checks only (not drawing)."""
+    cached = _FONT_CACHE.get(name)
+    if cached is None:
+        cached = pymupdf.Font(fontfile=str(fontfile)) if fontfile else pymupdf.Font(name)
+        _FONT_CACHE[name] = cached
+    return cached
+
+
+def _covers(font: pymupdf.Font, text: str) -> bool:
+    return all(font.has_glyph(ord(ch)) != 0 for ch in text)
+
+
+def _title_font_and_text(page: pymupdf.Page, text: str) -> tuple[str, str]:
+    """Pick a registered font name that can render every character of ``text``.
+
+    NewCMSans has no CJK or astral (e.g. emoji) glyphs, and ``insert_textbox``
+    reports a non-negative fit even when it silently drew notdefs for
+    characters the font lacks -- an all-CJK title draws as a blank bar, and a
+    title with one emoji drops just that character, with no error either way.
+    Prefer a real PyMuPDF-builtin CJK font when one covers the whole title
+    (so real script renders as real script); otherwise fall back to the main
+    font with every unrenderable character replaced by a visible placeholder,
+    so the bar is never blank and never silently missing a character.
+    """
+    if _covers(_font_object(FONT_BOLD[0], FONT_BOLD[1]), text):
+        return FONT_BOLD[0], text
+    for name in CJK_FALLBACK_FONTS:
+        if _covers(_font_object(name), text):
+            page.insert_font(fontname=name)
+            return name, text
+    main = _font_object(FONT_BOLD[0], FONT_BOLD[1])
+    sanitized = "".join(ch if main.has_glyph(ord(ch)) else GLYPH_PLACEHOLDER for ch in text)
+    return FONT_BOLD[0], sanitized
+
+
 def _title_text(page: pymupdf.Page, size: L.PageSize, text: str) -> None:
     """Draw ``text`` in the title bar, truncating with an ellipsis if it overflows.
 
@@ -135,6 +180,7 @@ def _title_text(page: pymupdf.Page, size: L.PageSize, text: str) -> None:
     inner = pymupdf.Rect(
         (bar.x + 1.4) * PT, (bar.y + 0.6) * PT, (bar.x + bar.w - 1.4) * PT, (bar.y + bar.h) * PT
     )
+    fontname, text = _title_font_and_text(page, text)
     candidate = text
     keep = len(text)
     while True:
@@ -142,7 +188,7 @@ def _title_text(page: pymupdf.Page, size: L.PageSize, text: str) -> None:
             inner,
             candidate,
             fontsize=TITLE_PT,
-            fontname=FONT_BOLD[0],
+            fontname=fontname,
             color=BLACK,
             lineheight=TEXT_LINEHEIGHT,
         )

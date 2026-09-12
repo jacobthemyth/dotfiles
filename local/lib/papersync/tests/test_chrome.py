@@ -210,3 +210,26 @@ def test_an_ordinary_length_title_is_drawn_without_truncation() -> None:
     title_spans = [s for s in _spans(doc[0]) if "Project Alpha" in s["text"]]
     assert len(title_spans) == 1
     assert title_spans[0]["text"].strip() == "Project Alpha"
+
+
+def test_a_cjk_title_renders_as_real_text_not_a_blank_bar() -> None:
+    """NewCMSans has no CJK glyphs; a real fallback font must draw the title.
+
+    Before this fix, insert_textbox reported a non-negative fit for a run of
+    zero-width notdefs, so the ellipsis path never triggered and the bar
+    printed with nothing on it.
+    """
+    doc = _stamped(1, title="日本語のノート")
+    text = doc[0].get_text()
+    assert text.strip() != ""
+    assert "\x00" not in text
+    assert "日本語のノート" in text
+
+
+def test_an_emoji_title_substitutes_a_visible_placeholder() -> None:
+    """No available font can render an emoji, so it must not draw as nothing."""
+    doc = _stamped(1, title="Note 🎯 emoji")
+    text = doc[0].get_text()
+    assert text.strip() != ""
+    assert "\x00" not in text
+    assert "Note ? emoji" in text
