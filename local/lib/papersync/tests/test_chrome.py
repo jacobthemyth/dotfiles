@@ -181,3 +181,20 @@ def test_stamp_returns_bytes_and_preserves_the_page_count() -> None:
     pdf = chrome.stamp(chrome.blank(SIZE, 4), SIZE, [], "T", "d", _payloads(4))
     assert isinstance(pdf, bytes)
     assert pymupdf.open("pdf", pdf).page_count == 4
+
+
+def test_a_very_long_title_is_truncated_with_an_ellipsis() -> None:
+    long_title = "A" * 400
+    doc = _stamped(1, title=long_title)
+    title_spans = [s for s in _spans(doc[0]) if s["text"].strip().startswith("AA")]
+    assert len(title_spans) == 1
+    drawn = title_spans[0]["text"].strip()
+    assert len(drawn) < len(long_title)
+    assert drawn.endswith("…")
+
+
+def test_an_ordinary_length_title_is_drawn_without_truncation() -> None:
+    doc = _stamped(1, title="Project Alpha")
+    title_spans = [s for s in _spans(doc[0]) if "Project Alpha" in s["text"]]
+    assert len(title_spans) == 1
+    assert title_spans[0]["text"].strip() == "Project Alpha"

@@ -115,19 +115,36 @@ def stamp_marks(
 
 
 def _title_text(page: pymupdf.Page, size: L.PageSize, text: str) -> None:
+    """Draw ``text`` in the title bar, truncating with an ellipsis if it overflows.
+
+    Obsidian note titles come from frontmatter or the filename and are
+    unbounded in length, so this must degrade gracefully the way the Typst
+    path does, rather than silently print an empty bar. A failed
+    ``insert_textbox`` draws nothing, so retrying over the same rectangle is
+    safe; the bar itself is drawn once, before any attempt.
+    """
     bar = L.title_bar(size)
     page.draw_rect(rect(bar), color=None, fill=TITLE_FILL, width=0)
     inner = pymupdf.Rect(
         (bar.x + 1.4) * PT, (bar.y + 0.6) * PT, (bar.x + bar.w - 1.4) * PT, (bar.y + bar.h) * PT
     )
-    page.insert_textbox(
-        inner,
-        text,
-        fontsize=TITLE_PT,
-        fontname=FONT_BOLD[0],
-        color=BLACK,
-        lineheight=TEXT_LINEHEIGHT,
-    )
+    candidate = text
+    keep = len(text)
+    while True:
+        fit = page.insert_textbox(
+            inner,
+            candidate,
+            fontsize=TITLE_PT,
+            fontname=FONT_BOLD[0],
+            color=BLACK,
+            lineheight=TEXT_LINEHEIGHT,
+        )
+        if fit >= 0:
+            return
+        if candidate == "…":
+            raise ChromeError(f"title does not fit in the title bar even as '…': {inner}")
+        keep -= 1
+        candidate = text[:keep] + "…" if keep > 0 else "…"
 
 
 def _footer_text(page: pymupdf.Page, size: L.PageSize, text: str) -> None:
@@ -137,8 +154,9 @@ def _footer_text(page: pymupdf.Page, size: L.PageSize, text: str) -> None:
     quarter turn that ``card.typ`` writes as ``rotate(90deg)``.
     """
     strip = L.footer_rect(size)
-    page.insert_textbox(
-        rect(strip),
+    box = rect(strip)
+    fit = page.insert_textbox(
+        box,
         text,
         fontsize=FOOTER_PT,
         fontname=FONT_REGULAR[0],
@@ -146,24 +164,29 @@ def _footer_text(page: pymupdf.Page, size: L.PageSize, text: str) -> None:
         rotate=270,
         lineheight=TEXT_LINEHEIGHT,
     )
+    if fit < 0:
+        raise ChromeError(f"footer {text!r} does not fit in {box}")
 
 
 def _labels_text(page: pymupdf.Page, size: L.PageSize, labels: list[str]) -> None:
     for i, label in enumerate(labels):
         box = L.meta_box(size, i)
-        page.insert_textbox(
-            pymupdf.Rect(
-                box.x * PT,
-                (box.y + box.h + 0.5) * PT,
-                (box.x + L.BOX_PITCH_MM) * PT,
-                (box.y + box.h + 3.5) * PT,
-            ),
+        label_rect = pymupdf.Rect(
+            box.x * PT,
+            (box.y + box.h + 0.5) * PT,
+            (box.x + L.BOX_PITCH_MM) * PT,
+            (box.y + box.h + 3.5) * PT,
+        )
+        fit = page.insert_textbox(
+            label_rect,
             label,
             fontsize=LABEL_PT,
             fontname=FONT_REGULAR[0],
             color=BLACK,
             lineheight=TEXT_LINEHEIGHT,
         )
+        if fit < 0:
+            raise ChromeError(f"label {label!r} does not fit in {label_rect}")
 
 
 def stamp(
