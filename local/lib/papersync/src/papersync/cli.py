@@ -31,7 +31,7 @@ from papersync.recognize.assemble import recognize_pages
 from papersync.recognize.ocr import OcrmacBackend
 from papersync.recognize.raster import iter_pages
 from papersync.recognize.review import write_review
-from papersync.render import engine
+from papersync.render import chrome, engine
 from papersync.render.qr import qr_svg
 from papersync.render.templates.v1 import layout as L  # noqa: N812
 
@@ -642,7 +642,7 @@ def obsidian_print(
                 today,
                 Path(work),
             )
-        except ObsidianError as exc:
+        except (ObsidianError, chrome.ChromeError, odocs.DocumentRenderError) as exc:
             raise click.ClickException(str(exc)) from exc
     out_dir, paths = odocs.write_documents(
         docs, Path(output_dir or cfg.render.output_dir), stamp, cfg.obsidian.vault

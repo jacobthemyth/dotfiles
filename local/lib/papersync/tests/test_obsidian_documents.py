@@ -3,6 +3,7 @@ from datetime import date
 from pathlib import Path
 
 import pymupdf
+import pytest
 
 from papersync.integrations.obsidian import documents as D  # noqa: N812
 from papersync.model import Item
@@ -78,6 +79,49 @@ def test_render_documents_stamps_chrome_onto_what_the_bridge_produced(tmp_path: 
     page = pymupdf.open("pdf", docs[0].pdf)[0]
     black = [d for d in page.get_drawings() if d.get("fill") == (0.0, 0.0, 0.0)]
     assert len(black) > 4  # four fiducials plus QR module runs
+
+
+def test_render_documents_reports_a_clean_error_when_the_bridge_writes_no_file(
+    tmp_path: Path,
+) -> None:
+    """The bridge said ok, but ``spec["out"]`` was never written."""
+
+    def fake_render(cli, spec, spec_path):
+        return 1  # no file written at spec["out"]
+
+    with pytest.raises(D.DocumentRenderError, match="wrote no file"):
+        D.render_documents(
+            cli=None,
+            items=[_item()],
+            size=SIZE,
+            labels=["A", "B"],
+            boxes_id=1,
+            skip=["papersync-printed"],
+            today=TODAY,
+            workdir=tmp_path,
+            renderer=fake_render,
+        )
+
+
+def test_render_documents_reports_a_clean_error_for_a_truncated_pdf(tmp_path: Path) -> None:
+    """The bridge said ok and wrote a file, but it is not a valid PDF."""
+
+    def fake_render(cli, spec, spec_path):
+        Path(spec["out"]).write_bytes(b"not actually a pdf")
+        return 1
+
+    with pytest.raises(D.DocumentRenderError, match="not a readable PDF"):
+        D.render_documents(
+            cli=None,
+            items=[_item()],
+            size=SIZE,
+            labels=["A", "B"],
+            boxes_id=1,
+            skip=["papersync-printed"],
+            today=TODAY,
+            workdir=tmp_path,
+            renderer=fake_render,
+        )
 
 
 def test_write_documents_creates_one_pdf_per_note_and_a_manifest(tmp_path: Path) -> None:

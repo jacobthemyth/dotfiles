@@ -422,3 +422,72 @@ def test_obsidian_print_writes_a_directory_of_pdfs(monkeypatch, tmp_path) -> Non
     manifest = json.loads((directories[0] / "manifest.json").read_text())
     assert manifest["documents"][0]["pages"] == 2
     assert tagged == [["Notes/Alpha"]]
+
+
+def _obsidian_print_env(monkeypatch, tmp_path, fake_render) -> None:  # type: ignore[no-untyped-def]
+    """Shared setup for the two failure-path tests below."""
+    from typing import ClassVar
+
+    from papersync import cli as C  # noqa: N812
+    from papersync.integrations.obsidian import documents as D  # noqa: N812
+    from papersync.model import Item
+
+    config = tmp_path / "papersync"
+    config.mkdir(parents=True)
+    (config / "config.toml").write_text('[obsidian]\nvault = "Notes"\n[render]\nopen = false\n')
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+
+    class FakeSource:
+        name = "obsidian"
+        skipped_printed = 0
+        errors: ClassVar[list[str]] = []
+
+        def __init__(self, *_a, **_k) -> None:
+            pass
+
+        def export(self, selector: str, skip_printed: bool = True) -> list[Item]:
+            return [Item(source="obsidian", ref="Notes/Alpha", title="Alpha")]
+
+    monkeypatch.setattr(C, "ObsidianSource", FakeSource)
+    monkeypatch.setattr(C, "require_bridge", lambda cli: None)
+    monkeypatch.setattr(D.bridge, "render", fake_render)
+
+
+def test_obsidian_print_reports_a_clean_error_when_chrome_stamping_fails(
+    monkeypatch, tmp_path
+) -> None:
+    """A ChromeError (e.g. the bridge wrote the wrong page size) must not traceback."""
+    from click.testing import CliRunner
+
+    from papersync import cli as C  # noqa: N812
+    from papersync.render import chrome
+    from papersync.render.templates.v1 import layout as L  # noqa: N812
+
+    def fake_render(cli, spec, spec_path):
+        Path(spec["out"]).write_bytes(chrome.blank(L.SIZES["3x5"], 1))  # wrong size
+        return 1
+
+    _obsidian_print_env(monkeypatch, tmp_path, fake_render)
+    result = CliRunner().invoke(C.main, ["obsidian", "print", "path:Notes/Alpha.md"])
+    assert result.exit_code != 0
+    assert "Traceback" not in result.output
+    assert "mm" in result.output  # ChromeError names the mismatched page size
+
+
+def test_obsidian_print_reports_a_clean_error_when_the_bridge_writes_no_file(
+    monkeypatch, tmp_path
+) -> None:
+    """The bridge reports success but ``spec["out"]`` was never written."""
+    from click.testing import CliRunner
+
+    from papersync import cli as C  # noqa: N812
+
+    def fake_render(cli, spec, spec_path):
+        return 1  # no file written
+
+    _obsidian_print_env(monkeypatch, tmp_path, fake_render)
+    result = CliRunner().invoke(C.main, ["obsidian", "print", "path:Notes/Alpha.md"])
+    assert result.exit_code != 0
+    assert "Traceback" not in result.output
+    assert "wrote no file" in result.output

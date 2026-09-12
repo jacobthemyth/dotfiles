@@ -25,6 +25,10 @@ SLUG_MAX = 60
 MANIFEST = "manifest.json"
 
 
+class DocumentRenderError(RuntimeError):
+    """The bridge reported success but the PDF it wrote is missing or unreadable."""
+
+
 def slug(name: str) -> str:
     cleaned = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
     return (cleaned[:SLUG_MAX].rstrip("-")) or "note"
@@ -81,9 +85,20 @@ def render_documents(
         body_path = workdir / f"{index:03d}-body.pdf"
         spec = build_spec(item, body_path, size, skip)
         renderer(cli, spec, workdir / f"{index:03d}-spec.json")
-        body = body_path.read_bytes()
-        # The bridge reports a page count too, but pymupdf is authoritative.
-        pages = pymupdf.open("pdf", body).page_count
+        try:
+            body = body_path.read_bytes()
+        except FileNotFoundError as exc:
+            raise DocumentRenderError(
+                f"the bridge reported success for {item.ref!r} but wrote no file at {body_path}"
+            ) from exc
+        try:
+            # The bridge reports a page count too, but pymupdf is authoritative.
+            pages = pymupdf.open("pdf", body).page_count
+        except Exception as exc:
+            raise DocumentRenderError(
+                f"the bridge reported success for {item.ref!r} but {body_path} is not a "
+                "readable PDF (it may be truncated)"
+            ) from exc
         payloads = [
             Payload(L.TEMPLATE_VERSION, item.source, item.ref, size.name, boxes_id, p, pages)
             for p in range(1, pages + 1)

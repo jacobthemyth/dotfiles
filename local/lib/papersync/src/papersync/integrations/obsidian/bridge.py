@@ -60,4 +60,6 @@ def render(cli: ObsidianCli, spec: dict, spec_path: Path) -> int:
         raise ObsidianError(f"the bridge returned unreadable output: {reply[:120]!r}") from exc
     if not result.get("ok"):
         raise ObsidianError(f"the bridge failed: {result.get('error', 'unknown error')}")
+    if "pages" not in result:
+        raise ObsidianError(f"the bridge reported success but no page count: {reply[:120]!r}")
     return int(result["pages"])

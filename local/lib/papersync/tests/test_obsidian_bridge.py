@@ -77,3 +77,10 @@ def test_render_raises_when_the_bridge_reports_failure(tmp_path: Path) -> None:
     cli = ObsidianCli("Notes", runner=lambda a: '=> {"ok": false, "error": "no such file"}')
     with pytest.raises(ObsidianError, match="no such file"):
         bridge.render(cli, {"path": "a.md"}, tmp_path / "spec.json")
+
+
+def test_render_raises_a_clean_error_when_ok_but_no_pages_field(tmp_path: Path) -> None:
+    """A reply of ``{"ok": true}`` with no ``pages`` used to raise a bare KeyError."""
+    cli = ObsidianCli("Notes", runner=lambda a: '=> {"ok": true}')
+    with pytest.raises(ObsidianError, match="no page count"):
+        bridge.render(cli, {"path": "a.md"}, tmp_path / "spec.json")
