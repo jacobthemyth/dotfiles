@@ -61,13 +61,18 @@ def _finish(
 
 
 def _score_boxes(
-    gray: np.ndarray, h: np.ndarray, size: L.PageSize, labels: list[str], overlay: PageOverlay
+    gray: np.ndarray,
+    h: np.ndarray,
+    size: L.PageSize,
+    labels: list[str],
+    overlay: PageOverlay,
+    primary: bool,
 ) -> dict[str, BoxResult]:
+    rects = [(lb, L.meta_box(size, i)) for i, lb in enumerate(labels)]
+    if primary:
+        rects.insert(0, ("done", L.done_box(size)))
     out: dict[str, BoxResult] = {}
-    for label, rect in [
-        ("done", L.done_box(size)),
-        *[(lb, L.meta_box(size, i)) for i, lb in enumerate(labels)],
-    ]:
+    for label, rect in rects:
         result = marks.classify(marks.box_fill(gray, h, rect))
         out[label] = result
         overlay.boxes.append((rect, result))
@@ -156,8 +161,10 @@ def recognize_pages(
             fail(f"unknown item {payload.ref}", "unknown item", overlay)
             continue
         _finish(pending, today, changes, errors)
-        boxes = _score_boxes(gray, h, size, labels, overlay)
+        primary = payload.source == "things"
+        boxes = _score_boxes(gray, h, size, labels, overlay, primary)
         marked = [lb for lb in labels if boxes[lb].checked]
+        complete = primary and boxes["done"].checked
         if payload.is_new:
             lines = ocr.recognize(gray)
             title_lines = lines_in(lines, h, L.title_bar(size))
@@ -170,7 +177,7 @@ def recognize_pages(
                 source=payload.source,
                 title=title,
                 notes=rest,
-                complete=boxes["done"].checked,
+                complete=complete,
                 marks=marked,
                 boxes=boxes,
                 pages=[page_no],
@@ -184,7 +191,7 @@ def recognize_pages(
                 source=payload.source,
                 ref=payload.ref,
                 title=title,
-                complete=boxes["done"].checked,
+                complete=complete,
                 marks=marked,
                 boxes=boxes,
                 pages=[page_no],

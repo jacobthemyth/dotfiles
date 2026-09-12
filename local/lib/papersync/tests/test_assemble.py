@@ -239,3 +239,28 @@ def test_one_bit_scan_decodes_through_the_blur_ladder(tmp_path: Path) -> None:
     assert plan.errors == []
     (change,) = plan.changes
     assert change.ref == ref and change.complete and change.marks == ["B"]
+
+
+def test_a_source_without_a_primary_box_reports_no_done_result(tmp_path: Path) -> None:
+    from papersync.payload import Payload
+    from papersync.render import chrome
+
+    size = L.SIZES["letter"]
+    payload = Payload(1, "obsidian", "Notes/Alpha", size.name, 1, 1, 1)
+    pdf = chrome.stamp(chrome.blank(size, 1), size, ["A", "B"], "Alpha", "2026-09-12", [payload])
+    gray = synthetic.rasterize(pdf)
+    synthetic.draw_x(gray, L.meta_box(size, 1))
+
+    def lookup(refs: list[str]) -> dict[str, Item]:
+        return {r: Item(source="obsidian", ref=r, title="Alpha") for r in refs}
+
+    rec = recognize_pages(
+        [RasterPage("fake.pdf", 0, gray)], FakeOcr(), _registry(tmp_path), lookup, TODAY, ["fake"]
+    )
+    assert rec.plan.errors == []
+    change = rec.plan.changes[0]
+    assert change.source == "obsidian"
+    assert change.ref == "Notes/Alpha"
+    assert change.complete is False
+    assert "done" not in change.boxes
+    assert change.marks == ["B"]
