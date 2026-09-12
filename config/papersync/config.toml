@@ -11,3 +11,11 @@ tag = true
 # today = { when = "today" }
 # someday = { when = "someday" }
 # waiting = { tags = ["waiting"] }
+
+# Obsidian. The vault name is what `obsidian vaults` lists.
+# papersync needs Obsidian running, and the bridge plugin installed with
+# `papersync obsidian install-bridge`.
+[obsidian]
+vault = ""
+# Front matter keys that do not print in the document's property table.
+frontmatter_skip = ["papersync-printed"]
