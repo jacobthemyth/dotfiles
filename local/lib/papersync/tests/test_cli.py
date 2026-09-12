@@ -403,6 +403,19 @@ def test_obsidian_print_rejects_auto_size(monkeypatch, tmp_path) -> None:
     assert "auto" in result.output
 
 
+def test_obsidian_print_rejects_overflow(monkeypatch, tmp_path) -> None:
+    from click.testing import CliRunner
+
+    from papersync import cli as C  # noqa: N812
+
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    result = CliRunner().invoke(
+        C.main, ["obsidian", "print", "path:Notes/Alpha.md", "--overflow", "truncate"]
+    )
+    assert result.exit_code != 0
+    assert "--overflow" in result.output
+
+
 def test_obsidian_print_needs_a_configured_vault(monkeypatch, tmp_path) -> None:
     from click.testing import CliRunner
 

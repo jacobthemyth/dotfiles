@@ -634,6 +634,11 @@ def obsidian_print(
         raise click.ClickException("auto sizing is meaningless for documents; use --size letter")
     if new:
         raise click.ClickException("--new is a Things card option and does not apply to documents")
+    if overflow is not None:
+        raise click.ClickException(
+            "--overflow is a Things card option and does not apply to documents "
+            "(documents always paginate)"
+        )
     page_size = L.SIZES[chosen]
     opts = _render_options(cfg, chosen, "paginate", boxes)
     cli = _obsidian(cfg)
