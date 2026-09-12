@@ -6,6 +6,8 @@ box up in millimetres. Drawing them here, after the body renderer has finished,
 keeps that guarantee independent of whatever produced the body.
 """
 
+from pathlib import Path
+
 import pymupdf
 
 from papersync.payload import Payload
@@ -15,6 +17,21 @@ from papersync.render.templates.v1 import layout as L  # noqa: N812
 PT = 72.0 / 25.4
 TOLERANCE_PT = 0.1 * PT
 BLACK = (0.0, 0.0, 0.0)
+FONT_DIR = Path(__file__).parent / "templates" / "v1" / "fonts"
+FONT_REGULAR = ("psans", FONT_DIR / "NewCMSans10-Regular.otf")
+FONT_BOLD = ("psansb", FONT_DIR / "NewCMSans10-Bold.otf")
+TITLE_FILL = (0.882, 0.882, 0.882)  # luma 225, matching card.typ
+FOOTER_GRAY = (0.431, 0.431, 0.431)  # luma 110, matching card.typ
+TITLE_PT = 10
+LABEL_PT = 6
+FOOTER_PT = 6
+# NewCMSans's own line-height metric reserves far more vertical room than its
+# glyphs need (a math-font legacy: tall accents/stacks), so PyMuPDF's default
+# `insert_textbox` fit check reports every one of these tightly sized boxes as
+# too short even for a single short line. 0.8 keeps single-line text centred
+# and legible while fitting the title bar, box labels and footer strip as
+# ``layout.py`` sizes them.
+TEXT_LINEHEIGHT = 0.8
 
 
 class ChromeError(RuntimeError):
@@ -95,3 +112,79 @@ def stamp_marks(
             page.draw_rect(rect(L.done_box(size)), color=BLACK, width=0.4)
         for i in range(len(labels)):
             page.draw_rect(rect(L.meta_box(size, i)), color=BLACK, width=0.4)
+
+
+def _title_text(page: pymupdf.Page, size: L.PageSize, text: str) -> None:
+    bar = L.title_bar(size)
+    page.draw_rect(rect(bar), color=None, fill=TITLE_FILL, width=0)
+    inner = pymupdf.Rect(
+        (bar.x + 1.4) * PT, (bar.y + 0.6) * PT, (bar.x + bar.w - 1.4) * PT, (bar.y + bar.h) * PT
+    )
+    page.insert_textbox(
+        inner,
+        text,
+        fontsize=TITLE_PT,
+        fontname=FONT_BOLD[0],
+        color=BLACK,
+        lineheight=TEXT_LINEHEIGHT,
+    )
+
+
+def _footer_text(page: pymupdf.Page, size: L.PageSize, text: str) -> None:
+    """Rotated a quarter turn clockwise down the right margin.
+
+    PyMuPDF measures ``rotate`` counterclockwise, so 270 is the clockwise
+    quarter turn that ``card.typ`` writes as ``rotate(90deg)``.
+    """
+    strip = L.footer_rect(size)
+    page.insert_textbox(
+        rect(strip),
+        text,
+        fontsize=FOOTER_PT,
+        fontname=FONT_REGULAR[0],
+        color=FOOTER_GRAY,
+        rotate=270,
+        lineheight=TEXT_LINEHEIGHT,
+    )
+
+
+def _labels_text(page: pymupdf.Page, size: L.PageSize, labels: list[str]) -> None:
+    for i, label in enumerate(labels):
+        box = L.meta_box(size, i)
+        page.insert_textbox(
+            pymupdf.Rect(
+                box.x * PT,
+                (box.y + box.h + 0.5) * PT,
+                (box.x + L.BOX_PITCH_MM) * PT,
+                (box.y + box.h + 3.5) * PT,
+            ),
+            label,
+            fontsize=LABEL_PT,
+            fontname=FONT_REGULAR[0],
+            color=BLACK,
+            lineheight=TEXT_LINEHEIGHT,
+        )
+
+
+def stamp(
+    pdf: bytes,
+    size: L.PageSize,
+    labels: list[str],
+    title: str,
+    footer: str,
+    payloads: list[Payload],
+    primary_box: bool = False,
+) -> bytes:
+    """Return ``pdf`` with papersync chrome drawn on every page."""
+    doc = pymupdf.open("pdf", pdf)
+    stamp_marks(doc, size, labels, payloads, primary_box)
+    total = doc.page_count
+    for index in range(total):
+        page = doc[index]
+        for name, path in (FONT_REGULAR, FONT_BOLD):
+            page.insert_font(fontname=name, fontfile=str(path))
+        _footer_text(page, size, footer if total == 1 else f"{footer} · {index + 1}/{total}")
+        _title_text(page, size, title if index == 0 else f"{title} (cont.)")
+        if index == 0:
+            _labels_text(page, size, labels)
+    return doc.tobytes()

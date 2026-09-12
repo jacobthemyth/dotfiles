@@ -118,3 +118,66 @@ def test_payload_count_must_match_page_count() -> None:
     doc = pymupdf.open("pdf", chrome.blank(SIZE, 2))
     with pytest.raises(chrome.ChromeError, match="1 payload"):
         chrome.stamp_marks(doc, SIZE, [], _payloads(1), primary_box=False)
+
+
+def _spans(page: pymupdf.Page) -> list[dict]:
+    out = []
+    for block in page.get_text("dict")["blocks"]:
+        for line in block.get("lines", []):
+            out += line["spans"]
+    return out
+
+
+def _stamped(pages: int, title: str = "Project Alpha") -> pymupdf.Document:
+    pdf = chrome.stamp(
+        chrome.blank(SIZE, pages),
+        SIZE,
+        ["A", "B"],
+        title,
+        "2026-09-12",
+        _payloads(pages),
+    )
+    return pymupdf.open("pdf", pdf)
+
+
+def test_first_page_shows_the_title_and_later_pages_show_the_continuation() -> None:
+    doc = _stamped(2)
+    first = " ".join(s["text"] for s in _spans(doc[0]))
+    second = " ".join(s["text"] for s in _spans(doc[1]))
+    assert "Project Alpha" in first and "(cont.)" not in first
+    assert "Project Alpha (cont.)" in second
+
+
+def test_box_labels_print_under_the_boxes_on_the_first_page_only() -> None:
+    doc = _stamped(2)
+    labels = [s for s in _spans(doc[0]) if s["text"].strip() in {"A", "B"}]
+    assert len(labels) == 2
+    for span in labels:
+        assert span["bbox"][1] > L.meta_box(SIZE, 0).y * chrome.PT
+    assert [s for s in _spans(doc[1]) if s["text"].strip() in {"A", "B"}] == []
+
+
+def test_footer_runs_down_the_right_margin_and_carries_the_page_number() -> None:
+    doc = _stamped(3)
+    strip = L.footer_rect(SIZE)
+    footers = [s for s in _spans(doc[1]) if "2026-09-12" in s["text"]]
+    assert len(footers) == 1
+    span = footers[0]
+    assert "2/3" in span["text"]
+    x0, y0, x1, y1 = span["bbox"]
+    # Rotated text: the drawn box is taller than it is wide.
+    assert (y1 - y0) > (x1 - x0)
+    assert x0 >= (strip.x - 1.0) * chrome.PT
+
+
+def test_single_page_footer_omits_the_page_number() -> None:
+    doc = _stamped(1)
+    footers = [s for s in _spans(doc[0]) if "2026-09-12" in s["text"]]
+    assert len(footers) == 1
+    assert "/" not in footers[0]["text"]
+
+
+def test_stamp_returns_bytes_and_preserves_the_page_count() -> None:
+    pdf = chrome.stamp(chrome.blank(SIZE, 4), SIZE, [], "T", "d", _payloads(4))
+    assert isinstance(pdf, bytes)
+    assert pymupdf.open("pdf", pdf).page_count == 4
