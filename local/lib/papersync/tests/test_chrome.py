@@ -120,6 +120,18 @@ def test_payload_count_must_match_page_count() -> None:
         chrome.stamp_marks(doc, SIZE, [], _payloads(1), primary_box=False)
 
 
+def test_too_many_box_labels_are_rejected_before_drawing() -> None:
+    """Beyond L.max_boxes, boxes would overlap the QR rectangle and fiducials.
+
+    ``engine.RenderOverflow`` guards the Typst path for the same reason; this
+    is the pymupdf-path equivalent, so an oversized ``labels`` list never
+    silently corrupts the recognition marks.
+    """
+    too_many = [chr(ord("A") + i) for i in range(L.max_boxes(SIZE) + 1)]
+    with pytest.raises(chrome.ChromeError, match="do not fit"):
+        chrome.stamp(chrome.blank(SIZE, 1), SIZE, too_many, "Alpha", "2026-09-12", _payloads(1))
+
+
 def _spans(page: pymupdf.Page) -> list[dict]:
     out = []
     for block in page.get_text("dict")["blocks"]:

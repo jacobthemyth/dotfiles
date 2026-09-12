@@ -103,6 +103,10 @@ def stamp_marks(
     """Draw fiducials, QR codes and boxes onto every page of ``doc`` in place."""
     if len(payloads) != doc.page_count:
         raise ChromeError(f"{len(payloads)} payload(s) for {doc.page_count} page(s)")
+    if len(labels) > L.max_boxes(size):
+        raise ChromeError(
+            f"{len(labels)} box labels do not fit on {size.name} (max {L.max_boxes(size)})"
+        )
     for index in range(doc.page_count):
         page = doc[index]
         _check_page(page, size, index + 1)
