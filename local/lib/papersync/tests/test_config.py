@@ -24,3 +24,16 @@ def test_xdg_dirs(monkeypatch) -> None:  # type: ignore[no-untyped-def]
     monkeypatch.setenv("XDG_STATE_HOME", "/x/state")
     assert config_dir() == Path("/x/cfg/papersync")
     assert state_dir() == Path("/x/state/papersync")
+
+
+def test_obsidian_config_defaults_and_parsing(tmp_path: Path) -> None:
+    from papersync.config import Config, load_config
+
+    assert Config().obsidian.vault == ""
+    assert Config().obsidian.frontmatter_skip == ["papersync-printed"]
+
+    path = tmp_path / "config.toml"
+    path.write_text('[obsidian]\nvault = "Notes"\nfrontmatter_skip = ["a", "b"]\n')
+    cfg = load_config(path)
+    assert cfg.obsidian.vault == "Notes"
+    assert cfg.obsidian.frontmatter_skip == ["a", "b"]

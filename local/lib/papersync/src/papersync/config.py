@@ -27,9 +27,15 @@ class ThingsConfig(BaseModel):
     actions: dict[str, Action] = Field(default_factory=dict)
 
 
+class ObsidianConfig(BaseModel):
+    vault: str = ""
+    frontmatter_skip: list[str] = Field(default_factory=lambda: ["papersync-printed"])
+
+
 class Config(BaseModel):
     render: RenderConfig = Field(default_factory=RenderConfig)
     things: ThingsConfig = Field(default_factory=ThingsConfig)
+    obsidian: ObsidianConfig = Field(default_factory=ObsidianConfig)
 
 
 def _xdg(var: str, default: str) -> Path:
