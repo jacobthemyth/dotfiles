@@ -223,13 +223,7 @@ def _footer_text(page: pymupdf.Page, size: L.PageSize, text: str) -> None:
 
 def _labels_text(page: pymupdf.Page, size: L.PageSize, labels: list[str]) -> None:
     for i, label in enumerate(labels):
-        box = L.meta_box(size, i)
-        label_rect = pymupdf.Rect(
-            box.x * PT,
-            (box.y + box.h + 0.5) * PT,
-            (box.x + L.BOX_PITCH_MM) * PT,
-            (box.y + box.h + 3.5) * PT,
-        )
+        label_rect = rect(L.label_band(size, i))
         fit = page.insert_textbox(
             label_rect,
             label,

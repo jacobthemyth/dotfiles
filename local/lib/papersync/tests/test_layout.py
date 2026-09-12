@@ -63,3 +63,30 @@ def test_geometry_can_drop_the_primary_box() -> None:
     assert g["primary_box"] is False
     # The done box rectangle still exists; only the flag says whether to draw it.
     assert L.done_box(L.SIZES["letter"]).w == L.BOX_MM
+
+
+def _intersects(a: L.Rect, b: L.Rect) -> bool:
+    return not (a.x + a.w <= b.x or b.x + b.w <= a.x or a.y + a.h <= b.y or b.y + b.h <= a.y)
+
+
+def test_chrome_never_intersects_the_notes_region() -> None:
+    """The single-source-of-truth invariant page.css depends on: ``layout.py``
+
+    is the only place the page box is drawn from, so nothing it hands out as
+    chrome may ever overlap the region it hands out for notes. Measured
+    clearances are small (the title bar ends 11-17mm against a TOP_MM of 22,
+    the QR top sits 2mm above a body bottom of 252.4 on letter, the footer
+    sits 0.5mm inside the right margin), so this is checked directly rather
+    than trusted by inspection.
+    """
+    for size in L.SIZES.values():
+        notes = L.notes_region(size)
+        chrome_rects = [
+            L.title_bar(size),
+            L.footer_rect(size),
+            L.qr_rect(size),
+            *(L.meta_box(size, i) for i in range(L.max_boxes(size))),
+            *(L.label_band(size, i) for i in range(L.max_boxes(size))),
+        ]
+        for r in chrome_rects:
+            assert not _intersects(r, notes), f"{size.name}: {r} intersects notes region {notes}"

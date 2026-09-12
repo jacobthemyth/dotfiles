@@ -101,6 +101,20 @@ def meta_box(size: PageSize, index: int) -> Rect:
     return Rect(MARGIN_MM + index * BOX_PITCH_MM, size.height - MARGIN_MM, BOX_MM, BOX_MM)
 
 
+LABEL_GAP_MM = 0.5  # gap between a meta box and its label, matching card.typ's own +0.5
+LABEL_BAND_MM = 3.0  # vertical room reserved for the label text below a box
+
+
+def label_band(size: PageSize, index: int) -> Rect:
+    """Where a meta box's label is drawn, just below the box itself.
+
+    card.typ restates this offset by hand (Typst cannot import this module),
+    but chrome.py and anything checking the invariant both use this.
+    """
+    box = meta_box(size, index)
+    return Rect(box.x, box.y + box.h + LABEL_GAP_MM, BOX_PITCH_MM, LABEL_BAND_MM)
+
+
 def max_boxes(size: PageSize) -> int:
     limit = qr_rect(size).x - 2.0
     n = 0
