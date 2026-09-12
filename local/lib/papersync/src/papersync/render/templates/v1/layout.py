@@ -109,13 +109,14 @@ def max_boxes(size: PageSize) -> int:
     return n
 
 
-def geometry(size: PageSize, labels: list[str]) -> dict[str, object]:
+def geometry(size: PageSize, labels: list[str], primary_box: bool = True) -> dict[str, object]:
     return {
         "width": size.width,
         "height": size.height,
         "margin": MARGIN_MM,
         "top": TOP_MM,
         "bottom": BOTTOM_MM,
+        "primary_box": primary_box,
         "fiducials": [r.as_dict() for r in fiducials(size)],
         "qr": qr_rect(size).as_dict(),
         "done_box": done_box(size).as_dict(),

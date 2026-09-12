@@ -51,3 +51,15 @@ def test_title_bar_spans_to_right_margin_and_date_strip_sits_in_right_margin() -
         assert f.y >= fid_tr.y + fid_tr.h + 1.0  # below the top-right square
         assert f.y + f.h <= L.qr_rect(size).y - 1.0  # above the QR
         assert f.h >= 20.0  # room for "2026-09-07 · 12/12" at 6pt
+
+
+def test_geometry_reports_a_primary_box_by_default() -> None:
+    g = L.geometry(L.SIZES["3x5"], ["A"])
+    assert g["primary_box"] is True
+
+
+def test_geometry_can_drop_the_primary_box() -> None:
+    g = L.geometry(L.SIZES["letter"], ["A"], primary_box=False)
+    assert g["primary_box"] is False
+    # The done box rectangle still exists; only the flag says whether to draw it.
+    assert L.done_box(L.SIZES["letter"]).w == L.BOX_MM

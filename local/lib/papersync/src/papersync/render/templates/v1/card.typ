@@ -17,7 +17,7 @@
       box(width: mm(g.footer.h), height: mm(g.footer.w),
         align(left + horizon, text(size: 6pt, fill: luma(110), font: "New Computer Modern Sans")[#foot]))))
   if page_no == 1 {
-    rect_at(g.done_box, stroke: 0.4pt)
+    if g.primary_box { rect_at(g.done_box, stroke: 0.4pt) }
     place(top + left, dx: mm(g.title_bar.x), dy: mm(g.title_bar.y),
       block(width: mm(g.title_bar.w), fill: luma(225), inset: 4pt,
         text(font: "New Computer Modern Sans", weight: "bold", size: 10pt)[#d.title]))
