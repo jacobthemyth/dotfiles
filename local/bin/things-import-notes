@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+"""Create a Things to-do from each markdown note in an Obsidian _things folder.
+
+Each note is YAML frontmatter (created, uuid, tags), a blank line, the title
+line, and optionally a blank line followed by the body, which becomes the notes.
+
+Dry run by default; pass --apply to open the things:///add URLs. Imported note
+uuids are recorded in .imported inside the folder so reruns skip them.
+"""
+
+import argparse
+import re
+import subprocess
+import sys
+import time
+from pathlib import Path
+from urllib.parse import quote
+
+DEFAULT_DIR = Path(
+    "~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Notes/0-Inbox/_things"
+).expanduser()
+FRONTMATTER = re.compile(r"\A---\n(.*?)\n---\n(.*)\Z", re.S)
+
+
+def parse(path: Path) -> dict:
+    m = FRONTMATTER.match(path.read_text())
+    if not m:
+        raise ValueError(f"{path.name}: no frontmatter")
+    meta = {}
+    for line in m.group(1).splitlines():
+        key, _, value = line.partition(":")
+        meta[key.strip()] = value.strip()
+    body = m.group(2).strip("\n")
+    if not body:
+        raise ValueError(f"{path.name}: empty body")
+    title, _, rest = body.partition("\n")
+    return {
+        "uuid": meta.get("uuid") or path.stem,
+        "created": meta.get("created", ""),
+        "title": title.strip(),
+        "notes": rest.strip("\n"),
+    }
+
+
+def add_url(item: dict, when: str | None) -> str:
+    params = [("title", item["title"])]
+    if item["notes"]:
+        params.append(("notes", item["notes"]))
+    if item["created"]:
+        params.append(("creation-date", item["created"]))
+    if when:
+        params.append(("when", when))
+    params.append(("reveal", "false"))
+    return "things:///add?" + "&".join(f"{k}={quote(v, safe='')}" for k, v in params)
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap.add_argument("folder", nargs="?", type=Path, default=DEFAULT_DIR)
+    ap.add_argument("--apply", action="store_true", help="actually create the to-dos")
+    ap.add_argument("--when", help="Things 'when' value, e.g. inbox, today, anytime, someday")
+    ap.add_argument("--limit", type=int, help="stop after N notes")
+    ap.add_argument("--pause", type=float, default=0.3, help="seconds between URL opens")
+    args = ap.parse_args()
+
+    done_file = args.folder / ".imported"
+    done = set(done_file.read_text().split()) if done_file.exists() else set()
+
+    items, errors = [], []
+    for path in sorted(args.folder.glob("*.md")):
+        try:
+            item = parse(path)
+        except ValueError as exc:
+            errors.append(str(exc))
+            continue
+        if item["uuid"] in done:
+            continue
+        items.append((path, item))
+    if args.limit:
+        items = items[: args.limit]
+
+    for err in errors:
+        print(f"skip: {err}", file=sys.stderr)
+    for path, item in items:
+        lines = item["notes"].count("\n") + 1 if item["notes"] else 0
+        print(f"{path.name}: {item['title']}" + (f"  (+{lines} note line(s))" if lines else ""))
+    print(f"\n{len(items)} to create, {len(done)} already imported, {len(errors)} skipped")
+
+    if not args.apply:
+        print("dry run; pass --apply to create them")
+        return 0
+
+    with done_file.open("a") as fh:
+        for _, item in items:
+            subprocess.run(["open", "-g", add_url(item, args.when)], check=True)
+            fh.write(item["uuid"] + "\n")
+            fh.flush()
+            time.sleep(args.pause)
+    print(f"created {len(items)} to-do(s)")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
