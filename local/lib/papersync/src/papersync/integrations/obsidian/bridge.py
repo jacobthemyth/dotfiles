@@ -17,11 +17,21 @@ def vault_path(cli: ObsidianCli) -> Path:
 
 
 def install(cli: ObsidianCli, vault: Path) -> Path:
+    """Copy the plugin into the vault and enable it.
+
+    Obsidian only learns about a plugin directory when it scans for one, so a
+    first install must reload the vault before enabling. Without the reload,
+    ``plugin:enable`` fails with 'Plugin "papersync-bridge" not found'.
+    """
     target = vault / ".obsidian" / "plugins" / BRIDGE_ID
     target.mkdir(parents=True, exist_ok=True)
     for name in FILES:
         shutil.copyfile(BRIDGE_SRC / name, target / name)
-    cli.call("plugin:enable", id=BRIDGE_ID)
+    try:
+        cli.call("plugin:enable", id=BRIDGE_ID)
+    except ObsidianError:
+        cli.call("reload")
+        cli.call("plugin:enable", id=BRIDGE_ID)
     return target
 
 

@@ -84,3 +84,28 @@ def test_render_raises_a_clean_error_when_ok_but_no_pages_field(tmp_path: Path) 
     cli = ObsidianCli("Notes", runner=lambda a: '=> {"ok": true}')
     with pytest.raises(ObsidianError, match="no page count"):
         bridge.render(cli, {"path": "a.md"}, tmp_path / "spec.json")
+
+
+def test_install_reloads_the_vault_when_the_plugin_is_not_found_yet(tmp_path: Path) -> None:
+    """A first install must reload, because Obsidian has not scanned the directory."""
+    calls: list[list[str]] = []
+    enabled: list[bool] = []
+
+    def runner(args: list[str]) -> str:
+        calls.append(args)
+        if args[1] == "plugin:enable":
+            if not enabled:
+                enabled.append(True)
+                return f'Error: Plugin "{bridge.BRIDGE_ID}" not found.'
+            return "Enabled"
+        return "ok"
+
+    bridge.install(ObsidianCli("Notes", runner=runner), tmp_path)
+    commands = [c[1] for c in calls]
+    assert commands == ["plugin:enable", "reload", "plugin:enable"]
+
+
+def test_install_does_not_reload_when_enabling_works_first_time(tmp_path: Path) -> None:
+    calls: list[list[str]] = []
+    bridge.install(ObsidianCli("Notes", runner=lambda a: (calls.append(a), "ok")[1]), tmp_path)
+    assert [c[1] for c in calls] == ["plugin:enable"]
