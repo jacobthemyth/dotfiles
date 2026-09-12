@@ -16,6 +16,6 @@ tag = true
 # papersync needs Obsidian running, and the bridge plugin installed with
 # `papersync obsidian install-bridge`.
 [obsidian]
-vault = ""
+vault = "Notes"
 # Front matter keys that do not print in the document's property table.
 frontmatter_skip = ["papersync-printed"]
