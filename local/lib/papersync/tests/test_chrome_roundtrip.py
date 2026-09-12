@@ -19,6 +19,7 @@ from papersync.recognize.assemble import recognize_pages
 from papersync.recognize.ocr import OcrLine
 from papersync.recognize.raster import RasterPage
 from papersync.render import chrome, engine
+from papersync.render.qr import qr_matrix
 from papersync.render.templates.v1 import layout as L  # noqa: N812
 from tests import synthetic
 
@@ -117,31 +118,104 @@ def test_continuation_pages_are_gathered_into_one_change(tmp_path: Path) -> None
     assert rec.plan.changes[0].pages == [1, 2, 3]
 
 
+def _mean_gray(
+    gray: np.ndarray, h: np.ndarray, x_mm: float, y_mm: float, radius_mm: float
+) -> float:
+    """Mean pixel value in a small square window centred on (x_mm, y_mm)."""
+    cx, cy = geometry.mm_to_px(h, x_mm, y_mm)
+    r = max(1, round(radius_mm * 300 / 25.4))
+    y0, y1 = max(0, round(cy) - r), round(cy) + r + 1
+    x0, x1 = max(0, round(cx) - r), round(cx) + r + 1
+    return float(gray[y0:y1, x0:x1].mean())
+
+
+def _has_ink(
+    gray: np.ndarray, h: np.ndarray, x_mm: float, y_mm: float, radius_mm: float = 0.3
+) -> bool:
+    return _mean_gray(gray, h, x_mm, y_mm, radius_mm) < 128
+
+
 def test_both_renderers_place_their_marks_at_the_same_coordinates(tmp_path: Path) -> None:
     """Typst renders Things cards and pymupdf renders documents.
 
-    Two chrome implementations now exist. This test stops them drifting: it
-    recovers the fiducial centres from each renderer's raster and compares them.
+    Two chrome implementations now exist, restating shared constants by hand
+    (fill colours, stroke widths, font sizes, the label offset). This test is
+    what stops them drifting apart: it renders the same layout through both,
+    rasterizes both, and compares ink between them -- not just each against
+    its own expectation -- at every kind of mark layout.py names: fiducials,
+    every QR module, every meta box (and the primary/done box), and the title
+    bar's fill. A renderer that moves, resizes or recolors any of these fails
+    this test even if its own output still "looks right" in isolation.
     """
     size = L.SIZES["letter"]
     opts = engine.RenderOptions(labels=LABELS, boxes_id=1, size="letter", overflow="paginate")
-    typst_pdf = engine.render_item(
-        Item(source="things", ref="T1", title="Alpha"), "letter", opts, TODAY
-    ).pdf
-    payload = Payload(1, "obsidian", "Notes/Alpha", size.name, 1)
+    item = Item(source="things", ref="T1", title="Alpha")
+    typst_pdf = engine.render_item(item, "letter", opts, TODAY).pdf
+    # Same source/ref/size/boxes/page/pages as engine._payloads derives for
+    # this item, so both renderers encode the *same* QR payload -- otherwise
+    # the two QR codes would legitimately differ and the module-by-module
+    # comparison below would be meaningless.
+    payload = Payload(1, item.source, item.ref, size.name, opts.boxes_id)
     overlay_pdf = chrome.stamp(
-        chrome.blank(size, 1), size, LABELS, "Alpha", TODAY.isoformat(), [payload]
+        chrome.blank(size, 1),
+        size,
+        LABELS,
+        item.title,
+        TODAY.isoformat(),
+        [payload],
+        primary_box=True,  # engine.compile_pages defaults primary_box to True too
     )
 
+    gray_t = synthetic.rasterize(typst_pdf)
+    gray_p = synthetic.rasterize(overlay_pdf)
     h = synthetic.identity_h()
-    centres = [geometry.mm_to_px(h, *f.center) for f in L.fiducials(size)]
 
-    # Both renderers must put ink at every coordinate layout.py names, and white
-    # space just outside each square. That is what holds them in agreement.
-    for pdf in (typst_pdf, overlay_pdf):
-        gray = synthetic.rasterize(pdf)
-        for cx, cy in centres:
-            assert gray[int(cy), int(cx)] < 128
-        for f in L.fiducials(size):
-            ox, oy = geometry.mm_to_px(h, f.x - 1.5, f.y - 1.5)
-            assert gray[int(oy), int(ox)] > 200
+    # Fiducials: ink at every centre, clear space just outside, in both.
+    for f in L.fiducials(size):
+        cx, cy = f.center
+        assert _has_ink(gray_t, h, cx, cy) and _has_ink(gray_p, h, cx, cy)
+        ox, oy = f.x - 1.5, f.y - 1.5
+        assert not _has_ink(gray_t, h, ox, oy) and not _has_ink(gray_p, h, ox, oy)
+
+    # QR: every module lands where the shared payload's own matrix says, in
+    # both renderers -- so if either one drifts by even a fraction of a
+    # module, this catches it directly.
+    matrix = qr_matrix(payload.to_url())
+    q = L.qr_rect(size)
+    step = q.w / len(matrix)
+    for row, bits in enumerate(matrix):
+        for col, bit in enumerate(bits):
+            mx, my = q.x + (col + 0.5) * step, q.y + (row + 0.5) * step
+            expect_ink = bool(bit)
+            r = step * 0.3
+            assert _has_ink(gray_t, h, mx, my, r) == expect_ink
+            assert _has_ink(gray_p, h, mx, my, r) == expect_ink
+
+    # Meta boxes and the primary/done box: the 0.4pt stroke lands on all four
+    # corners in both, the interior is unfilled in both, and the margin just
+    # outside is clear in both.
+    boxes = [L.done_box(size), *(L.meta_box(size, i) for i in range(len(LABELS)))]
+    for box in boxes:
+        for cx, cy in box.corners():
+            assert _has_ink(gray_t, h, cx, cy, 0.2) == _has_ink(gray_p, h, cx, cy, 0.2)
+        icx, icy = box.center
+        assert not _has_ink(gray_t, h, icx, icy) and not _has_ink(gray_p, h, icx, icy)
+        ox, oy = box.x - 1.0, box.y - 1.0
+        assert not _has_ink(gray_t, h, ox, oy) and not _has_ink(gray_p, h, ox, oy)
+
+    # Title bar: a flat luma(225)/(0.882, 0.882, 0.882) fill. Sampled away
+    # from the glyphs (the two renderers antialias text differently, so
+    # comparing glyph pixels directly would be flaky) but at both the top and
+    # bottom edges, so a renderer that undersizes the bar -- as card.typ once
+    # did, leaving its bottom ~0.6mm short of layout.py's title_bar.h -- is
+    # caught even though the fill colour itself is unchanged.
+    bar = L.title_bar(size)
+    for frac in (0.05, 0.5, 0.95):
+        x = bar.x + frac * bar.w
+        for y in (bar.y + 0.3, bar.y + bar.h - 0.3):
+            gt = _mean_gray(gray_t, h, x, y, 0.2)
+            gp = _mean_gray(gray_p, h, x, y, 0.2)
+            assert abs(gt - gp) < 20, f"title bar fill differs at ({x}, {y}): {gt} vs {gp}"
+            assert 190 < gt < 245 and 190 < gp < 245
+    assert not _has_ink(gray_t, h, bar.x, bar.y - 1.0)
+    assert not _has_ink(gray_p, h, bar.x, bar.y - 1.0)

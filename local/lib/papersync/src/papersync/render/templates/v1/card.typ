@@ -19,7 +19,7 @@
   if page_no == 1 {
     if g.primary_box { rect_at(g.done_box, stroke: 0.4pt) }
     place(top + left, dx: mm(g.title_bar.x), dy: mm(g.title_bar.y),
-      block(width: mm(g.title_bar.w), fill: luma(225), inset: 4pt,
+      block(width: mm(g.title_bar.w), height: mm(g.title_bar.h), fill: luma(225), inset: 4pt,
         text(font: "New Computer Modern Sans", weight: "bold", size: 10pt)[#d.title]))
     for b in g.meta_boxes {
       rect_at(b.rect, stroke: 0.4pt)
@@ -28,7 +28,7 @@
     }
   } else {
     place(top + left, dx: mm(g.title_bar.x), dy: mm(g.title_bar.y),
-      block(width: mm(g.title_bar.w), fill: luma(225), inset: 4pt,
+      block(width: mm(g.title_bar.w), height: mm(g.title_bar.h), fill: luma(225), inset: 4pt,
         text(font: "New Computer Modern Sans", weight: "bold", size: 10pt)[#d.continuation_title]))
   }
   if d.lined {
