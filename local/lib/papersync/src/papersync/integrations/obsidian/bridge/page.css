@@ -1,0 +1,64 @@
+/* The @page margins reserve the band that papersync stamps chrome into.
+   They must match layout.py: TOP_MM, MARGIN_MM, BOTTOM_MM, MARGIN_MM. */
+@page {
+  size: 215.9mm 279.4mm;
+  margin: 22.0mm 12.0mm 27.0mm 12.0mm;
+}
+
+body {
+  margin: 0;
+  font-family: "New Computer Modern", Georgia, serif;
+  font-size: 10pt;
+  line-height: 1.45;
+  color: #000;
+}
+
+table.papersync-frontmatter {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 6mm 0;
+  font-size: 8pt;
+}
+
+table.papersync-frontmatter th,
+table.papersync-frontmatter td {
+  border: 0.3pt solid #999;
+  padding: 1mm 1.5mm;
+  text-align: left;
+  vertical-align: top;
+}
+
+table.papersync-frontmatter th {
+  width: 28%;
+  background: #eee;
+  font-weight: 600;
+}
+
+table.papersync-frontmatter ul {
+  margin: 0;
+  padding-left: 4mm;
+}
+
+.papersync-body img {
+  max-width: 100%;
+}
+
+.papersync-body pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.papersync-body h1,
+.papersync-body h2,
+.papersync-body h3 {
+  break-after: avoid;
+}
+
+.papersync-body .task-list-item-checkbox {
+  appearance: none;
+  width: 3mm;
+  height: 3mm;
+  border: 0.4pt solid #000;
+  margin-right: 1.5mm;
+  vertical-align: middle;
+}

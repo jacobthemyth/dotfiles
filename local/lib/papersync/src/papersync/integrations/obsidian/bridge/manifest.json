@@ -1,0 +1,9 @@
+{
+  "id": "papersync-bridge",
+  "name": "papersync bridge",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "Renders notes to PDF for papersync. Installed and driven by the papersync CLI.",
+  "author": "papersync",
+  "isDesktopOnly": true
+}

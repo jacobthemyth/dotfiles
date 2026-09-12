@@ -26,7 +26,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/papersync"]
-artifacts = ["**/*.otf", "**/*.typ"]
+artifacts = ["**/*.otf", "**/*.typ", "**/*.js", "**/*.json", "**/*.css"]
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.6", "ty"]

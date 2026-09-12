@@ -23,6 +23,13 @@ else
   echo "==> shellcheck not installed, skipping"
 fi
 
+if command -v node >/dev/null 2>&1; then
+  echo "==> node --check (obsidian bridge)"
+  node --check local/lib/papersync/src/papersync/integrations/obsidian/bridge/main.js || fail=1
+else
+  echo "==> node not installed, skipping bridge syntax check"
+fi
+
 echo "==> no leftover OS guards in hooks (will fail until dispatcher refactor lands)"
 if grep -RnE 'OSTYPE.*darwin|uname.*[Dd]arwin' hooks/ 2>/dev/null | grep -vE '^hooks/dispatch\.sh:|^hooks/(pre|post)-up/dispatch:'; then
   echo "  FAIL: inline OS guards found above"
