@@ -1,9 +1,10 @@
 import json
+import subprocess
 from collections.abc import Callable
 
 import pytest
 
-from papersync.integrations.obsidian.cli import ObsidianCli, ObsidianError
+from papersync.integrations.obsidian.cli import ObsidianCli, ObsidianError, run_obsidian
 
 
 def _recorder(reply: str) -> tuple[list[list[str]], Callable[[list[str]], str]]:
@@ -52,3 +53,52 @@ def test_evaluate_strips_the_result_arrow() -> None:
     cli = ObsidianCli("Notes", runner=runner)
     assert cli.evaluate("window.papersync.version") == '{"ok": true}'
     assert calls == [["vault=Notes", "eval", "code=window.papersync.version"]]
+
+
+def test_run_obsidian_returns_stripped_stdout_on_a_zero_exit(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    def fake_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(args=[], returncode=0, stdout="done\n", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    assert run_obsidian(["vault=Notes", "read", "path=Notes/Alpha.md"]) == "done"
+
+
+def test_run_obsidian_raises_on_a_non_zero_exit_with_empty_stdout(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    def fake_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr="segfault")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    with pytest.raises(ObsidianError, match="segfault"):
+        run_obsidian(["vault=Notes", "read", "path=Notes/Alpha.md"])
+
+
+def test_run_obsidian_raises_on_a_non_zero_exit_even_with_non_error_stdout(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """Regression: a crashed process must never hand back its stdout as a good reply,
+    even when that stdout doesn't start with ``Error: ``."""
+
+    def fake_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(
+            args=[], returncode=1, stdout="not an error line", stderr=""
+        )
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    with pytest.raises(ObsidianError, match="obsidian exited 1"):
+        run_obsidian(["vault=Notes", "read", "path=Notes/Alpha.md"])
+
+
+def test_run_obsidian_raises_when_the_binary_is_not_on_path(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    def fake_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        raise FileNotFoundError
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    with pytest.raises(ObsidianError, match="PATH"):
+        run_obsidian(["vault=Notes", "read", "path=Notes/Alpha.md"])
+
+
+def test_run_obsidian_raises_when_the_call_times_out(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    def fake_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        raise subprocess.TimeoutExpired(cmd="obsidian", timeout=120)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    with pytest.raises(ObsidianError, match="Obsidian running"):
+        run_obsidian(["vault=Notes", "read", "path=Notes/Alpha.md"])

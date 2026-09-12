@@ -28,8 +28,12 @@ def run_obsidian(args: list[str]) -> str:
         raise ObsidianError("the obsidian CLI is not on PATH") from exc
     except subprocess.TimeoutExpired as exc:
         raise ObsidianError("the obsidian CLI timed out; is Obsidian running?") from exc
-    if proc.returncode != 0 and not proc.stdout.strip():
-        raise ObsidianError(f"obsidian exited {proc.returncode}: {proc.stderr.strip()}")
+    if proc.returncode != 0:
+        stdout = proc.stdout.strip()[:120]
+        stderr = proc.stderr.strip()[:120]
+        raise ObsidianError(
+            f"obsidian exited {proc.returncode}: stdout={stdout!r} stderr={stderr!r}"
+        )
     return proc.stdout.strip()
 
 
