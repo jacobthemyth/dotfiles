@@ -57,18 +57,20 @@ Obsidian search grammar works. This includes `tag:`, `path:`, `file:`,
 The output is one directory of PDFs, plus a manifest, per run:
 
 ```
-out/papersync-20260912-101500/
+papersync-20260912-101500/
 ├── 001-project-alpha.pdf
 ├── 002-reading-queue.pdf
 └── manifest.json
 ```
+
+Pass `-o <dir>` to write the run to another directory instead.
 
 Print them duplex. Separate print jobs make duplex work. Each document
 starts on a sheet front, so continuation pages land on the backs and
 nothing is padded.
 
 ```
-for f in out/papersync-*/*.pdf; do lpr -o sides=two-sided-long-edge "$f"; done
+for f in papersync-*/*.pdf; do lpr -o sides=two-sided-long-edge "$f"; done
 ```
 
 Obsidian renders the body with its own renderer, so wikilinks, embeds,
