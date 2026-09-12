@@ -252,7 +252,11 @@ def _render_common(f: Callable[..., Any]) -> Callable[..., Any]:
             click.option("-o", "--output-dir", default=None),
             click.option("--open/--no-open", "open_pdf", default=None),
             click.option(
-                "--tag/--no-tag", "tag", default=None, help="add papersync:printed in Things"
+                "--tag/--no-tag",
+                "tag",
+                default=None,
+                help="mark the item printed (papersync:printed in Things, "
+                "papersync-printed in Obsidian)",
             ),
         ]
     ):
