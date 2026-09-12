@@ -46,11 +46,7 @@ class ObsidianSink:
         try:
             self.cli.call("vault", info="name")
         except ObsidianError as exc:
-            # ObsidianError already prefixes the message with the CLI command
-            # name ("vault: ..."); replace that with our own integration name
-            # so a check failure reads consistently with other integrations.
-            _command, _, detail = str(exc).partition(": ")
-            return [f"{self.name}: {detail}"]
+            return [str(exc)]
         return []
 
     def apply(self, changes: list[Change]) -> None:

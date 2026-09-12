@@ -2,7 +2,7 @@ from datetime import date
 
 import pytest
 
-from papersync.integrations.obsidian.cli import ObsidianCli
+from papersync.integrations.obsidian.cli import ObsidianCli, ObsidianError
 from papersync.integrations.obsidian.sink import ObsidianSink
 from papersync.model import Change
 
@@ -51,7 +51,20 @@ def test_check_reports_a_reachable_vault() -> None:
 
 def test_check_reports_an_unreachable_vault() -> None:
     _, sink = _sink({"vault": "Error: no vault"})
-    assert sink.check() == ["obsidian: no vault"]
+    assert sink.check() == ["vault: no vault"]
+
+
+def test_check_preserves_a_bare_error_message() -> None:
+    """run_obsidian raises bare ObsidianErrors with no ``command: `` prefix at
+    all, e.g. when the binary is missing or the call times out. check() must
+    not assume every ObsidianError is shaped ``"{command}: {detail}"`` and
+    must pass such a message through unchanged rather than mangling it."""
+
+    def runner(args: list[str]) -> str:
+        raise ObsidianError("the obsidian CLI is not on PATH")
+
+    sink = ObsidianSink(ObsidianCli("Notes", runner=runner), today=TODAY)
+    assert sink.check() == ["the obsidian CLI is not on PATH"]
 
 
 def test_describe_names_the_note_and_its_marks() -> None:
