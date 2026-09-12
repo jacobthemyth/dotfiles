@@ -38,3 +38,20 @@ def test_rejects(bad: str) -> None:
 def test_longest_payload_fits_qr_version_5() -> None:
     p = Payload(version=1, source="things", ref="A" * 22, size="letter", boxes=1, page=10, pages=12)
     assert len(p.to_url().encode()) <= 84
+
+
+def test_ref_with_slashes_round_trips() -> None:
+    p = Payload(1, "obsidian", "Notes/Projects/Alpha", "letter", 2, 3, 5)
+    url = p.to_url()
+    assert "Notes%2FProjects%2FAlpha" in url
+    assert Payload.parse(url) == p
+
+
+def test_ref_with_spaces_and_hash_round_trips() -> None:
+    p = Payload(1, "obsidian", "Daily/2026-09-12 Notes #1", "letter", 1)
+    assert Payload.parse(p.to_url()).ref == "Daily/2026-09-12 Notes #1"
+
+
+def test_things_uuid_url_is_unchanged_by_quoting() -> None:
+    p = Payload(1, "things", "ABC-123", "3x5", 1)
+    assert p.to_url() == "papersync:///v1/things/ABC-123?size=3x5&boxes=1"

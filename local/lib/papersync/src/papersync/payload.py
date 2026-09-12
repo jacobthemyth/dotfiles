@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, quote, unquote, urlsplit
 
 SCHEME = "papersync:///"
 NEW_REF = "new"
@@ -25,9 +25,8 @@ class Payload:
         return self.ref == NEW_REF
 
     def to_url(self) -> str:
-        url = (
-            f"{SCHEME}v{self.version}/{self.source}/{self.ref}?size={self.size}&boxes={self.boxes}"
-        )
+        ref = quote(self.ref, safe="")
+        url = f"{SCHEME}v{self.version}/{self.source}/{ref}?size={self.size}&boxes={self.boxes}"
         if self.pages > 1:
             url += f"&page={self.page}&pages={self.pages}"
         return url
@@ -54,4 +53,4 @@ class Payload:
             pages = int(query.get("pages", "1"))
         except (KeyError, ValueError) as exc:
             raise PayloadError(f"bad query in {text!r}: {exc}") from exc
-        return cls(version, segments[1], segments[2], size, boxes, page, pages)
+        return cls(version, segments[1], unquote(segments[2]), size, boxes, page, pages)
