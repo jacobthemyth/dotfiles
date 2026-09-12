@@ -67,6 +67,66 @@ def test_print_then_status(tmp_path: Path) -> None:
     assert s.exit_code == 0 and "BAR" in s.output and "Dated" in s.output
 
 
+def _record(tmp_path: Path, source: str, ref: str, ts: datetime) -> None:
+    from papersync.ledger import Ledger, LedgerEntry
+
+    Ledger(tmp_path / "state" / "papersync" / "prints.jsonl").record(
+        LedgerEntry(ts=ts, event="render", source=source, ref=ref, title=ref)
+    )
+
+
+def test_status_never_looks_up_an_obsidian_ref_in_things(tmp_path: Path) -> None:
+    """An Obsidian ref has no Things row, and none should ever be sought for one.
+
+    ``PAPERSYNC_THINGS_DB`` points at a path that doesn't exist, so if status
+    tried to open the Things database at all -- even just to look up an
+    Obsidian ref -- this would fail loudly instead of silently passing.
+    """
+    env = {**_env(tmp_path), "PAPERSYNC_THINGS_DB": str(tmp_path / "no-such.sqlite")}
+    _record(tmp_path, "obsidian", "Notes/Alpha", datetime(2026, 9, 1))
+    s = CliRunner().invoke(main, ["status"], env=env)
+    assert s.exit_code == 0, s.output
+    assert "outstanding" in s.output
+    assert "done in Things" not in s.output
+
+
+def test_forget_clears_an_unambiguous_ref_regardless_of_source(tmp_path: Path) -> None:
+    env = _env(tmp_path)
+    _record(tmp_path, "obsidian", "Notes/Alpha", datetime(2026, 9, 1))
+    f = CliRunner().invoke(main, ["status", "--forget", "Notes/Alpha"], env=env)
+    assert f.exit_code == 0, f.output
+    assert "obsidian" in f.output
+    s = CliRunner().invoke(main, ["status"], env=env)
+    assert "Notes/Alpha" not in s.output
+
+
+def test_forget_an_unknown_ref_is_rejected(tmp_path: Path) -> None:
+    env = _env(tmp_path)
+    f = CliRunner().invoke(main, ["status", "--forget", "nope"], env=env)
+    assert f.exit_code != 0
+    assert "no outstanding card" in f.output
+
+
+def test_forget_a_ref_outstanding_in_two_sources_needs_source_to_disambiguate(
+    tmp_path: Path,
+) -> None:
+    env = _env(tmp_path)
+    _record(tmp_path, "things", "T1", datetime(2026, 9, 1))
+    _record(tmp_path, "obsidian", "T1", datetime(2026, 9, 2))
+
+    ambiguous = CliRunner().invoke(main, ["status", "--forget", "T1"], env=env)
+    assert ambiguous.exit_code != 0
+    assert "more than one source" in ambiguous.output
+
+    resolved = CliRunner().invoke(
+        main, ["status", "--forget", "T1", "--source", "obsidian"], env=env
+    )
+    assert resolved.exit_code == 0, resolved.output
+    s = CliRunner().invoke(main, ["status"], env=env)
+    # The things-sourced T1 is still outstanding; only the obsidian one was forgotten.
+    assert s.output.count("T1") == 1
+
+
 def test_render_overflow_fail_exits_nonzero(tmp_path: Path) -> None:
     items = json.dumps(
         [{"source": "things", "ref": "T1", "title": "FOO", "notes": "\n".join(["x"] * 80)}]

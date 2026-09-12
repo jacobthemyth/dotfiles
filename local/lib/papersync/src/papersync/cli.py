@@ -459,20 +459,43 @@ def scan(scans: tuple[str, ...], review: str | None, auto_approve: bool, verify:
 
 @main.command()
 @click.option("--forget", default=None, help="drop one ref from the outstanding list")
-def status(forget: str | None) -> None:
+@click.option(
+    "--source",
+    type=click.Choice(["things", "obsidian"]),
+    default=None,
+    help="which source --forget applies to, when a ref is outstanding in more than one",
+)
+def status(forget: str | None, source: str | None) -> None:
     """List cards that were printed but never scanned back."""
     ledger = _ledger()
     if forget:
-        ledger.record(LedgerEntry(ts=datetime.now(), event="forget", source="things", ref=forget))
-        _err(f"forgot {forget}")
+        matches = {e.source for e in ledger.outstanding() if e.ref == forget}
+        if source:
+            forget_source = source
+        elif len(matches) == 1:
+            forget_source = next(iter(matches))
+        elif not matches:
+            raise click.ClickException(f"no outstanding card with ref {forget!r}")
+        else:
+            raise click.ClickException(
+                f"ref {forget!r} is outstanding in more than one source "
+                f"({', '.join(sorted(matches))}); pass --source to disambiguate"
+            )
+        ledger.record(
+            LedgerEntry(ts=datetime.now(), event="forget", source=forget_source, ref=forget)
+        )
+        _err(f"forgot {forget} ({forget_source})")
         return
     entries = ledger.outstanding()
     if not entries:
         click.echo("no outstanding cards")
         return
-    rows = _db().get_many([e.ref for e in entries])
+    # Obsidian refs have no importer to look up: there is nothing in the
+    # Things database for them, and looking them up there would always miss.
+    things_refs = [e.ref for e in entries if e.source == "things"]
+    rows = _db().get_many(things_refs) if things_refs else {}
     for e in entries:
-        row = rows.get(e.ref)
+        row = rows.get(e.ref) if e.source == "things" else None
         state = "done in Things" if row and row.status != 0 else "outstanding"
         click.echo(f"{e.ts:%Y-%m-%d}  {e.size:<6} {e.title:<40} {state}")
 
