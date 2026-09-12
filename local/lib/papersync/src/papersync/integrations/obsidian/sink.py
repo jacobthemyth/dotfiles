@@ -15,6 +15,7 @@ NOT_YET = "the Obsidian importer does not exist yet"
 
 class ObsidianSink:
     name = "obsidian"
+    marker = PRINTED_PROPERTY
 
     def __init__(self, cli: ObsidianCli, today: date | None = None) -> None:
         self.cli = cli

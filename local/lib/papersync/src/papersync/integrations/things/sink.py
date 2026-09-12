@@ -133,6 +133,7 @@ def _when_holds(row: TaskRow, when: str, today: date) -> bool:
 
 class ThingsSink:
     name = "things"
+    marker = STATE_PRINTED
 
     def __init__(
         self,

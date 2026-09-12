@@ -177,7 +177,7 @@ def _tag_printed(cfg: Config, refs_by_source: dict[str, list[str]]) -> None:
             _err(f"WARNING: {warning}")
         for ref in untagged:
             _err(f"NOT TAGGED: {ref}")
-        _err(f"tagged {len(refs) - len(untagged)} {source} item(s) printed")
+        _err(f"set {sink.marker} on {len(refs) - len(untagged)} {source} item(s)")
 
 
 def _do_render(

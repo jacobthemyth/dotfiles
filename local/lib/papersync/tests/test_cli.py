@@ -266,6 +266,39 @@ def test_export_and_print_skip_printed_unless_asked(tmp_path: Path) -> None:
     assert r.exit_code == 0 and "wrote" in r.output
 
 
+def test_tag_summary_reports_only_items_that_actually_landed(monkeypatch, tmp_path: Path) -> None:
+    """A partial mark_printed failure must be reported by what landed, not what was attempted."""
+    from typing import ClassVar
+
+    from papersync import cli as C  # noqa: N812
+    from papersync.integrations.things.sink import STATE_PRINTED
+
+    class PartialFailureSink:
+        name = "things"
+        marker = STATE_PRINTED
+        warnings: ClassVar[list[str]] = []
+
+        def __init__(self, *_a, **_k) -> None:
+            pass
+
+        def mark_printed(self, refs: list[str]) -> list[str]:
+            # first ref lands, the rest do not
+            return refs[1:]
+
+    monkeypatch.setattr(C, "_sink", lambda cfg: PartialFailureSink())
+    env = _env(tmp_path)
+    items = json.dumps(
+        [
+            {"source": "things", "ref": "T1", "title": "FOO", "notes": ""},
+            {"source": "things", "ref": "T2", "title": "BAR", "notes": ""},
+        ]
+    )
+    r = CliRunner().invoke(C.main, ["render", "-", "--boxes", "A,B"], input=items, env=env)
+    assert r.exit_code == 0, r.output
+    assert f"set {STATE_PRINTED} on 1 things item(s)" in r.output
+    assert "NOT TAGGED: T2" in r.output
+
+
 def test_obsidian_export_emits_items_json(monkeypatch, tmp_path) -> None:
     from typing import ClassVar
 
@@ -329,6 +362,7 @@ def test_obsidian_print_writes_a_directory_of_pdfs(monkeypatch, tmp_path) -> Non
 
     from papersync import cli as C  # noqa: N812
     from papersync.integrations.obsidian import documents as D  # noqa: N812
+    from papersync.integrations.obsidian.source import PRINTED_PROPERTY
     from papersync.model import Item
     from papersync.render import chrome
     from papersync.render.templates.v1 import layout as L  # noqa: N812
@@ -354,6 +388,7 @@ def test_obsidian_print_writes_a_directory_of_pdfs(monkeypatch, tmp_path) -> Non
 
     class FakeSink:
         name = "obsidian"
+        marker = PRINTED_PROPERTY
         warnings: ClassVar[list[str]] = []
 
         def __init__(self, *_a, **_k) -> None:
