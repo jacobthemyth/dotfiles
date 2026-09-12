@@ -12,7 +12,12 @@ FENCE = "---"
 
 
 def strip_frontmatter(text: str) -> str:
-    """Drop a leading ``---`` block. The file must open with the fence."""
+    """Drop a leading ``---`` block. The file must open with the fence.
+
+    Tolerates CRLF line endings: a note touched outside Obsidian (or created
+    on Windows) may use "\\r\\n", and the fence must still be recognized.
+    """
+    text = text.replace("\r\n", "\n")
     if not text.startswith(FENCE + "\n"):
         return text
     end = text.find(f"\n{FENCE}", len(FENCE))

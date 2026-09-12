@@ -68,6 +68,12 @@ def test_strip_frontmatter_removes_only_a_leading_block() -> None:
     assert strip_frontmatter("---\na: 1\n---\n") == ""
 
 
+def test_strip_frontmatter_tolerates_crlf_line_endings() -> None:
+    crlf = ALPHA.replace("\n", "\r\n")
+    assert strip_frontmatter(crlf).startswith("# Alpha")
+    assert "title: Alpha" not in strip_frontmatter(crlf)
+
+
 def test_parse_selector_accepts_the_four_forms() -> None:
     assert parse_selector("search:tag:#project") == ("search", "tag:#project")
     assert parse_selector("base:Reading.base#Queue") == ("base", "Reading.base#Queue")
