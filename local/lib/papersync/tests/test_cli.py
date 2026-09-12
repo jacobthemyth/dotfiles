@@ -264,3 +264,126 @@ def test_export_and_print_skip_printed_unless_asked(tmp_path: Path) -> None:
     assert r.exit_code == 0 and "skipped 1" in r.output and "wrote" not in r.output
     r = CliRunner().invoke(main, ["print", "inbox", "--no-tag", "--no-skip-printed"], env=env)
     assert r.exit_code == 0 and "wrote" in r.output
+
+
+def test_obsidian_export_emits_items_json(monkeypatch, tmp_path) -> None:
+    from typing import ClassVar
+
+    from click.testing import CliRunner
+
+    from papersync import cli as C  # noqa: N812
+    from papersync.model import Item
+
+    class FakeSource:
+        name = "obsidian"
+        skipped_printed = 1
+        errors: ClassVar[list[str]] = []
+
+        def __init__(self, *_a, **_k) -> None:
+            pass
+
+        def export(self, selector: str, skip_printed: bool = True) -> list[Item]:
+            assert selector == "search:tag:#project"
+            return [Item(source="obsidian", ref="Notes/Alpha", title="Alpha", meta={"a": 1})]
+
+    monkeypatch.setattr(C, "ObsidianSource", FakeSource)
+    config = tmp_path / "papersync"
+    config.mkdir(parents=True)
+    (config / "config.toml").write_text('[obsidian]\nvault = "Notes"\n')
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    result = CliRunner().invoke(C.main, ["obsidian", "export", "search:tag:#project"])
+    assert result.exit_code == 0, result.output
+    assert '"ref": "Notes/Alpha"' in result.output
+    assert '"meta"' in result.output
+
+
+def test_obsidian_print_rejects_auto_size(monkeypatch, tmp_path) -> None:
+    from click.testing import CliRunner
+
+    from papersync import cli as C  # noqa: N812
+
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    result = CliRunner().invoke(
+        C.main, ["obsidian", "print", "path:Notes/Alpha.md", "--size", "auto"]
+    )
+    assert result.exit_code != 0
+    assert "auto" in result.output
+
+
+def test_obsidian_print_needs_a_configured_vault(monkeypatch, tmp_path) -> None:
+    from click.testing import CliRunner
+
+    from papersync import cli as C  # noqa: N812
+
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    result = CliRunner().invoke(C.main, ["obsidian", "print", "path:Notes/Alpha.md"])
+    assert result.exit_code != 0
+    assert "vault" in result.output
+
+
+def test_obsidian_print_writes_a_directory_of_pdfs(monkeypatch, tmp_path) -> None:
+    import json
+    from typing import ClassVar
+
+    from click.testing import CliRunner
+
+    from papersync import cli as C  # noqa: N812
+    from papersync.integrations.obsidian import documents as D  # noqa: N812
+    from papersync.model import Item
+    from papersync.render import chrome
+    from papersync.render.templates.v1 import layout as L  # noqa: N812
+
+    config = tmp_path / "papersync"
+    config.mkdir(parents=True)
+    (config / "config.toml").write_text('[obsidian]\nvault = "Notes"\n[render]\nopen = false\n')
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+
+    class FakeSource:
+        name = "obsidian"
+        skipped_printed = 0
+        errors: ClassVar[list[str]] = []
+
+        def __init__(self, *_a, **_k) -> None:
+            pass
+
+        def export(self, selector: str, skip_printed: bool = True) -> list[Item]:
+            return [Item(source="obsidian", ref="Notes/Alpha", title="Alpha")]
+
+    tagged: list[list[str]] = []
+
+    class FakeSink:
+        name = "obsidian"
+        warnings: ClassVar[list[str]] = []
+
+        def __init__(self, *_a, **_k) -> None:
+            pass
+
+        def mark_printed(self, refs: list[str]) -> list[str]:
+            tagged.append(refs)
+            return []
+
+    def fake_render(cli, spec, spec_path):
+        from pathlib import Path
+
+        Path(spec["out"]).write_bytes(chrome.blank(L.SIZES["letter"], 2))
+        return 2
+
+    monkeypatch.setattr(C, "ObsidianSource", FakeSource)
+    monkeypatch.setattr(C, "ObsidianSink", FakeSink)
+    monkeypatch.setattr(C, "require_bridge", lambda cli: None)
+    monkeypatch.setattr(D.bridge, "render", fake_render)
+
+    out = tmp_path / "out"
+    result = CliRunner().invoke(
+        C.main, ["obsidian", "print", "path:Notes/Alpha.md", "-o", str(out)]
+    )
+    assert result.exit_code == 0, result.output
+
+    directories = list(out.glob("papersync-*"))
+    assert len(directories) == 1
+    pdfs = sorted(p.name for p in directories[0].glob("*.pdf"))
+    assert pdfs == ["001-alpha.pdf"]
+    manifest = json.loads((directories[0] / "manifest.json").read_text())
+    assert manifest["documents"][0]["pages"] == 2
+    assert tagged == [["Notes/Alpha"]]

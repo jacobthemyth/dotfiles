@@ -3,6 +3,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from collections.abc import Callable
 from datetime import date, datetime
 from pathlib import Path
@@ -14,6 +15,12 @@ from papersync import __version__
 from papersync.boxsets import BoxSetRegistry
 from papersync.config import Config, config_dir, load_config, state_dir
 from papersync.display import format_plan
+from papersync.integrations.obsidian import documents as odocs
+from papersync.integrations.obsidian.bridge import install, installed_version, require_bridge
+from papersync.integrations.obsidian.bridge import vault_path as bridge_vault_path
+from papersync.integrations.obsidian.cli import ObsidianCli, ObsidianError
+from papersync.integrations.obsidian.sink import ObsidianSink
+from papersync.integrations.obsidian.source import ObsidianSource
 from papersync.integrations.things import auth as things_auth
 from papersync.integrations.things.db import ThingsDb, ThingsDbNotFound, find_db_path
 from papersync.integrations.things.sink import ThingsSink
@@ -55,6 +62,14 @@ def _sink(cfg: Config) -> ThingsSink:
             runner=lambda script: click.echo(f"osascript: {script}"),
         )
     return ThingsSink(_db(), cfg.things)
+
+
+def _obsidian(cfg: Config) -> ObsidianCli:
+    if not cfg.obsidian.vault:
+        raise click.ClickException(
+            'no Obsidian vault configured; set [obsidian] vault = "<name>" in config.toml'
+        )
+    return ObsidianCli(cfg.obsidian.vault)
 
 
 def _ledger() -> Ledger:
@@ -141,6 +156,30 @@ def _render_options(
     )
 
 
+def _sinks(cfg: Config) -> dict[str, Any]:
+    sinks: dict[str, Any] = {"things": lambda: _sink(cfg)}
+    if cfg.obsidian.vault:
+        sinks["obsidian"] = lambda: ObsidianSink(ObsidianCli(cfg.obsidian.vault))
+    return sinks
+
+
+def _tag_printed(cfg: Config, refs_by_source: dict[str, list[str]]) -> None:
+    for source, refs in refs_by_source.items():
+        factory = _sinks(cfg).get(source)
+        if factory is None or not refs:
+            continue
+        sink = factory()
+        try:
+            untagged = sink.mark_printed(refs)
+        except (RuntimeError, ObsidianError) as exc:
+            raise click.ClickException(str(exc)) from exc
+        for warning in sink.warnings:
+            _err(f"WARNING: {warning}")
+        for ref in untagged:
+            _err(f"NOT TAGGED: {ref}")
+        _err(f"tagged {len(refs) - len(untagged)} {source} item(s) printed")
+
+
 def _do_render(
     cfg: Config,
     items: list[Item],
@@ -192,18 +231,12 @@ def _do_render(
         _err(f"wrote {p}")
         if open_pdf:
             subprocess.run(["open", str(p)], check=False)
-    things_refs = [r.item.ref for r in rendered if r.item is not None and r.item.source == "things"]
-    if tag and things_refs:
-        sink = _sink(cfg)
-        try:
-            untagged = sink.mark_printed(things_refs)
-        except RuntimeError as exc:
-            raise click.ClickException(str(exc)) from exc
-        for warning in sink.warnings:
-            _err(f"WARNING: {warning}")
-        for ref in untagged:
-            _err(f"NOT TAGGED: {ref}")
-        _err(f"tagged {len(things_refs)} item(s) papersync:printed")
+    if tag:
+        by_source: dict[str, list[str]] = {}
+        for r in rendered:
+            if r.item is not None:
+                by_source.setdefault(r.item.source, []).append(r.item.ref)
+        _tag_printed(cfg, by_source)
     return paths
 
 
@@ -449,12 +482,12 @@ def doctor() -> None:
     """Check the environment."""
     ok = True
 
-    def report(name: str, problem: str | None) -> None:
+    def report(name: str, problem: str | None, fatal: bool = True) -> None:
         nonlocal ok
-        status = "ok  " if problem is None else "FAIL"
+        status = "ok  " if problem is None else ("FAIL" if fatal else "warn")
         detail = "" if problem is None else f": {problem}"
         click.echo(f"{status} {name}{detail}")
-        ok = ok and problem is None
+        ok = ok and (problem is None or not fatal)
 
     report("uv", None if shutil.which("uv") else "not on PATH")
     try:
@@ -487,8 +520,155 @@ def doctor() -> None:
         report("ocrmac", None)
     except Exception as exc:
         report("ocrmac", str(exc))
+    cfg = load_config()
+    if not cfg.obsidian.vault:
+        report("Obsidian vault", "not configured (the obsidian commands are unavailable)", False)
+    else:
+        cli = ObsidianCli(cfg.obsidian.vault)
+        try:
+            cli.call("vault", info="name")
+            report("Obsidian app", None)
+        except ObsidianError as exc:
+            report("Obsidian app", str(exc))
+        try:
+            version = installed_version(cli)
+            if version is None:
+                report(
+                    "papersync bridge",
+                    "not installed (papersync obsidian install-bridge)",
+                    False,
+                )
+            elif version != __version__:
+                report("papersync bridge", f"version {version}, expected {__version__}")
+            else:
+                report("papersync bridge", None)
+        except ObsidianError as exc:
+            report("papersync bridge", str(exc))
     if not ok:
         raise SystemExit(1)
+
+
+@main.group()
+def obsidian() -> None:
+    """Obsidian integration."""
+
+
+_OBSIDIAN_SELECTOR = click.argument("selector")
+
+
+@obsidian.command("export")
+@_OBSIDIAN_SELECTOR
+@_SKIP_PRINTED
+def obsidian_export(selector: str, skip_printed: bool) -> None:
+    """Export notes as JSON: search:<query> | base:<file>[#view] | path:<p> | folder:<p>."""
+    cfg = load_config()
+    source = ObsidianSource(_obsidian(cfg))
+    try:
+        items = source.export(selector, skip_printed=skip_printed)
+    except (ValueError, ObsidianError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    for message in source.errors:
+        _err(f"WARNING: {message}")
+    if source.skipped_printed:
+        _err(
+            f"skipped {source.skipped_printed} note(s) already marked papersync-printed"
+            " (use --no-skip-printed to include them)"
+        )
+    click.echo(json.dumps([i.model_dump() for i in items], indent=2))
+
+
+@obsidian.command("install-bridge")
+def obsidian_install_bridge() -> None:
+    """Copy the papersync bridge plugin into the vault and enable it."""
+    cli = _obsidian(load_config())
+    try:
+        target = install(cli, bridge_vault_path(cli))
+    except ObsidianError as exc:
+        raise click.ClickException(str(exc)) from exc
+    _err(f"installed {target}")
+    _err("reload Obsidian if the bridge does not answer yet")
+
+
+@obsidian.command("print")
+@_OBSIDIAN_SELECTOR
+@_SKIP_PRINTED
+@_render_common
+def obsidian_print(
+    selector: str,
+    skip_printed: bool,
+    size: str | None,
+    overflow: str | None,
+    boxes: str | None,
+    new: int,
+    output_dir: str | None,
+    open_pdf: bool | None,
+    tag: bool | None,
+) -> None:
+    """Render an Obsidian selector to one PDF per note."""
+    cfg = load_config()
+    chosen = size or "letter"
+    if chosen == "auto":
+        raise click.ClickException("auto sizing is meaningless for documents; use --size letter")
+    if new:
+        raise click.ClickException("--new is a Things card option and does not apply to documents")
+    page_size = L.SIZES[chosen]
+    opts = _render_options(cfg, chosen, "paginate", boxes)
+    cli = _obsidian(cfg)
+    source = ObsidianSource(cli)
+    try:
+        require_bridge(cli)
+        items = source.export(selector, skip_printed=skip_printed)
+    except (ValueError, ObsidianError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    for message in source.errors:
+        _err(f"WARNING: {message}")
+    if source.skipped_printed:
+        _err(f"skipped {source.skipped_printed} note(s) already marked papersync-printed")
+    if not items:
+        _err("nothing to print")
+        return
+
+    today = date.today()
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    with tempfile.TemporaryDirectory(prefix="papersync-") as work:
+        try:
+            docs = odocs.render_documents(
+                cli,
+                items,
+                page_size,
+                opts.labels,
+                opts.boxes_id,
+                cfg.obsidian.frontmatter_skip,
+                today,
+                Path(work),
+            )
+        except ObsidianError as exc:
+            raise click.ClickException(str(exc)) from exc
+    out_dir, paths = odocs.write_documents(
+        docs, Path(output_dir or cfg.render.output_dir), stamp, cfg.obsidian.vault
+    )
+
+    ledger = _ledger()
+    for doc, path in zip(docs, paths, strict=True):
+        ledger.record(
+            LedgerEntry(
+                ts=datetime.now(),
+                event="render",
+                source=doc.item.source,
+                ref=doc.item.ref,
+                title=doc.item.title,
+                size=doc.size,
+                boxes=opts.boxes_id,
+                file=str(path),
+            )
+        )
+    _err(f"wrote {len(paths)} document(s) to {out_dir}")
+    _err(f'print with: for f in "{out_dir}"/*.pdf; do lpr -o sides=two-sided-long-edge "$f"; done')
+    should_open = cfg.render.open if open_pdf is None else open_pdf
+    if should_open:
+        subprocess.run(["open", str(out_dir)], check=False)
+    if cfg.render.tag if tag is None else tag:
+        _tag_printed(cfg, {"obsidian": [d.item.ref for d in docs]})
 
 
 if __name__ == "__main__":
