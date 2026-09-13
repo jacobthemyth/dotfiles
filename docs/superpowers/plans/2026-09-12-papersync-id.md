@@ -1081,3 +1081,40 @@ There is nothing to commit unless Step 5 turned up a defect. If it did, fix it, 
 **Type consistency.** `ensure_id(cli, path, meta) -> str` in Task 2 matches its call in Task 3. `find(cli, note_id) -> list[str]` matches. `search_paths(cli, query) -> list[str]` is produced in Task 2 and consumed by `resolve` in Task 3. `Item.address` is defined in Task 1 and used in Tasks 5 and 6. `mark_printed(addresses)` in Task 6 matches what `_tag_printed` sends in Task 5.
 
 **One name collision to watch.** Task 3 renames `_paths_from` to `_paths_in` and narrows it to `base:query`, because search now goes through `identity.search_paths`. If a later reader finds both, the duplicate was not deleted.
+
+---
+
+### Task 8: Route scanned-page lookup by payload source
+
+**Added during execution.** Task 7's live verification exposed a defect this plan
+missed. `_recognize` in `src/papersync/cli.py` hardcoded `ThingsSource(_db()).lookup`
+as the only lookup passed to `recognize_pages`, so every scanned page was looked up in
+the Things database whatever its payload said. `ObsidianSource.lookup`, built and
+tested in Task 3, was dead code, and no Obsidian sheet could ever resolve. The printed
+page decoded its QR correctly to the minted id and then failed with
+`unknown item 017f9y54a0af`.
+
+The defect predates this plan, but the spec's acceptance criterion cannot pass without
+fixing it, and shipping `papersync-id` without it would mean a note can be printed with
+an id and never scanned back.
+
+**Files:**
+- Modify: `src/papersync/recognize/assemble.py`
+- Modify: `src/papersync/cli.py`
+- Test: `tests/test_assemble.py`, `tests/test_cli.py`, `tests/test_chrome_roundtrip.py`
+
+**What was built:**
+
+`recognize_pages`'s `lookup` parameter became
+`Callable[[str, list[str]], dict[str, Item]]`, taking the source name first, and its
+call site became `lookup(payload.source, [payload.ref]).get(payload.ref)`.
+
+`_recognize` builds a dispatcher that constructs each source at most once, lazily:
+`ThingsSource(_db()).lookup` for `things`, `ObsidianSource(ObsidianCli(vault)).lookup`
+for `obsidian` when a vault is configured, and `{}` for anything else, so an
+unconfigured or unknown source yields the existing `unknown item <ref>` page error
+rather than a crash. Afterwards it surfaces `ObsidianSource.errors` through `_err`,
+because `lookup` appends rather than raises and those messages are the only diagnostic
+saying why a page failed.
+
+Commit: `7a16561`.
