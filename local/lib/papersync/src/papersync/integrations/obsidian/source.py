@@ -4,6 +4,14 @@ from pathlib import PurePosixPath
 from typing import Any
 
 from papersync.integrations.obsidian.cli import ObsidianCli, ObsidianError
+from papersync.integrations.obsidian.identity import (
+    ID_PROPERTY,
+    IdentityError,
+    ensure_id,
+    find,
+    paths_in,
+    search_paths,
+)
 from papersync.model import Item
 
 PRINTED_PROPERTY = "papersync-printed"
@@ -37,18 +45,6 @@ def parse_selector(selector: str) -> tuple[str, str]:
     return kind, argument
 
 
-def _paths_from(rows: Any) -> list[str]:
-    """Pull the ``path`` field out of a search or base reply."""
-    if isinstance(rows, dict):
-        rows = rows.get("results", rows.get("files", []))
-    out = []
-    for row in rows:
-        path = row.get("path") if isinstance(row, dict) else row
-        if isinstance(path, str) and path.endswith(".md"):
-            out.append(path)
-    return out
-
-
 class ObsidianSource:
     name = "obsidian"
 
@@ -65,42 +61,66 @@ class ObsidianSource:
             reply = self.cli.call("files", folder=argument, ext="md")
             return [line.strip() for line in reply.splitlines() if line.strip().endswith(".md")]
         if kind == "search":
-            return _paths_from(self.cli.call_json("search", query=argument, format="json"))
+            return search_paths(self.cli, argument)
         file_name, _, view = argument.partition("#")
-        return _paths_from(
+        return paths_in(
             self.cli.call_json("base:query", file=file_name, view=view or None, format="json")
         )
 
-    def _item(self, path: str) -> Item:
+    def _item(self, path: str, meta: dict[str, Any] | None = None) -> Item:
+        if meta is None:
+            meta = self.cli.call_json("properties", path=path, format="json") or {}
+        note_id = ensure_id(self.cli, path, meta)
         text = self.cli.call("read", path=path)
-        meta = self.cli.call_json("properties", path=path, format="json") or {}
         title = str(meta.get("title") or PurePosixPath(path).stem)
-        ref = path[: -len(".md")] if path.endswith(".md") else path
         return Item(
-            source=self.name, ref=ref, title=title, notes=strip_frontmatter(text), meta=meta
+            source=self.name,
+            ref=note_id,
+            title=title,
+            notes=strip_frontmatter(text),
+            meta=meta,
+            locator=path,
         )
 
     def export(self, selector: str, skip_printed: bool = True) -> list[Item]:
+        """Read every note the selector names, minting an id for each.
+
+        Properties come first so a note that is skipped as already printed is
+        never written to.
+        """
         self.skipped_printed = 0
         self.errors = []
         items: list[Item] = []
         for path in self.resolve(selector):
             try:
-                item = self._item(path)
-            except ObsidianError as exc:
+                meta = self.cli.call_json("properties", path=path, format="json") or {}
+                if skip_printed and PRINTED_PROPERTY in meta:
+                    self.skipped_printed += 1
+                    continue
+                items.append(self._item(path, meta))
+            except (ObsidianError, IdentityError) as exc:
                 self.errors.append(str(exc))
-                continue
-            if skip_printed and PRINTED_PROPERTY in item.meta:
-                self.skipped_printed += 1
-                continue
-            items.append(item)
         return items
 
     def lookup(self, refs: list[str]) -> dict[str, Item]:
+        """Resolve minted ids to the notes that currently carry them."""
         out: dict[str, Item] = {}
         for ref in refs:
             try:
-                out[ref] = self._item(f"{ref}.md")
+                paths = find(self.cli, ref)
             except ObsidianError as exc:
+                self.errors.append(str(exc))
+                continue
+            if not paths:
+                self.errors.append(f"unknown {ID_PROPERTY} {ref}")
+                continue
+            if len(paths) > 1:
+                self.errors.append(
+                    f"{ID_PROPERTY} {ref} is on more than one note: {', '.join(sorted(paths))}"
+                )
+                continue
+            try:
+                out[ref] = self._item(paths[0])
+            except (ObsidianError, IdentityError) as exc:
                 self.errors.append(str(exc))
         return out
