@@ -164,3 +164,16 @@ class _Minting:
             self.read_back = self.read_back_value or self.written
             return self.read_back
         raise AssertionError(f"unexpected command {command}")
+
+
+def test_ensure_id_mints_rather_than_reusing_a_boolean_property() -> None:
+    """`papersync-id: false` is not an id, so it must not become the string "False".
+
+    A bool is an int in Python, so a coercion broad enough to rescue a numeric
+    id will happily stringify a bool unless it is rejected first.
+    """
+    minted = _Minting()
+    got = I.ensure_id(_cli(minted), "Notes/Alpha.md", {"papersync-id": False})
+    assert got == minted.written
+    assert len(got) == I.ID_LENGTH
+    assert minted.set_calls == 1

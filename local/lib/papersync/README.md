@@ -104,7 +104,9 @@ PAPERSYNC_REAL_OBSIDIAN=1 PAPERSYNC_REAL_VAULT=Notes uv run pytest tests/test_ob
 ```
 
 Running it installs the papersync bridge plugin into the named real vault.
-It marks nothing else.
+It then creates one disposable note, mints a `papersync-id` on that note,
+renders it, and deletes the note permanently. No note that you wrote is
+read or changed.
 
 ## Configuration
 

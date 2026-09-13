@@ -67,8 +67,15 @@ def ensure_id(cli: ObsidianCli, path: str, meta: dict[str, Any]) -> str:
     so a silent no-op is otherwise indistinguishable from success.
     """
     existing = meta.get(ID_PROPERTY)
-    if existing is not None and str(existing):
-        return str(existing)
+    # A lenient YAML reader hands an all-digit id back as a number, so a bare
+    # isinstance(str) check would remint and silently replace the note's id.
+    # Coercing everything is too broad the other way: a hand-edited
+    # `papersync-id: false` stringifies to "False" and would be reused as an
+    # id. Accept a string or a number, and reject a bool, which is an int.
+    if isinstance(existing, str | int | float) and not isinstance(existing, bool):
+        text = str(existing).strip()
+        if text:
+            return text
     for _ in range(MINT_ATTEMPTS):
         candidate = new_id()
         if find(cli, candidate):
