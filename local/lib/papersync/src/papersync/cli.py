@@ -163,21 +163,21 @@ def _sinks(cfg: Config) -> dict[str, Any]:
     return sinks
 
 
-def _tag_printed(cfg: Config, refs_by_source: dict[str, list[str]]) -> None:
-    for source, refs in refs_by_source.items():
+def _tag_printed(cfg: Config, addresses_by_source: dict[str, list[str]]) -> None:
+    for source, addresses in addresses_by_source.items():
         factory = _sinks(cfg).get(source)
-        if factory is None or not refs:
+        if factory is None or not addresses:
             continue
         sink = factory()
         try:
-            untagged = sink.mark_printed(refs)
+            untagged = sink.mark_printed(addresses)
         except (RuntimeError, ObsidianError) as exc:
             raise click.ClickException(str(exc)) from exc
         for warning in sink.warnings:
             _err(f"WARNING: {warning}")
-        for ref in untagged:
-            _err(f"NOT TAGGED: {ref}")
-        _err(f"set {sink.marker} on {len(refs) - len(untagged)} {source} item(s)")
+        for address in untagged:
+            _err(f"NOT TAGGED: {address}")
+        _err(f"set {sink.marker} on {len(addresses) - len(untagged)} {source} item(s)")
 
 
 def _do_render(
@@ -235,7 +235,7 @@ def _do_render(
         by_source: dict[str, list[str]] = {}
         for r in rendered:
             if r.item is not None:
-                by_source.setdefault(r.item.source, []).append(r.item.ref)
+                by_source.setdefault(r.item.source, []).append(r.item.address)
         _tag_printed(cfg, by_source)
     return paths
 
@@ -256,7 +256,7 @@ def _render_common(f: Callable[..., Any]) -> Callable[..., Any]:
                 "tag",
                 default=None,
                 help="mark the item printed (papersync:printed in Things, "
-                "papersync-printed in Obsidian)",
+                "papersync-printed in Obsidian; a papersync-id is still minted)",
             ),
         ]
     ):
@@ -587,7 +587,11 @@ _OBSIDIAN_SELECTOR = click.argument("selector")
 @_OBSIDIAN_SELECTOR
 @_SKIP_PRINTED
 def obsidian_export(selector: str, skip_printed: bool) -> None:
-    """Export notes as JSON: search:<query> | base:<file>[#view] | path:<p> | folder:<p>."""
+    """Export notes as JSON: search:<query> | base:<file>[#view] | path:<p> | folder:<p>.
+
+    Mints a papersync-id property on any note that lacks one, so the vault is
+    modified.
+    """
     cfg = load_config()
     source = ObsidianSource(_obsidian(cfg))
     try:
@@ -700,7 +704,7 @@ def obsidian_print(
     if should_open:
         subprocess.run(["open", str(out_dir)], check=False)
     if cfg.render.tag if tag is None else tag:
-        _tag_printed(cfg, {"obsidian": [d.item.ref for d in docs]})
+        _tag_printed(cfg, {"obsidian": [d.item.address for d in docs]})
 
 
 if __name__ == "__main__":

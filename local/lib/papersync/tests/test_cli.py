@@ -496,7 +496,38 @@ def test_obsidian_print_writes_a_directory_of_pdfs(monkeypatch, tmp_path) -> Non
     assert pdfs == ["001-alpha.pdf"]
     manifest = json.loads((directories[0] / "manifest.json").read_text())
     assert manifest["documents"][0]["pages"] == 2
-    assert tagged == [["Notes/Alpha"]]
+    assert tagged == [["Notes/Alpha.md"]]
+
+
+def test_tag_printed_sends_addresses_to_the_sink(monkeypatch, tmp_path) -> None:
+    """The ledger must record the durable id; property:set needs the live path."""
+    from typing import ClassVar
+
+    from papersync import cli as C  # noqa: N812
+    from papersync.model import Item
+
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+
+    tagged: list[list[str]] = []
+
+    class FakeSink:
+        name = "obsidian"
+        marker = "papersync-printed"
+        warnings: ClassVar[list[str]] = []
+
+        def mark_printed(self, addresses: list[str]) -> list[str]:
+            tagged.append(addresses)
+            return []
+
+    item = Item(
+        source="obsidian",
+        ref="k7m2q9xr4tb8",
+        title="Alpha",
+        locator="Notes/Alpha.md",
+    )
+    monkeypatch.setattr(C, "_sinks", lambda cfg: {"obsidian": FakeSink})
+    C._tag_printed(C.load_config(), {"obsidian": [item.address]})
+    assert tagged == [["Notes/Alpha.md"]]
 
 
 def _obsidian_print_env(monkeypatch, tmp_path, fake_render) -> None:  # type: ignore[no-untyped-def]
