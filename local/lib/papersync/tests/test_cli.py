@@ -455,7 +455,9 @@ def test_obsidian_print_writes_a_directory_of_pdfs(monkeypatch, tmp_path) -> Non
             pass
 
         def export(self, selector: str, skip_printed: bool = True) -> list[Item]:
-            return [Item(source="obsidian", ref="Notes/Alpha", title="Alpha")]
+            return [
+                Item(source="obsidian", ref="Notes/Alpha", title="Alpha", locator="Notes/Alpha.md")
+            ]
 
     tagged: list[list[str]] = []
 
@@ -520,7 +522,9 @@ def _obsidian_print_env(monkeypatch, tmp_path, fake_render) -> None:  # type: ig
             pass
 
         def export(self, selector: str, skip_printed: bool = True) -> list[Item]:
-            return [Item(source="obsidian", ref="Notes/Alpha", title="Alpha")]
+            return [
+                Item(source="obsidian", ref="Notes/Alpha", title="Alpha", locator="Notes/Alpha.md")
+            ]
 
     monkeypatch.setattr(C, "ObsidianSource", FakeSource)
     monkeypatch.setattr(C, "require_bridge", lambda cli: None)

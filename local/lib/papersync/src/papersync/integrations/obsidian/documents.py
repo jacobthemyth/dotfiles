@@ -41,7 +41,7 @@ def frontmatter_pairs(meta: dict[str, Any], skip: list[str]) -> list[list[Any]]:
 def build_spec(item: Item, out_path: Path, size: L.PageSize, skip: list[str]) -> dict[str, Any]:
     return {
         "papersync_spec": 1,
-        "path": f"{item.ref}.md",
+        "path": item.locator,
         "out": str(out_path),
         "page": {"width_mm": size.width, "height_mm": size.height},
         "margins_mm": {
@@ -89,14 +89,14 @@ def render_documents(
             body = body_path.read_bytes()
         except FileNotFoundError as exc:
             raise DocumentRenderError(
-                f"the bridge reported success for {item.ref!r} but wrote no file at {body_path}"
+                f"the bridge reported success for {item.locator!r} but wrote no file at {body_path}"
             ) from exc
         try:
             # The bridge reports a page count too, but pymupdf is authoritative.
             pages = pymupdf.open("pdf", body).page_count
         except Exception as exc:
             raise DocumentRenderError(
-                f"the bridge reported success for {item.ref!r} but {body_path} is not a "
+                f"the bridge reported success for {item.locator!r} but {body_path} is not a "
                 "readable PDF (it may be truncated)"
             ) from exc
         payloads = [
@@ -125,7 +125,7 @@ def write_documents(
                 "index": index,
                 "file": name,
                 "ref": doc.item.ref,
-                "path": f"{doc.item.ref}.md",
+                "path": doc.item.locator,
                 "title": doc.item.title,
                 "pages": doc.pages,
                 "size": doc.size,

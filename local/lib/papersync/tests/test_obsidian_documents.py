@@ -7,20 +7,27 @@ import pytest
 
 from papersync.integrations.obsidian import documents as D  # noqa: N812
 from papersync.model import Item
+from papersync.recognize.qr import find_payload
 from papersync.render import chrome
 from papersync.render.templates.v1 import layout as L  # noqa: N812
+from tests import synthetic
 
 SIZE = L.SIZES["letter"]
 TODAY = date(2026, 9, 12)
 
 
-def _item(ref: str = "Notes/Projects/Alpha", title: str = "Project Alpha") -> Item:
+def _item(
+    ref: str = "k7m2q9xr4tb8",
+    title: str = "Project Alpha",
+    locator: str = "Notes/Projects/Alpha.md",
+) -> Item:
     return Item(
         source="obsidian",
         ref=ref,
         title=title,
         notes="# Alpha\n",
         meta={"title": title, "tags": ["a"], "papersync-printed": "2026-09-01"},
+        locator=locator,
     )
 
 
@@ -51,6 +58,36 @@ def test_build_spec_reads_its_margins_from_the_layout(tmp_path: Path) -> None:
         "left": L.MARGIN_MM,
     }
     assert ["papersync-printed", "2026-09-01"] not in spec["frontmatter"]
+
+
+def test_the_manifest_records_the_id_and_the_path_separately(tmp_path: Path) -> None:
+    doc = D.RenderedDocument(_item(), chrome.blank(SIZE, 1), 1, "letter")
+    target, _ = D.write_documents([doc], tmp_path, "20260912-120000", "Notes")
+    manifest = json.loads((target / D.MANIFEST).read_text())
+    entry = manifest["documents"][0]
+    assert entry["ref"] == "k7m2q9xr4tb8"
+    assert entry["path"] == "Notes/Projects/Alpha.md"
+
+
+def test_the_qr_carries_the_id_not_the_path(tmp_path: Path) -> None:
+    def fake_render(cli, spec, spec_path):
+        Path(spec["out"]).write_bytes(chrome.blank(SIZE, 1))
+        return 1
+
+    docs = D.render_documents(
+        cli=None,
+        items=[_item()],
+        size=SIZE,
+        labels=["A"],
+        boxes_id=1,
+        skip=[],
+        today=TODAY,
+        workdir=tmp_path / "work",
+        renderer=fake_render,
+    )
+    decoded = find_payload(synthetic.rasterize(docs[0].pdf))
+    assert decoded is not None
+    assert decoded.payload.ref == "k7m2q9xr4tb8"
 
 
 def test_render_documents_stamps_chrome_onto_what_the_bridge_produced(tmp_path: Path) -> None:
