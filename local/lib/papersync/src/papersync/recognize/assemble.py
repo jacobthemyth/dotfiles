@@ -83,7 +83,7 @@ def recognize_pages(
     pages: Iterable[RasterPage],
     ocr: OcrBackend,
     registry: BoxSetRegistry,
-    lookup: Callable[[list[str]], dict[str, Item]],
+    lookup: Callable[[str, list[str]], dict[str, Item]],
     today: date,
     inputs: list[str],
 ) -> Recognized:
@@ -156,7 +156,7 @@ def recognize_pages(
         if labels is None:
             fail(f"unknown box set {payload.boxes}", "unknown box set", overlay)
             continue
-        item = None if payload.is_new else lookup([payload.ref]).get(payload.ref)
+        item = None if payload.is_new else lookup(payload.source, [payload.ref]).get(payload.ref)
         if item is None and not payload.is_new:
             fail(f"unknown item {payload.ref}", "unknown item", overlay)
             continue

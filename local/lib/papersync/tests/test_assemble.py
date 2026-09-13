@@ -49,7 +49,7 @@ def _card(ref: str, title: str, notes: str, marked: list[L.Rect]) -> np.ndarray:
     return synthetic.distort(gray)
 
 
-def _lookup(refs: list[str]) -> dict[str, Item]:
+def _lookup(source: str, refs: list[str]) -> dict[str, Item]:
     known = {
         "F" * 22: Item(source="things", ref="F" * 22, title="FOO"),
         "B" * 22: Item(source="things", ref="B" * 22, title="BAR", notes="BAZ"),
@@ -230,7 +230,7 @@ def test_one_bit_scan_decodes_through_the_blur_ladder(tmp_path: Path) -> None:
     reg.id_for(["A", "B", "C", "D"])
     ref = "9Xx98M4gh3Eww1mQStZCo5"
 
-    def lookup(refs: list[str]) -> dict[str, Item]:
+    def lookup(source: str, refs: list[str]) -> dict[str, Item]:
         return {ref: Item(source="things", ref=ref, title="hello world")}
 
     plan = recognize_pages(
@@ -251,7 +251,7 @@ def test_a_source_without_a_primary_box_reports_no_done_result(tmp_path: Path) -
     gray = synthetic.rasterize(pdf)
     synthetic.draw_x(gray, L.meta_box(size, 1))
 
-    def lookup(refs: list[str]) -> dict[str, Item]:
+    def lookup(source: str, refs: list[str]) -> dict[str, Item]:
         return {r: Item(source="obsidian", ref=r, title="Alpha") for r in refs}
 
     rec = recognize_pages(
@@ -264,3 +264,61 @@ def test_a_source_without_a_primary_box_reports_no_done_result(tmp_path: Path) -
     assert change.complete is False
     assert "done" not in change.boxes
     assert change.marks == ["B"]
+
+
+def test_a_page_is_looked_up_through_the_lookup_for_its_own_payload_source(
+    tmp_path: Path,
+) -> None:
+    """The dispatcher must route each page to the lookup matching its payload source.
+
+    A page carrying an obsidian ref must never be resolved by the things lookup,
+    and vice versa -- this is the defect the routing was built to fix.
+    """
+    from papersync.payload import Payload
+    from papersync.render import chrome
+
+    size = L.SIZES["letter"]
+    payload = Payload(1, "obsidian", "Notes/Alpha", size.name, 1, 1, 1)
+    pdf = chrome.stamp(chrome.blank(size, 1), size, ["A", "B"], "Alpha", "2026-09-12", [payload])
+    obsidian_page = synthetic.rasterize(pdf)
+    things_page = _card("F" * 22, "FOO", "", [])
+
+    calls: list[str] = []
+
+    def lookup(source: str, refs: list[str]) -> dict[str, Item]:
+        calls.append(source)
+        if source == "obsidian":
+            return {r: Item(source="obsidian", ref=r, title="Alpha") for r in refs}
+        if source == "things":
+            return _lookup(source, refs)
+        return {}
+
+    rec = recognize_pages(
+        [RasterPage("scan.pdf", 0, things_page), RasterPage("scan.pdf", 1, obsidian_page)],
+        FakeOcr(),
+        _registry(tmp_path),
+        lookup,
+        TODAY,
+        ["scan.pdf"],
+    )
+    assert rec.plan.errors == []
+    assert calls == ["things", "obsidian"]
+    things_change, obsidian_change = rec.plan.changes
+    assert things_change.source == "things" and things_change.ref == "F" * 22
+    assert obsidian_change.source == "obsidian" and obsidian_change.ref == "Notes/Alpha"
+
+
+def test_a_source_with_no_configured_lookup_is_an_unknown_item_error(tmp_path: Path) -> None:
+    """The dispatcher returns {} for a source it has no lookup for.
+
+    That must surface as the existing "unknown item" page error, not a crash.
+    """
+    pages = [RasterPage("scan.pdf", 0, _card("F" * 22, "FOO", "", []))]
+
+    def lookup(source: str, refs: list[str]) -> dict[str, Item]:
+        return {}
+
+    plan = recognize_pages(pages, FakeOcr(), _registry(tmp_path), lookup, TODAY, ["scan.pdf"]).plan
+    assert plan.changes == []
+    (err,) = plan.errors
+    assert err.page == 1 and "unknown item" in err.message

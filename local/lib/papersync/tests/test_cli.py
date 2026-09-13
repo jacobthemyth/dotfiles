@@ -199,6 +199,103 @@ def test_recognize_round_trip(tmp_path: Path) -> None:
     assert (tmp_path / "rev.pdf").exists()
 
 
+def _obsidian_scan(tmp_path: Path) -> Path:
+    """A rasterized letter-size page whose QR names an obsidian ref, box set 1 = ["A"]."""
+    import cv2
+
+    from papersync.payload import Payload
+    from papersync.render import chrome
+    from papersync.render.templates.v1 import layout as L  # noqa: N812
+
+    (tmp_path / "cfg" / "papersync").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "cfg" / "papersync" / "boxsets.toml").write_text(
+        '[[sets]]\nid = 1\nlabels = ["A"]\ncreated = "2026-09-12T00:00:00Z"\n'
+    )
+    size = L.SIZES["letter"]
+    payload = Payload(1, "obsidian", "Notes/Alpha", size.name, 1, 1, 1)
+    pdf = chrome.stamp(chrome.blank(size, 1), size, ["A"], "Alpha", "2026-09-12", [payload])
+    gray = synthetic.rasterize(pdf)
+    scan = tmp_path / "scan.png"
+    cv2.imwrite(str(scan), gray)
+    return scan
+
+
+def test_recognize_routes_an_obsidian_scan_to_the_obsidian_lookup(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """An obsidian-sourced scan must resolve via ObsidianSource, not the Things db.
+
+    PAPERSYNC_THINGS_DB points at a path that doesn't exist, so if the
+    dispatcher fell back to a Things lookup for an obsidian ref -- as it did
+    before this routing existed -- opening that database would fail loudly
+    instead of the scan resolving.
+    """
+    from typing import ClassVar
+
+    from papersync import cli as C  # noqa: N812
+    from papersync.model import Item
+
+    class FakeObsidianSource:
+        errors: ClassVar[list[str]] = []
+
+        def __init__(self, *_a, **_k) -> None:
+            pass
+
+        def lookup(self, refs: list[str]) -> dict[str, Item]:
+            return {r: Item(source="obsidian", ref=r, title="Alpha") for r in refs}
+
+    monkeypatch.setattr(C, "ObsidianSource", FakeObsidianSource)
+
+    env = _env(tmp_path)
+    env["PAPERSYNC_THINGS_DB"] = str(tmp_path / "no-such.sqlite")
+    (tmp_path / "cfg" / "papersync" / "config.toml").write_text(
+        '[obsidian]\nvault = "Notes"\n[render]\nopen = false\noutput_dir = "%s"\n'
+        % (tmp_path / "out")
+    )
+    scan = _obsidian_scan(tmp_path)
+
+    r = CliRunner().invoke(main, ["recognize", str(scan)], env=env)
+    assert r.exit_code == 0, r.output
+    plan = Plan.from_json(r.stdout)
+    assert plan.errors == []
+    assert plan.changes[0].ref == "Notes/Alpha" and plan.changes[0].source == "obsidian"
+
+
+def test_recognize_surfaces_obsidian_lookup_errors(monkeypatch, tmp_path: Path) -> None:
+    """ObsidianSource.lookup appends diagnostics to .errors instead of raising.
+
+    Nothing else would tell the user why a page failed, so _recognize must
+    print them.
+    """
+    from papersync import cli as C  # noqa: N812
+    from papersync.model import Item
+
+    class FakeObsidianSource:
+        def __init__(self, *_a, **_k) -> None:
+            self.errors: list[str] = []
+
+        def lookup(self, refs: list[str]) -> dict[str, Item]:
+            self.errors.append("unknown papersync-id Notes/Alpha")
+            return {}
+
+    monkeypatch.setattr(C, "ObsidianSource", FakeObsidianSource)
+
+    env = _env(tmp_path)
+    env["PAPERSYNC_THINGS_DB"] = str(tmp_path / "no-such.sqlite")
+    (tmp_path / "cfg" / "papersync" / "config.toml").write_text(
+        '[obsidian]\nvault = "Notes"\n[render]\nopen = false\noutput_dir = "%s"\n'
+        % (tmp_path / "out")
+    )
+    scan = _obsidian_scan(tmp_path)
+
+    r = CliRunner().invoke(main, ["recognize", str(scan)], env=env)
+    assert r.exit_code == 0, r.output
+    plan = Plan.from_json(r.stdout)
+    assert plan.changes == []
+    assert "unknown item" in plan.errors[0].message
+    assert "WARNING: unknown papersync-id Notes/Alpha" in r.output
+
+
 def test_doctor_runs(tmp_path: Path) -> None:
     r = CliRunner().invoke(main, ["doctor"], env=_env(tmp_path))
     assert "uv" in r.output and "Things database" in r.output

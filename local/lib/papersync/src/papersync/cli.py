@@ -323,15 +323,33 @@ def print_cmd(
 
 
 def _recognize(scans: tuple[str, ...], review: str | None) -> Plan:
-    source = ThingsSource(_db())
+    cfg = load_config()
+    things: ThingsSource | None = None
+    obsidian: ObsidianSource | None = None
+
+    def lookup(source: str, refs: list[str]) -> dict[str, Item]:
+        nonlocal things, obsidian
+        if source == "things":
+            if things is None:
+                things = ThingsSource(_db())
+            return things.lookup(refs)
+        if source == "obsidian" and cfg.obsidian.vault:
+            if obsidian is None:
+                obsidian = ObsidianSource(ObsidianCli(cfg.obsidian.vault))
+            return obsidian.lookup(refs)
+        return {}
+
     rec = recognize_pages(
         iter_pages([Path(s) for s in scans]),
         OcrmacBackend(),
         _registry(),
-        source.lookup,
+        lookup,
         date.today(),
         list(scans),
     )
+    if obsidian is not None:
+        for message in obsidian.errors:
+            _err(f"WARNING: {message}")
     if review:
         write_review(rec.overlays, Path(review))
         _err(f"wrote {review}")

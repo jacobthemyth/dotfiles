@@ -39,7 +39,7 @@ def _registry(tmp_path: Path) -> BoxSetRegistry:
     return reg
 
 
-def _lookup(refs: list[str]) -> dict[str, Item]:
+def _lookup(source: str, refs: list[str]) -> dict[str, Item]:
     return {r: Item(source="obsidian", ref=r, title="Alpha") for r in refs}
 
 
