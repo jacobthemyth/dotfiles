@@ -67,14 +67,17 @@ def ensure_id(cli: ObsidianCli, path: str, meta: dict[str, Any]) -> str:
     so a silent no-op is otherwise indistinguishable from success.
     """
     existing = meta.get(ID_PROPERTY)
-    if isinstance(existing, str) and existing:
-        return existing
+    if existing is not None and str(existing):
+        return str(existing)
     for _ in range(MINT_ATTEMPTS):
         candidate = new_id()
         if find(cli, candidate):
             continue
         cli.call("property:set", name=ID_PROPERTY, value=candidate, type="text", path=path)
-        confirmed = cli.call("property:read", name=ID_PROPERTY, path=path).strip()
+        try:
+            confirmed = cli.call("property:read", name=ID_PROPERTY, path=path).strip()
+        except ObsidianError as exc:
+            raise IdentityError(f"set {ID_PROPERTY} on {path} but read back {exc}") from exc
         if confirmed != candidate:
             raise IdentityError(f"set {ID_PROPERTY} on {path} but read back {confirmed!r}")
         return candidate

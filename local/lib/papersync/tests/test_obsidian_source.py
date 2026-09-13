@@ -202,6 +202,51 @@ def test_lookup_refuses_to_guess_when_an_id_is_on_two_notes() -> None:
     assert src.errors == ["papersync-id abcdefghjkmn is on more than one note: a.md, b.md"]
 
 
+def test_lookup_rejects_a_malformed_ref_without_querying_the_vault() -> None:
+    """A ref that is not id-shaped must fail closed, not reach the search query.
+
+    Refs come from a decoded QR; an id-shaped check catches corruption (and
+    injection into the search query) before it ever reaches the CLI.
+    """
+    src = _source({"a.md": "one\n"})
+    got = src.lookup(["short"])
+    assert got == {}
+    assert src.errors == ["malformed papersync-id 'short'"]
+    assert src.fake.calls == []
+
+
+def test_lookup_rejects_a_ref_with_invalid_characters_without_querying_the_vault() -> None:
+    src = _source({"a.md": "one\n"})
+    bad = '"' * 12  # right length, would otherwise be interpolated straight into the query
+    got = src.lookup([bad])
+    assert got == {}
+    assert src.errors == [f"malformed papersync-id {bad!r}"]
+    assert src.fake.calls == []
+
+
+def test_lookup_does_not_mint_when_the_property_no_longer_matches_after_the_search() -> None:
+    """A stale search index must never cause lookup to mint a fresh id.
+
+    ``find`` resolves the ref to a path, but if the note's property has
+    since changed, lookup must re-check it and fail rather than call
+    ``_item`` (which would mint a brand new id and silently replace the
+    note's durable identity).
+    """
+    src = _source({"a.md": "one\n"}, {"a.md": {"papersync-id": "zzzzzzzzzzzz"}})
+    real = src.fake
+
+    def runner(args: list[str]) -> str:
+        if args[1] == "search":
+            return json.dumps(["a.md"])  # stale: claims a.md carries our ref
+        return real(args)
+
+    src.cli.runner = runner
+    got = src.lookup(["abcdefghjkmn"])
+    assert got == {}
+    assert src.errors == ["papersync-id abcdefghjkmn no longer matches the property on a.md"]
+    assert not any(c[1] == "property:set" for c in src.fake.calls)
+
+
 def test_a_missing_note_does_not_abort_the_whole_export() -> None:
     src = _source({"a.md": "one\n"})
     real = src.fake

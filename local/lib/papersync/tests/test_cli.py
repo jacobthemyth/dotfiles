@@ -296,6 +296,72 @@ def test_recognize_surfaces_obsidian_lookup_errors(monkeypatch, tmp_path: Path) 
     assert "WARNING: unknown papersync-id Notes/Alpha" in r.output
 
 
+def test_recognize_warns_when_an_obsidian_scan_has_no_vault_configured(tmp_path: Path) -> None:
+    """No [obsidian] vault configured must give a diagnostic, not silent {}.
+
+    Before this fix the dispatcher returned {} for this branch with no
+    warning at all, so the only thing the user saw was "unknown item <ref>"
+    with nothing explaining why.
+    """
+    env = _env(tmp_path)
+    # _env's config.toml has no [obsidian] section, so cfg.obsidian.vault is "".
+    scan = _obsidian_scan(tmp_path)
+
+    r = CliRunner().invoke(main, ["recognize", str(scan)], env=env)
+    assert r.exit_code == 0, r.output
+    plan = Plan.from_json(r.stdout)
+    assert plan.changes == []
+    assert "unknown item" in plan.errors[0].message
+    assert "WARNING: no Obsidian vault configured" in r.output
+
+
+def test_recognize_warns_on_an_unknown_source(tmp_path: Path) -> None:
+    """A source name the dispatcher does not know must also give a diagnostic."""
+    import cv2
+
+    from papersync.payload import Payload
+    from papersync.render import chrome
+    from papersync.render.templates.v1 import layout as L  # noqa: N812
+
+    env = _env(tmp_path)
+    (tmp_path / "cfg" / "papersync").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "cfg" / "papersync" / "boxsets.toml").write_text(
+        '[[sets]]\nid = 1\nlabels = ["A"]\ncreated = "2026-09-12T00:00:00Z"\n'
+    )
+    size = L.SIZES["letter"]
+    payload = Payload(1, "carrier-pigeon", "abc123", size.name, 1, 1, 1)
+    pdf = chrome.stamp(chrome.blank(size, 1), size, ["A"], "Alpha", "2026-09-12", [payload])
+    gray = synthetic.rasterize(pdf)
+    scan = tmp_path / "scan.png"
+    cv2.imwrite(str(scan), gray)
+
+    r = CliRunner().invoke(main, ["recognize", str(scan)], env=env)
+    assert r.exit_code == 0, r.output
+    plan = Plan.from_json(r.stdout)
+    assert plan.changes == []
+    assert "unknown item" in plan.errors[0].message
+    assert "WARNING: unknown source 'carrier-pigeon'" in r.output
+
+
+def test_apply_rejects_an_obsidian_change(tmp_path: Path) -> None:
+    """apply must refuse an Obsidian change rather than send it to ThingsSink.
+
+    ObsidianSink.apply raises NotImplementedError; _apply must reject the
+    change before it ever reaches _sink(cfg), which is always ThingsSink.
+    """
+    plan = Plan(
+        created=datetime.now(),
+        inputs=[],
+        changes=[Change(kind="update", source="obsidian", ref="k7m2q9xr4tb8", title="Alpha")],
+        errors=[],
+    )
+    p = tmp_path / "plan.json"
+    p.write_text(plan.to_json())
+    r = CliRunner().invoke(main, ["apply", str(p), "--auto-approve"], env=_env(tmp_path))
+    assert r.exit_code != 0
+    assert "the Obsidian importer does not exist yet" in r.output
+
+
 def test_doctor_runs(tmp_path: Path) -> None:
     r = CliRunner().invoke(main, ["doctor"], env=_env(tmp_path))
     assert "uv" in r.output and "Things database" in r.output
@@ -553,7 +619,12 @@ def test_obsidian_print_writes_a_directory_of_pdfs(monkeypatch, tmp_path) -> Non
 
         def export(self, selector: str, skip_printed: bool = True) -> list[Item]:
             return [
-                Item(source="obsidian", ref="Notes/Alpha", title="Alpha", locator="Notes/Alpha.md")
+                Item(
+                    source="obsidian",
+                    ref="k7m2q9xr4tb8",
+                    title="Alpha",
+                    locator="Notes/Alpha.md",
+                )
             ]
 
     tagged: list[list[str]] = []
@@ -593,11 +664,22 @@ def test_obsidian_print_writes_a_directory_of_pdfs(monkeypatch, tmp_path) -> Non
     assert pdfs == ["001-alpha.pdf"]
     manifest = json.loads((directories[0] / "manifest.json").read_text())
     assert manifest["documents"][0]["pages"] == 2
+    # property:set needs the live path...
     assert tagged == [["Notes/Alpha.md"]]
+    # ...but the ledger must record the durable id, so a rename cannot orphan it.
+    ledger_lines = (tmp_path / "state" / "papersync" / "prints.jsonl").read_text().splitlines()
+    ledger_entries = [json.loads(line) for line in ledger_lines]
+    assert ledger_entries[0]["ref"] == "k7m2q9xr4tb8"
 
 
 def test_tag_printed_sends_addresses_to_the_sink(monkeypatch, tmp_path) -> None:
-    """The ledger must record the durable id; property:set needs the live path."""
+    """_tag_printed sends item.address (the live path), not item.ref, to the sink.
+
+    property:set needs a path to write to. The other half of the invariant --
+    that the ledger records the durable ref, not the path -- is asserted in
+    test_obsidian_print_writes_a_directory_of_pdfs, which is the test that
+    actually writes a ledger entry.
+    """
     from typing import ClassVar
 
     from papersync import cli as C  # noqa: N812
@@ -651,7 +733,12 @@ def _obsidian_print_env(monkeypatch, tmp_path, fake_render) -> None:  # type: ig
 
         def export(self, selector: str, skip_printed: bool = True) -> list[Item]:
             return [
-                Item(source="obsidian", ref="Notes/Alpha", title="Alpha", locator="Notes/Alpha.md")
+                Item(
+                    source="obsidian",
+                    ref="k7m2q9xr4tb8",
+                    title="Alpha",
+                    locator="Notes/Alpha.md",
+                )
             ]
 
     monkeypatch.setattr(C, "ObsidianSource", FakeSource)

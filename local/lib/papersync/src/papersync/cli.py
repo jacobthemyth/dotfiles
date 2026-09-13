@@ -19,7 +19,7 @@ from papersync.integrations.obsidian import documents as odocs
 from papersync.integrations.obsidian.bridge import install, installed_version, require_bridge
 from papersync.integrations.obsidian.bridge import vault_path as bridge_vault_path
 from papersync.integrations.obsidian.cli import ObsidianCli, ObsidianError
-from papersync.integrations.obsidian.sink import ObsidianSink
+from papersync.integrations.obsidian.sink import NOT_YET, ObsidianSink
 from papersync.integrations.obsidian.source import ObsidianSource
 from papersync.integrations.things import auth as things_auth
 from papersync.integrations.things.db import ThingsDb, ThingsDbNotFound, find_db_path
@@ -326,6 +326,7 @@ def _recognize(scans: tuple[str, ...], review: str | None) -> Plan:
     cfg = load_config()
     things: ThingsSource | None = None
     obsidian: ObsidianSource | None = None
+    warned_sources: set[str] = set()
 
     def lookup(source: str, refs: list[str]) -> dict[str, Item]:
         nonlocal things, obsidian
@@ -333,10 +334,21 @@ def _recognize(scans: tuple[str, ...], review: str | None) -> Plan:
             if things is None:
                 things = ThingsSource(_db())
             return things.lookup(refs)
-        if source == "obsidian" and cfg.obsidian.vault:
-            if obsidian is None:
-                obsidian = ObsidianSource(ObsidianCli(cfg.obsidian.vault))
-            return obsidian.lookup(refs)
+        if source == "obsidian":
+            if cfg.obsidian.vault:
+                if obsidian is None:
+                    obsidian = ObsidianSource(ObsidianCli(cfg.obsidian.vault))
+                return obsidian.lookup(refs)
+            if source not in warned_sources:
+                warned_sources.add(source)
+                _err(
+                    "WARNING: no Obsidian vault configured; cannot resolve obsidian items "
+                    '(set [obsidian] vault = "<name>" in config.toml)'
+                )
+            return {}
+        if source not in warned_sources:
+            warned_sources.add(source)
+            _err(f"WARNING: unknown source {source!r}; cannot resolve its items")
         return {}
 
     rec = recognize_pages(
@@ -430,6 +442,8 @@ def _apply(
     if not plan.changes:
         _err("nothing to do")
         return
+    if any(change.source == "obsidian" for change in plan.changes):
+        raise click.ClickException(NOT_YET)
     if not auto_approve:
         answer = _confirm("Apply these changes? Only 'yes' is accepted", plan_on_stdin)
         if answer.strip() != "yes":

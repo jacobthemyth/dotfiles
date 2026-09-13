@@ -102,6 +102,41 @@ def test_ensure_id_raises_when_the_write_does_not_stick() -> None:
         I.ensure_id(_cli(minted), "Notes/Alpha.md", {})
 
 
+def test_ensure_id_raises_identity_error_when_the_read_back_property_is_missing() -> None:
+    """property:set can be a silent no-op; property:read then answers with an error.
+
+    ObsidianCli.call turns that reply into an ObsidianError. It must be
+    caught and re-raised as the spec-mandated IdentityError naming the note
+    path, not surfaced as a bare CLI error with no path in it.
+    """
+
+    def runner(args: list[str]) -> str:
+        command = args[1]
+        if command == "search":
+            return "No matches found."
+        if command == "property:set":
+            return "Set papersync-id: whatever"
+        if command == "property:read":
+            return 'Error: Property "papersync-id" not found.'
+        raise AssertionError(f"unexpected command {command}")
+
+    with pytest.raises(I.IdentityError, match=r"Notes/Alpha\.md but read back"):
+        I.ensure_id(_cli(runner), "Notes/Alpha.md", {})
+
+
+def test_ensure_id_coerces_a_non_string_existing_value_instead_of_reminting() -> None:
+    """A papersync-id that comes back as a number, not a string, must still be reused.
+
+    An all-digit id returned as a number by a lenient JSON/YAML reader must
+    not be silently re-minted -- that would replace the note's durable id.
+    """
+    calls: list[list[str]] = []
+    cli = _cli(lambda args: calls.append(args) or "unreachable")
+    got = I.ensure_id(cli, "Notes/Alpha.md", {"papersync-id": 123456789012})
+    assert got == "123456789012"
+    assert calls == []
+
+
 class _Minting:
     """A fake vault where every candidate id is free unless told otherwise."""
 

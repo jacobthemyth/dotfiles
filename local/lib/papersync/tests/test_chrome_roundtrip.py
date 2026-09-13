@@ -92,10 +92,15 @@ def test_stamped_pages_survive_rotation_and_scaling(tmp_path: Path) -> None:
 def test_deeply_nested_ref_survives_round_trip(tmp_path: Path) -> None:
     """A short 20-char ref is what let the QR version-5 overflow through review.
 
-    This ref is 6 folders deep and 67 characters long -- realistic for an
-    Obsidian vault, and long enough that it overflowed the old fixed-version-5
-    QR (segno.DataOverflowError around 46 plain characters). It must still
-    stamp, survive a 300 dpi rasterization, and decode back intact.
+    This ref is a deliberately oversized synthetic ref, not modeled on any
+    one source -- it guards QR capacity for a long ref generally. It is 6
+    folders deep and 67 characters long, long enough that it overflowed the
+    old fixed-version-5 QR (segno.DataOverflowError around 46 plain
+    characters). It must still stamp, survive a 300 dpi rasterization, and
+    decode back intact. Obsidian refs are no longer path-shaped: they are
+    now fixed-length 12-character minted ids, so this scenario cannot arise
+    from a real Obsidian vault, only from some other source with an
+    unbounded ref.
     """
     ref = "Areas/Work/Projects/2026/Q3/Client Alpha/Meeting Notes 2026-09-12"
     gray = synthetic.rasterize(_stamped(1, ref=ref))

@@ -5,6 +5,8 @@ from typing import Any
 
 from papersync.integrations.obsidian.cli import ObsidianCli, ObsidianError
 from papersync.integrations.obsidian.identity import (
+    ALPHABET,
+    ID_LENGTH,
     ID_PROPERTY,
     IdentityError,
     ensure_id,
@@ -103,9 +105,18 @@ class ObsidianSource:
         return items
 
     def lookup(self, refs: list[str]) -> dict[str, Item]:
-        """Resolve minted ids to the notes that currently carry them."""
+        """Resolve minted ids to the notes that currently carry them.
+
+        The id is already known here, so it must never be re-derived: a stale
+        search index or a property edited away between the search and the
+        read must fail loudly rather than let ``_item`` mint a fresh id and
+        silently replace the note's durable identity.
+        """
         out: dict[str, Item] = {}
         for ref in refs:
+            if not (len(ref) == ID_LENGTH and set(ref) <= set(ALPHABET)):
+                self.errors.append(f"malformed {ID_PROPERTY} {ref!r}")
+                continue
             try:
                 paths = find(self.cli, ref)
             except ObsidianError as exc:
@@ -119,8 +130,17 @@ class ObsidianSource:
                     f"{ID_PROPERTY} {ref} is on more than one note: {', '.join(sorted(paths))}"
                 )
                 continue
+            path = paths[0]
             try:
-                out[ref] = self._item(paths[0])
+                meta = self.cli.call_json("properties", path=path, format="json") or {}
+            except ObsidianError as exc:
+                self.errors.append(str(exc))
+                continue
+            if meta.get(ID_PROPERTY) != ref:
+                self.errors.append(f"{ID_PROPERTY} {ref} no longer matches the property on {path}")
+                continue
+            try:
+                out[ref] = self._item(path, meta)
             except (ObsidianError, IdentityError) as exc:
                 self.errors.append(str(exc))
         return out
