@@ -18,4 +18,4 @@ tag = true
 [obsidian]
 vault = "Notes"
 # Front matter keys that do not print in the document's property table.
-frontmatter_skip = ["papersync-printed"]
+frontmatter_skip = ["papersync-printed", "papersync-id"]

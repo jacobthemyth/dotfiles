@@ -25,7 +25,7 @@ def _sink(replies: dict[str, str] | None = None) -> tuple[list[list[str]], Obsid
 
 def test_mark_printed_sets_a_dated_property_on_each_note() -> None:
     calls, sink = _sink()
-    assert sink.mark_printed(["Notes/Alpha", "Notes/Beta"]) == []
+    assert sink.mark_printed(["Notes/Alpha.md", "Notes/Beta.md"]) == []
     assert calls[0] == [
         "vault=Notes",
         "property:set",
@@ -38,9 +38,9 @@ def test_mark_printed_sets_a_dated_property_on_each_note() -> None:
     assert sink.warnings == []
 
 
-def test_mark_printed_reports_the_refs_it_could_not_tag() -> None:
+def test_mark_printed_reports_the_paths_it_could_not_tag() -> None:
     _, sink = _sink({"path=Notes/Ghost.md": 'Error: File "Notes/Ghost.md" not found.'})
-    assert sink.mark_printed(["Notes/Alpha", "Notes/Ghost"]) == ["Notes/Ghost"]
+    assert sink.mark_printed(["Notes/Alpha.md", "Notes/Ghost.md"]) == ["Notes/Ghost.md"]
     assert any("Notes/Ghost" in w for w in sink.warnings)
 
 

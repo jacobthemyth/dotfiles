@@ -30,7 +30,7 @@ def test_obsidian_config_defaults_and_parsing(tmp_path: Path) -> None:
     from papersync.config import Config, load_config
 
     assert Config().obsidian.vault == ""
-    assert Config().obsidian.frontmatter_skip == ["papersync-printed"]
+    assert Config().obsidian.frontmatter_skip == ["papersync-printed", "papersync-id"]
 
     path = tmp_path / "config.toml"
     path.write_text('[obsidian]\nvault = "Notes"\nfrontmatter_skip = ["a", "b"]\n')

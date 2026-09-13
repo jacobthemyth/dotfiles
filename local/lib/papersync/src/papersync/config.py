@@ -29,7 +29,9 @@ class ThingsConfig(BaseModel):
 
 class ObsidianConfig(BaseModel):
     vault: str = ""
-    frontmatter_skip: list[str] = Field(default_factory=lambda: ["papersync-printed"])
+    frontmatter_skip: list[str] = Field(
+        default_factory=lambda: ["papersync-printed", "papersync-id"]
+    )
 
 
 class Config(BaseModel):

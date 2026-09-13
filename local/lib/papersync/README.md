@@ -83,6 +83,15 @@ Obsidian did with pagination.
 skips notes that already carry it. Pass `--no-skip-printed` to include
 them.
 
+papersync also writes a `papersync-id` property: twelve characters that
+identify the note in the QR code. The path is not used as an identity,
+because renaming a note would break every sheet already printed from it.
+The id is minted the first time papersync exports or prints a note, and
+never changes after that. `--no-tag` skips `papersync-printed` so the note
+stays reprintable, but it does not skip the id. `papersync-id` never
+appears in the printed property table, because it is a machine identifier
+and not something a reader needs to see.
+
 Scanning documents back in is not implemented.
 
 ### Live test

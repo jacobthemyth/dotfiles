@@ -25,22 +25,26 @@ class ObsidianSink:
     def describe(self, change: Change) -> list[str]:
         return [f"mark {m}" for m in change.marks]
 
-    def mark_printed(self, refs: list[str]) -> list[str]:
-        """Set the printed property on each note. Returns the refs that failed."""
+    def mark_printed(self, addresses: list[str]) -> list[str]:
+        """Set the printed property on each note path. Returns the ones that failed.
+
+        The argument is a note path, not a papersync-id: ``property:set``
+        addresses a file, and the id is only what the QR code carries.
+        """
         self.warnings = []
         failed: list[str] = []
-        for ref in refs:
+        for path in addresses:
             try:
                 self.cli.call(
                     "property:set",
                     name=PRINTED_PROPERTY,
                     value=self.today.isoformat(),
                     type="date",
-                    path=f"{ref}.md",
+                    path=path,
                 )
             except ObsidianError as exc:
-                self.warnings.append(f"{ref}: {exc}")
-                failed.append(ref)
+                self.warnings.append(f"{path}: {exc}")
+                failed.append(path)
         return failed
 
     def check(self) -> list[str]:
