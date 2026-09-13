@@ -10,6 +10,17 @@ class Item(BaseModel):
     title: str
     notes: str = ""
     meta: dict[str, Any] = Field(default_factory=dict)
+    locator: str = ""
+
+    @property
+    def address(self) -> str:
+        """Where to read and write this item, as opposed to what identifies it.
+
+        For Things the uuid is both, so ``locator`` stays empty. For Obsidian
+        ``ref`` is a minted papersync-id that survives a rename, while
+        ``locator`` is the note path that the CLI actually needs.
+        """
+        return self.locator or self.ref
 
 
 class BoxResult(BaseModel):

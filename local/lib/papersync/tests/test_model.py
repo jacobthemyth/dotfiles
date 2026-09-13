@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from papersync.model import Change, Plan, scanned_block
+from papersync.model import Change, Item, Plan, scanned_block
 
 
 def test_plan_round_trip() -> None:
@@ -45,3 +45,17 @@ def test_item_meta_defaults_to_empty_and_round_trips() -> None:
         meta={"tags": ["project", "active"], "status": "open"},
     )
     assert Item.model_validate_json(rich.model_dump_json()) == rich
+
+
+def test_address_prefers_the_locator_and_falls_back_to_the_ref() -> None:
+    things = Item(source="things", ref="ABC-123", title="Buy milk")
+    assert things.locator == ""
+    assert things.address == "ABC-123"
+
+    note = Item(
+        source="obsidian",
+        ref="k7m2q9xr4tb8",
+        title="Alpha",
+        locator="Notes/Projects/Alpha.md",
+    )
+    assert note.address == "Notes/Projects/Alpha.md"
