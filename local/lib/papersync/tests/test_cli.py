@@ -783,3 +783,29 @@ def test_obsidian_print_reports_a_clean_error_when_the_bridge_writes_no_file(
     assert result.exit_code != 0
     assert "Traceback" not in result.output
     assert "wrote no file" in result.output
+
+
+def test_obsidian_print_help_documents_every_selector_form() -> None:
+    """SELECTOR is a bare argument, so its four forms are only discoverable in --help."""
+    from click.testing import CliRunner
+
+    from papersync import cli as C  # noqa: N812
+
+    result = CliRunner().invoke(C.main, ["obsidian", "print", "--help"])
+    assert result.exit_code == 0, result.output
+    for form in ("path:", "folder:", "search:", "base:"):
+        assert form in result.output, form
+    assert ".md extension" in result.output
+
+
+def test_obsidian_export_help_documents_the_same_selector_forms() -> None:
+    """Both commands take the same argument, so their help must not drift apart."""
+    from click.testing import CliRunner
+
+    from papersync import cli as C  # noqa: N812
+
+    result = CliRunner().invoke(C.main, ["obsidian", "export", "--help"])
+    assert result.exit_code == 0, result.output
+    for form in ("path:", "folder:", "search:", "base:"):
+        assert form in result.output, form
+    assert "papersync-id" in result.output

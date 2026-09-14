@@ -614,16 +614,49 @@ def obsidian() -> None:
 
 _OBSIDIAN_SELECTOR = click.argument("selector")
 
+# Click rewraps prose but leaves a paragraph starting with \b alone, which is
+# how the selector table below keeps its columns.
+SELECTOR_HELP = """\b
+SELECTOR is one of four forms:
 
-@obsidian.command("export")
+\b
+  path:<file>          one note, by its exact vault path
+  folder:<folder>      every note under a folder, recursively
+  search:<query>       Obsidian's own search syntax
+  base:<file>[#view]   the rows of a base, optionally one view
+
+\b
+Examples:
+
+\b
+  path:Projects/Alpha.md
+  folder:Projects/2026
+  search:tag:#book
+  search:["status":"active"] -path:Archive
+  base:Reading.base#Queue
+
+A path selector needs the .md extension, because Obsidian resolves the path
+exactly. A folder selector needs a real folder: there is no selector for the
+whole vault, so use a search for that. A search query is passed to Obsidian
+unchanged, so anything the search pane accepts works here, including
+["property"] and ["property":"value"] and a leading - to negate a term.
+
+Notes already carrying papersync-printed are left out unless you pass
+--no-skip-printed."""
+
+
+@obsidian.command(
+    "export",
+    help=f"""Export the notes a selector names, as JSON on stdout.
+
+Mints a papersync-id property on any note that lacks one, so the vault is
+modified.
+
+{SELECTOR_HELP}""",
+)
 @_OBSIDIAN_SELECTOR
 @_SKIP_PRINTED
 def obsidian_export(selector: str, skip_printed: bool) -> None:
-    """Export notes as JSON: search:<query> | base:<file>[#view] | path:<p> | folder:<p>.
-
-    Mints a papersync-id property on any note that lacks one, so the vault is
-    modified.
-    """
     cfg = load_config()
     source = ObsidianSource(_obsidian(cfg))
     try:
@@ -652,7 +685,26 @@ def obsidian_install_bridge() -> None:
     _err("reload Obsidian if the bridge does not answer yet")
 
 
-@obsidian.command("print")
+@obsidian.command(
+    "print",
+    help=f"""Render the notes a selector names, one PDF per note.
+
+Every note becomes its own PDF inside a single dated directory, alongside a
+manifest.json listing each note's papersync-id, path, title and page count.
+One PDF per note is what lets you print duplex: each document starts on a
+sheet front, so only its continuation pages share a sheet.
+
+Each page is stamped with corner marks, a QR code carrying the note's
+papersync-id, and the meta boxes named by --boxes. Documents get no primary
+checkbox, because they are not tasks.
+
+The note's papersync-id is minted on the first print and never changes, so a
+printed page still finds its note after you rename or move it. --no-tag skips
+the papersync-printed date, which leaves the note reprintable, but the id is
+minted either way.
+
+{SELECTOR_HELP}""",
+)
 @_OBSIDIAN_SELECTOR
 @_SKIP_PRINTED
 @_render_common
@@ -667,7 +719,6 @@ def obsidian_print(
     open_pdf: bool | None,
     tag: bool | None,
 ) -> None:
-    """Render an Obsidian selector to one PDF per note."""
     cfg = load_config()
     chosen = size or "letter"
     if chosen == "auto":
