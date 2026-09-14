@@ -17,7 +17,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 DEFAULT_DIR = Path(
-    "~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Notes/0-Inbox/_things"
+    "~/Obsidian/Notes/0 Inbox/_things"
 ).expanduser()
 FRONTMATTER = re.compile(r"\A---\n(.*?)\n---\n(.*)\Z", re.S)
 
