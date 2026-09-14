@@ -2,18 +2,16 @@
 
 from dataclasses import dataclass
 
-TEMPLATE_VERSION = 1
+TEMPLATE_VERSION = 2
 FILL_LOW = 0.06
 FILL_HIGH = 0.20
 BOX_INSET_MM = 0.7
 FIDUCIAL_MM = 5.0
-FIDUCIAL_INSET_MM = 4.0
 QR_MM = 14.0
 BOX_MM = 4.0
 BOX_PITCH_MM = 14.0
 MARGIN_MM = 12.0
 TOP_MM = 22.0  # notes start
-BOTTOM_MM = 27.0  # notes end, measured from bottom edge
 
 
 @dataclass(frozen=True)
@@ -43,6 +41,25 @@ class Rect:
 
 
 @dataclass(frozen=True)
+class Edges:
+    """The geometry that differs between template versions.
+
+    v1 put the corner squares 4 mm from the page edge, inside the 4.23 mm a
+    Brother HL-L8360CDW cannot print. v2 moves them to 6 mm, and moves the QR
+    and the notes bottom inward by the same 2 mm so every clearance stays the
+    same. A scan reads the version from the QR, so v1 cards still scan.
+    """
+
+    fiducial_inset: float
+    bottom: float  # notes end, measured from bottom edge
+
+
+EDGES: dict[int, Edges] = {1: Edges(4.0, 27.0), 2: Edges(6.0, 29.0)}
+FIDUCIAL_INSET_MM = EDGES[TEMPLATE_VERSION].fiducial_inset
+BOTTOM_MM = EDGES[TEMPLATE_VERSION].bottom
+
+
+@dataclass(frozen=True)
 class PageSize:
     name: str
     width: float
@@ -57,8 +74,8 @@ SIZES: dict[str, PageSize] = {
 SIZE_ORDER = ["3x5", "4x6", "letter"]
 
 
-def fiducials(size: PageSize) -> list[Rect]:
-    i, f = FIDUCIAL_INSET_MM, FIDUCIAL_MM
+def fiducials(size: PageSize, version: int = TEMPLATE_VERSION) -> list[Rect]:
+    i, f = EDGES[version].fiducial_inset, FIDUCIAL_MM
     return [
         Rect(i, i, f, f),
         Rect(size.width - i - f, i, f, f),
@@ -67,8 +84,8 @@ def fiducials(size: PageSize) -> list[Rect]:
     ]
 
 
-def qr_rect(size: PageSize) -> Rect:
-    edge = FIDUCIAL_INSET_MM + FIDUCIAL_MM + 2.0  # 11 mm from the page edge
+def qr_rect(size: PageSize, version: int = TEMPLATE_VERSION) -> Rect:
+    edge = EDGES[version].fiducial_inset + FIDUCIAL_MM + 2.0  # 13 mm from the page edge in v2
     return Rect(size.width - edge - QR_MM, size.height - edge - QR_MM, QR_MM, QR_MM)
 
 
@@ -93,8 +110,9 @@ def footer_rect(size: PageSize) -> Rect:
     return Rect(size.width - MARGIN_MM + 0.5, top, 2.5, bottom - top)
 
 
-def notes_region(size: PageSize) -> Rect:
-    return Rect(MARGIN_MM, TOP_MM, size.width - 2 * MARGIN_MM, size.height - TOP_MM - BOTTOM_MM)
+def notes_region(size: PageSize, version: int = TEMPLATE_VERSION) -> Rect:
+    bottom = EDGES[version].bottom
+    return Rect(MARGIN_MM, TOP_MM, size.width - 2 * MARGIN_MM, size.height - TOP_MM - bottom)
 
 
 def meta_box(size: PageSize, index: int) -> Rect:

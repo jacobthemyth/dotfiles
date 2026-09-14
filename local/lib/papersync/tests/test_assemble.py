@@ -246,7 +246,7 @@ def test_a_source_without_a_primary_box_reports_no_done_result(tmp_path: Path) -
     from papersync.render import chrome
 
     size = L.SIZES["letter"]
-    payload = Payload(1, "obsidian", "Notes/Alpha", size.name, 1, 1, 1)
+    payload = Payload(L.TEMPLATE_VERSION, "obsidian", "Notes/Alpha", size.name, 1, 1, 1)
     pdf = chrome.stamp(chrome.blank(size, 1), size, ["A", "B"], "Alpha", "2026-09-12", [payload])
     gray = synthetic.rasterize(pdf)
     synthetic.draw_x(gray, L.meta_box(size, 1))
@@ -266,6 +266,42 @@ def test_a_source_without_a_primary_box_reports_no_done_result(tmp_path: Path) -
     assert change.marks == ["B"]
 
 
+def test_a_v1_card_still_scans_with_v1_geometry(tmp_path: Path, monkeypatch) -> None:
+    """Cards printed before v2 carry v1 in the QR and the corner squares 2 mm further out."""
+    import cv2
+
+    from papersync.payload import Payload
+    from papersync.render import chrome
+
+    fiducials, qr_rect = L.fiducials, L.qr_rect
+    monkeypatch.setattr(L, "fiducials", lambda size, version=1: fiducials(size, version))
+    monkeypatch.setattr(L, "qr_rect", lambda size, version=1: qr_rect(size, version))
+    size = L.SIZES["letter"]
+    payload = Payload(1, "obsidian", "Notes/Alpha", size.name, 1, 1, 1)
+    pdf = chrome.stamp(chrome.blank(size, 1), size, ["A", "B"], "Alpha", "2026-09-12", [payload])
+    monkeypatch.undo()
+    gray = synthetic.rasterize(pdf)
+    px = 300 / 25.4
+    assert gray[int(4.5 * px), int(4.5 * px)] < 60  # inside v1's square, outside v2's
+    synthetic.draw_x(gray, L.meta_box(size, 0))
+    # Pad like a real scan, or the distortion swings letter corners off the raster.
+    gray = cv2.copyMakeBorder(gray, 150, 150, 150, 150, cv2.BORDER_CONSTANT, value=255)
+
+    def lookup(source: str, refs: list[str]) -> dict[str, Item]:
+        return {r: Item(source="obsidian", ref=r, title="Alpha") for r in refs}
+
+    rec = recognize_pages(
+        [RasterPage("fake.pdf", 0, synthetic.distort(gray))],
+        FakeOcr(),
+        _registry(tmp_path),
+        lookup,
+        TODAY,
+        ["fake"],
+    )
+    assert rec.plan.errors == []
+    assert rec.plan.changes[0].marks == ["A"]
+
+
 def test_a_page_is_looked_up_through_the_lookup_for_its_own_payload_source(
     tmp_path: Path,
 ) -> None:
@@ -278,7 +314,7 @@ def test_a_page_is_looked_up_through_the_lookup_for_its_own_payload_source(
     from papersync.render import chrome
 
     size = L.SIZES["letter"]
-    payload = Payload(1, "obsidian", "Notes/Alpha", size.name, 1, 1, 1)
+    payload = Payload(L.TEMPLATE_VERSION, "obsidian", "Notes/Alpha", size.name, 1, 1, 1)
     pdf = chrome.stamp(chrome.blank(size, 1), size, ["A", "B"], "Alpha", "2026-09-12", [payload])
     obsidian_page = synthetic.rasterize(pdf)
     things_page = _card("F" * 22, "FOO", "", [])

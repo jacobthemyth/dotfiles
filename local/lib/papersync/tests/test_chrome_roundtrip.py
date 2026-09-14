@@ -45,7 +45,8 @@ def _lookup(source: str, refs: list[str]) -> dict[str, Item]:
 
 def _stamped(pages: int, ref: str = "Notes/Projects/Alpha") -> bytes:
     payloads = [
-        Payload(1, "obsidian", ref, SIZE.name, 1, page=i + 1, pages=pages) for i in range(pages)
+        Payload(L.TEMPLATE_VERSION, "obsidian", ref, SIZE.name, 1, page=i + 1, pages=pages)
+        for i in range(pages)
     ]
     return chrome.stamp(
         chrome.blank(SIZE, pages), SIZE, LABELS, "Alpha", TODAY.isoformat(), payloads
@@ -160,7 +161,7 @@ def test_both_renderers_place_their_marks_at_the_same_coordinates(tmp_path: Path
     # this item, so both renderers encode the *same* QR payload -- otherwise
     # the two QR codes would legitimately differ and the module-by-module
     # comparison below would be meaningless.
-    payload = Payload(1, item.source, item.ref, size.name, opts.boxes_id)
+    payload = Payload(L.TEMPLATE_VERSION, item.source, item.ref, size.name, opts.boxes_id)
     overlay_pdf = chrome.stamp(
         chrome.blank(size, 1),
         size,

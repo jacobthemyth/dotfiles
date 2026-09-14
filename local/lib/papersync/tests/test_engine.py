@@ -87,4 +87,4 @@ def test_qr_carries_the_item_source() -> None:
     item = Item(source="other", ref="Z" * 22, title="Elsewhere", notes="")
     gray = synthetic.rasterize(engine.render_item(item, "3x5", OPTS, TODAY).pdf)
     texts = [b.text for b in zxingcpp.read_barcodes(gray)]
-    assert any(t.startswith("papersync:///v1/other/") for t in texts), texts
+    assert any(t.startswith("papersync:///v2/other/") for t in texts), texts

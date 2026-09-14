@@ -3,7 +3,7 @@ from urllib.parse import parse_qs, quote, unquote, urlsplit
 
 SCHEME = "papersync:///"
 NEW_REF = "new"
-SUPPORTED_VERSIONS = {1}
+SUPPORTED_VERSIONS = {1, 2}
 
 
 class PayloadError(ValueError):

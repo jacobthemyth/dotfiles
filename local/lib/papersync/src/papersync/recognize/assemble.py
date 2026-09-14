@@ -19,6 +19,7 @@ class PageOverlay:
     boxes: list[tuple[L.Rect, BoxResult]] = field(default_factory=list)
     h: np.ndarray | None = None
     size: L.PageSize | None = None
+    version: int = L.TEMPLATE_VERSION
     note: str = ""
 
 
@@ -131,14 +132,20 @@ def recognize_pages(
         if size is None:
             fail(f"unknown size {payload.size!r}", "unknown size", overlay)
             continue
+        version = payload.version
         h = geometry.refine_with_fiducials(
-            gray, geometry.homography_from_qr(decoded, size), size, qr_corners=decoded.corners
+            gray,
+            geometry.homography_from_qr(decoded, size, version),
+            size,
+            version,
+            qr_corners=decoded.corners,
         )
         if h is None:
             fail("corner marks not found", "no fiducials", overlay)
             continue
         overlay.h = h
         overlay.size = size
+        overlay.version = version
         if payload.page > 1:
             if pending is None or pending.change.ref != payload.ref:
                 tail = "without its first page" if pending is None else "follows a different card"
@@ -168,7 +175,7 @@ def recognize_pages(
         if payload.is_new:
             lines = ocr.recognize(gray)
             title_lines = lines_in(lines, h, L.title_bar(size))
-            note_lines = lines_in(lines, h, L.notes_region(size))
+            note_lines = lines_in(lines, h, L.notes_region(size, version))
             body = title_lines + note_lines
             title = body[0].text if body else "(untitled)"
             rest = join_text(body[1:]) if len(body) > 1 else None

@@ -11,7 +11,8 @@ TOL_PT = 0.1 * chrome.PT  # 0.1 mm
 
 def _payloads(n: int) -> list[Payload]:
     return [
-        Payload(1, "obsidian", "Notes/Alpha", SIZE.name, 1, page=i + 1, pages=n) for i in range(n)
+        Payload(L.TEMPLATE_VERSION, "obsidian", "Notes/Alpha", SIZE.name, 1, page=i + 1, pages=n)
+        for i in range(n)
     ]
 
 

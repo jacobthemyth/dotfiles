@@ -22,7 +22,10 @@ def _outline(
 def _draw(overlay: PageOverlay) -> np.ndarray:
     img = cv2.cvtColor(overlay.page.gray, cv2.COLOR_GRAY2BGR)
     if overlay.h is not None and overlay.size is not None:
-        for rect in [*L.fiducials(overlay.size), L.qr_rect(overlay.size)]:
+        for rect in [
+            *L.fiducials(overlay.size, overlay.version),
+            L.qr_rect(overlay.size, overlay.version),
+        ]:
             _outline(img, overlay.h, rect, BLUE, 2)
         for rect, res in overlay.boxes:
             color = AMBER if res.uncertain else GREEN if res.checked else RED

@@ -10,7 +10,7 @@ def mm_to_px(h: np.ndarray, x: float, y: float) -> tuple[float, float]:
     return float(v[0] / v[2]), float(v[1] / v[2])
 
 
-def homography_from_qr(decoded: DecodedQr, size: L.PageSize) -> np.ndarray:
+def homography_from_qr(decoded: DecodedQr, size: L.PageSize, version: int) -> np.ndarray:
     """Seed transform from the QR alone.
 
     A full perspective transform fitted to the QR's 14 mm square is unusable away
@@ -24,7 +24,7 @@ def homography_from_qr(decoded: DecodedQr, size: L.PageSize) -> np.ndarray:
     The fit is the closed-form Umeyama similarity, so the same corners always give
     the same matrix; a randomized estimator would jitter the search windows.
     """
-    src = np.array(L.qr_rect(size).corners(), dtype=np.float64)
+    src = np.array(L.qr_rect(size, version).corners(), dtype=np.float64)
     dst = np.asarray(decoded.corners, dtype=np.float64)
     src_mean, dst_mean = src.mean(axis=0), dst.mean(axis=0)
     src_c, dst_c = src - src_mean, dst - dst_mean
@@ -66,6 +66,7 @@ def refine_with_fiducials(
     gray: np.ndarray,
     h0: np.ndarray,
     size: L.PageSize,
+    version: int,
     qr_corners: np.ndarray | None = None,
 ) -> np.ndarray | None:
     """Fit the real mm->px homography from the four fiducial centers.
@@ -75,14 +76,14 @@ def refine_with_fiducials(
     substitute points projected through ``h0``: those carry no information the seed
     does not already have and would only pull the fit back toward it.
     """
-    rects = L.fiducials(size)
+    rects = L.fiducials(size, version)
     found = [_find_square(gray, h0, r) for r in rects]
     if any(d is None for d in found):
         return None
     src = [r.center for r in rects]
     dst = [d for d in found if d is not None]
     if qr_corners is not None:
-        src += L.qr_rect(size).corners()
+        src += L.qr_rect(size, version).corners()
         dst += [(float(x), float(y)) for x, y in np.asarray(qr_corners, dtype=np.float64)]
     h, _ = cv2.findHomography(np.array(src, dtype=np.float32), np.array(dst, dtype=np.float32), 0)
     return None if h is None else h.astype(np.float64)

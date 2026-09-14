@@ -9,9 +9,37 @@ def test_sizes() -> None:
 def test_fiducials_are_inset_squares() -> None:
     size = L.SIZES["3x5"]
     tl, tr, bl, br = L.fiducials(size)
-    assert (tl.x, tl.y, tl.w, tl.h) == (4.0, 4.0, 5.0, 5.0)
-    assert br.center == (127.0 - 6.5, 76.2 - 6.5)
-    assert tr.x == 127.0 - 9.0 and bl.y == 76.2 - 9.0
+    assert (tl.x, tl.y, tl.w, tl.h) == (6.0, 6.0, 5.0, 5.0)
+    assert br.center == (127.0 - 8.5, 76.2 - 8.5)
+    assert tr.x == 127.0 - 11.0 and bl.y == 76.2 - 11.0
+
+
+def test_v1_geometry_is_kept_for_scanning_old_cards() -> None:
+    size = L.SIZES["3x5"]
+    tl = L.fiducials(size, 1)[0]
+    assert (tl.x, tl.y) == (4.0, 4.0)
+    q = L.qr_rect(size, 1)
+    assert (q.x + q.w, q.y + q.h) == (127.0 - 11.0, 76.2 - 11.0)
+    assert L.notes_region(size, 1).h == 76.2 - L.TOP_MM - 27.0
+
+
+# A Brother HL-L8360CDW cannot print within 0.16 in (4.23 mm) of any edge.
+PRINTER_DEAD_ZONE_MM = 4.23
+
+
+def test_every_mark_clears_the_printer_dead_zone() -> None:
+    for size in L.SIZES.values():
+        marks = [
+            *L.fiducials(size),
+            L.qr_rect(size),
+            L.title_bar(size),
+            L.footer_rect(size),
+            *(L.label_band(size, i) for i in range(L.max_boxes(size))),
+        ]
+        for r in marks:
+            assert r.x >= PRINTER_DEAD_ZONE_MM and r.y >= PRINTER_DEAD_ZONE_MM, (size.name, r)
+            assert size.width - (r.x + r.w) >= PRINTER_DEAD_ZONE_MM, (size.name, r)
+            assert size.height - (r.y + r.h) >= PRINTER_DEAD_ZONE_MM, (size.name, r)
 
 
 def test_qr_is_inside_bottom_right_frame() -> None:
@@ -47,7 +75,9 @@ def test_title_bar_spans_to_right_margin_and_date_strip_sits_in_right_margin() -
         f = L.footer_rect(size)
         fid_tr = L.fiducials(size)[1]
         assert f.x >= size.width - L.MARGIN_MM  # right of the text margin
-        assert f.x + f.w <= fid_tr.x  # left of the corner-square column
+        assert (
+            f.x + f.w <= size.width - L.FIDUCIAL_INSET_MM
+        )  # inside the corner squares' outer edge
         assert f.y >= fid_tr.y + fid_tr.h + 1.0  # below the top-right square
         assert f.y + f.h <= L.qr_rect(size).y - 1.0  # above the QR
         assert f.h >= 20.0  # room for "2026-09-07 · 12/12" at 6pt

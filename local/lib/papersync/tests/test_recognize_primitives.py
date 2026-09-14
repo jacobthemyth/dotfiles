@@ -27,9 +27,13 @@ def test_qr_and_homography_recover_geometry() -> None:
     gray = _card([])
     decoded = find_payload(gray)
     assert decoded is not None and decoded.payload.ref == "A" * 22 and decoded.payload.size == "3x5"
-    h0 = geometry.homography_from_qr(decoded, SIZE)
-    assert np.array_equal(h0, geometry.homography_from_qr(decoded, SIZE))  # deterministic fit
-    h = geometry.refine_with_fiducials(gray, h0, SIZE, qr_corners=decoded.corners)
+    h0 = geometry.homography_from_qr(decoded, SIZE, L.TEMPLATE_VERSION)
+    assert np.array_equal(
+        h0, geometry.homography_from_qr(decoded, SIZE, L.TEMPLATE_VERSION)
+    )  # deterministic fit
+    h = geometry.refine_with_fiducials(
+        gray, h0, SIZE, L.TEMPLATE_VERSION, qr_corners=decoded.corners
+    )
     assert h is not None
     # the top-left fiducial center must land on dark pixels
     cx, cy = geometry.mm_to_px(h, *L.fiducials(SIZE)[0].center)
@@ -41,7 +45,11 @@ def test_box_fill_distinguishes_marked_boxes() -> None:
     decoded = find_payload(gray)
     assert decoded is not None
     h = geometry.refine_with_fiducials(
-        gray, geometry.homography_from_qr(decoded, SIZE), SIZE, qr_corners=decoded.corners
+        gray,
+        geometry.homography_from_qr(decoded, SIZE, L.TEMPLATE_VERSION),
+        SIZE,
+        L.TEMPLATE_VERSION,
+        qr_corners=decoded.corners,
     )
     assert h is not None
     assert marks.classify(marks.box_fill(gray, h, L.done_box(SIZE))).checked
@@ -110,7 +118,11 @@ def test_round_trip_survives_larger_rotations(angle_deg: float) -> None:
     decoded = find_payload(scan)
     assert decoded is not None and decoded.payload.ref == "A" * 22
     h = geometry.refine_with_fiducials(
-        scan, geometry.homography_from_qr(decoded, SIZE), SIZE, qr_corners=decoded.corners
+        scan,
+        geometry.homography_from_qr(decoded, SIZE, L.TEMPLATE_VERSION),
+        SIZE,
+        L.TEMPLATE_VERSION,
+        qr_corners=decoded.corners,
     )
     assert h is not None
     assert marks.classify(marks.box_fill(scan, h, L.done_box(SIZE))).checked

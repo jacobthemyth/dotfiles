@@ -212,7 +212,7 @@ def _obsidian_scan(tmp_path: Path) -> Path:
         '[[sets]]\nid = 1\nlabels = ["A"]\ncreated = "2026-09-12T00:00:00Z"\n'
     )
     size = L.SIZES["letter"]
-    payload = Payload(1, "obsidian", "Notes/Alpha", size.name, 1, 1, 1)
+    payload = Payload(L.TEMPLATE_VERSION, "obsidian", "Notes/Alpha", size.name, 1, 1, 1)
     pdf = chrome.stamp(chrome.blank(size, 1), size, ["A"], "Alpha", "2026-09-12", [payload])
     gray = synthetic.rasterize(pdf)
     scan = tmp_path / "scan.png"
@@ -329,7 +329,7 @@ def test_recognize_warns_on_an_unknown_source(tmp_path: Path) -> None:
         '[[sets]]\nid = 1\nlabels = ["A"]\ncreated = "2026-09-12T00:00:00Z"\n'
     )
     size = L.SIZES["letter"]
-    payload = Payload(1, "carrier-pigeon", "abc123", size.name, 1, 1, 1)
+    payload = Payload(L.TEMPLATE_VERSION, "carrier-pigeon", "abc123", size.name, 1, 1, 1)
     pdf = chrome.stamp(chrome.blank(size, 1), size, ["A"], "Alpha", "2026-09-12", [payload])
     gray = synthetic.rasterize(pdf)
     scan = tmp_path / "scan.png"
@@ -468,7 +468,7 @@ def test_render_new_card_qr(tmp_path: Path) -> None:
     pdf = next((tmp_path / "out").glob("*.pdf"))
     assert pymupdf.open(pdf).page_count == 1
     texts = [b.text for b in zxingcpp.read_barcodes(synthetic.rasterize(pdf.read_bytes()))]
-    assert texts == ["papersync:///v1/things/new?size=3x5&boxes=1"]
+    assert texts == ["papersync:///v2/things/new?size=3x5&boxes=1"]
 
 
 def test_export_and_print_skip_printed_unless_asked(tmp_path: Path) -> None:
