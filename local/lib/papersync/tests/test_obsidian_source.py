@@ -262,3 +262,40 @@ def test_a_missing_note_does_not_abort_the_whole_export() -> None:
     items = src.export("folder:.")
     assert [i.locator for i in items] == ["a.md"]
     assert src.errors == ['properties: File "ghost.md" not found.']
+
+
+def test_a_note_with_no_front_matter_still_exports_and_gets_an_id() -> None:
+    """Obsidian answers `properties` in prose for such a note, not with an error.
+
+    Treating "No frontmatter found." as a failed call skipped every note that
+    had no YAML block, silently, which is most hand-written notes.
+    """
+    src = _source({"plain.md": "# Plain\n\nNo front matter here.\n"})
+    real = src.fake
+
+    def runner(args: list[str]) -> str:
+        if args[1] == "properties" and "path=plain.md" in args:
+            return "No frontmatter found."
+        return real(args)
+
+    src.cli.runner = runner
+    items = src.export("folder:.")
+    assert [i.locator for i in items] == ["plain.md"]
+    assert len(items[0].ref) == 12
+    assert items[0].title == "plain"
+    assert items[0].meta == {}
+    assert src.errors == []
+
+
+def test_properties_output_that_is_neither_json_nor_the_prose_reply_is_an_error() -> None:
+    src = _source({"a.md": "one\n"})
+    real = src.fake
+
+    def runner(args: list[str]) -> str:
+        if args[1] == "properties":
+            return "something unexpected"
+        return real(args)
+
+    src.cli.runner = runner
+    assert src.export("folder:.") == []
+    assert src.errors == ["properties returned output that is not JSON: 'something unexpected'"]

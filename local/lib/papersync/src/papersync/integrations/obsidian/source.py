@@ -1,5 +1,6 @@
 """Read notes out of an Obsidian vault through the desktop CLI."""
 
+import json
 from pathlib import PurePosixPath
 from typing import Any
 
@@ -19,6 +20,28 @@ from papersync.model import Item
 PRINTED_PROPERTY = "papersync-printed"
 KINDS = ("search", "base", "path", "folder")
 FENCE = "---"
+# Obsidian answers ``properties`` for a note with no front matter block in
+# prose. Like "No matches found." from a search, it is not JSON and carries no
+# Error: prefix, so call_json raises on it.
+NO_FRONTMATTER = "No frontmatter found."
+
+
+def read_properties(cli: ObsidianCli, path: str) -> dict[str, Any]:
+    """A note's front matter, or an empty dict when the note has none.
+
+    A note without front matter is an ordinary note, not a failure. Treating
+    the prose reply as an error skipped every such note silently.
+    """
+    reply = cli.call("properties", path=path, format="json")
+    if reply == NO_FRONTMATTER:
+        return {}
+    try:
+        loaded = json.loads(reply)
+    except ValueError as exc:
+        raise ObsidianError(
+            f"properties returned output that is not JSON: {reply[:120]!r}"
+        ) from exc
+    return loaded if isinstance(loaded, dict) else {}
 
 
 def strip_frontmatter(text: str) -> str:
@@ -71,7 +94,7 @@ class ObsidianSource:
 
     def _item(self, path: str, meta: dict[str, Any] | None = None) -> Item:
         if meta is None:
-            meta = self.cli.call_json("properties", path=path, format="json") or {}
+            meta = read_properties(self.cli, path)
         note_id = ensure_id(self.cli, path, meta)
         text = self.cli.call("read", path=path)
         title = str(meta.get("title") or PurePosixPath(path).stem)
@@ -95,7 +118,7 @@ class ObsidianSource:
         items: list[Item] = []
         for path in self.resolve(selector):
             try:
-                meta = self.cli.call_json("properties", path=path, format="json") or {}
+                meta = read_properties(self.cli, path)
                 if skip_printed and PRINTED_PROPERTY in meta:
                     self.skipped_printed += 1
                     continue
@@ -132,7 +155,7 @@ class ObsidianSource:
                 continue
             path = paths[0]
             try:
-                meta = self.cli.call_json("properties", path=path, format="json") or {}
+                meta = read_properties(self.cli, path)
             except ObsidianError as exc:
                 self.errors.append(str(exc))
                 continue

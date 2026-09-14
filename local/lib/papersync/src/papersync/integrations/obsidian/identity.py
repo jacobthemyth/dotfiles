@@ -7,6 +7,7 @@ front matter property and puts that in the QR code instead.
 
 import json
 import secrets
+import time
 from typing import Any
 
 from papersync.integrations.obsidian.cli import ObsidianCli, ObsidianError
@@ -20,6 +21,15 @@ MINT_ATTEMPTS = 5
 # A search that matches nothing answers in prose. It is not JSON and it does
 # not carry the Error: prefix, so call_json would raise on it.
 NO_MATCHES = "No matches found."
+# property:set returns before Obsidian has flushed the file, so an immediate
+# property:read can miss a value that was in fact written. Seen live: the
+# first write of a run reported success, read back "not found", and the id
+# was on the note moments later. Retry briefly before believing the write
+# failed -- a wrong "it failed" skips a note that now carries an id.
+READ_BACK_ATTEMPTS = 6
+READ_BACK_PACE_S = 0.25
+
+sleep = time.sleep
 
 
 class IdentityError(RuntimeError):
@@ -60,6 +70,27 @@ def find(cli: ObsidianCli, note_id: str) -> list[str]:
     return search_paths(cli, f'["{ID_PROPERTY}":"{note_id}"]')
 
 
+def _confirm(cli: ObsidianCli, path: str, candidate: str) -> None:
+    """Read the property back until it matches, or give up and raise.
+
+    The Obsidian CLI exits 0 whatever happens, so the read-back is the only
+    evidence a write landed. It is retried because the write is flushed
+    asynchronously and the first read can be too early.
+    """
+    seen = ""
+    for attempt in range(READ_BACK_ATTEMPTS):
+        if attempt:
+            sleep(READ_BACK_PACE_S)
+        try:
+            seen = cli.call("property:read", name=ID_PROPERTY, path=path).strip()
+        except ObsidianError as exc:
+            seen = str(exc)
+            continue
+        if seen == candidate:
+            return
+    raise IdentityError(f"set {ID_PROPERTY} on {path} but read back {seen!r}")
+
+
 def ensure_id(cli: ObsidianCli, path: str, meta: dict[str, Any]) -> str:
     """Return the note's papersync-id, minting and writing one if it has none.
 
@@ -81,12 +112,7 @@ def ensure_id(cli: ObsidianCli, path: str, meta: dict[str, Any]) -> str:
         if find(cli, candidate):
             continue
         cli.call("property:set", name=ID_PROPERTY, value=candidate, type="text", path=path)
-        try:
-            confirmed = cli.call("property:read", name=ID_PROPERTY, path=path).strip()
-        except ObsidianError as exc:
-            raise IdentityError(f"set {ID_PROPERTY} on {path} but read back {exc}") from exc
-        if confirmed != candidate:
-            raise IdentityError(f"set {ID_PROPERTY} on {path} but read back {confirmed!r}")
+        _confirm(cli, path, candidate)
         return candidate
     raise IdentityError(
         f"could not mint a unique {ID_PROPERTY} for {path} after {MINT_ATTEMPTS} attempts"

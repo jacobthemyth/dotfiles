@@ -10,6 +10,14 @@ def _cli(runner):
     return ObsidianCli("Notes", runner=runner)
 
 
+@pytest.fixture(autouse=True)
+def _no_real_sleep(monkeypatch) -> list[float]:
+    """The read-back retry must not put real seconds into the suite."""
+    slept: list[float] = []
+    monkeypatch.setattr(I, "sleep", slept.append)
+    return slept
+
+
 def test_new_id_has_the_right_shape() -> None:
     for _ in range(50):
         value = I.new_id()
@@ -140,12 +148,21 @@ def test_ensure_id_coerces_a_non_string_existing_value_instead_of_reminting() ->
 class _Minting:
     """A fake vault where every candidate id is free unless told otherwise."""
 
-    def __init__(self, collide_first: int = 0, read_back_value: str | None = None) -> None:
+    def __init__(
+        self,
+        collide_first: int = 0,
+        read_back_value: str | None = None,
+        read_back_misses: int = 0,
+    ) -> None:
         self.collide_first = collide_first
         self.read_back_value = read_back_value
+        # How many reads answer as Obsidian does before it has flushed the
+        # write: the property is simply not there yet.
+        self.read_back_misses = read_back_misses
         self.searched: list[str] = []
         self.written: str = ""
         self.set_calls = 0
+        self.read_calls = 0
         self.read_back: str = ""
 
     def __call__(self, args: list[str]) -> str:
@@ -161,6 +178,9 @@ class _Minting:
             self.written = params["value"]
             return f"Set papersync-id: {params['value']}"
         if command == "property:read":
+            self.read_calls += 1
+            if self.read_calls <= self.read_back_misses:
+                return 'Error: Property "papersync-id" not found.'
             self.read_back = self.read_back_value or self.written
             return self.read_back
         raise AssertionError(f"unexpected command {command}")
@@ -177,3 +197,24 @@ def test_ensure_id_mints_rather_than_reusing_a_boolean_property() -> None:
     assert got == minted.written
     assert len(got) == I.ID_LENGTH
     assert minted.set_calls == 1
+
+
+def test_the_read_back_retries_until_the_write_becomes_visible() -> None:
+    """property:set returns before Obsidian flushes, so the first read can be early.
+
+    A single-shot read-back reported a write as failed and skipped a note that
+    did in fact carry the id a moment later.
+    """
+    minted = _Minting(read_back_misses=2)
+    got = I.ensure_id(_cli(minted), "Notes/Alpha.md", {})
+    assert got == minted.written
+    assert minted.read_calls == 3
+    assert minted.set_calls == 1
+
+
+def test_the_read_back_gives_up_after_the_last_attempt(_no_real_sleep) -> None:
+    minted = _Minting(read_back_misses=I.READ_BACK_ATTEMPTS)
+    with pytest.raises(I.IdentityError, match="read back"):
+        I.ensure_id(_cli(minted), "Notes/Alpha.md", {})
+    assert minted.read_calls == I.READ_BACK_ATTEMPTS
+    assert len(_no_real_sleep) == I.READ_BACK_ATTEMPTS - 1
