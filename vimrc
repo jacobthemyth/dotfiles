@@ -5,8 +5,14 @@ if !exists('g:loaded_matchit') && findfile('plugin/matchit.vim', &rtp) ==# ''
   runtime! macros/matchit.vim
 endif
 
-syntax on
-filetype plugin indent on
+" Neovim enables both by default. Under nvim these would run filetype
+" detection on command-line buffers before lazy.nvim registers its `ft`
+" handlers, so `nvim foo.md` never loads ft-lazy plugins (render-markdown,
+" vim-table-mode).
+if !has('nvim')
+  syntax on
+  filetype plugin indent on
+endif
 
 " When the type of shell script is /bin/sh, assume a POSIX-compatible
 " shell for syntax highlighting purposes.
