@@ -255,3 +255,82 @@ def parse_claude_file(path: Path, stats: Dict[str, int]) -> Optional[Session]:
     if not interactive or not session.cwd:
         return None
     return session
+
+
+# --- Codex -----------------------------------------------------------------
+
+CODEX_KEEP_SOURCES = ("cli", "vscode")
+COMPANION_PREFIX = "Codex Companion Task"
+
+
+def load_codex_titles(index_path: Path, stats: Dict[str, int]) -> Dict[str, str]:
+    """Map Codex thread id -> thread_name from session_index.jsonl."""
+    titles: Dict[str, str] = {}
+    if index_path.is_file():
+        for record in read_jsonl(index_path, stats):
+            if isinstance(record.get("id"), str) and isinstance(record.get("thread_name"), str):
+                titles[record["id"]] = record["thread_name"]
+    return titles
+
+
+def _codex_item_text(item: Dict[str, Any]) -> str:
+    content = item.get("content") if isinstance(item.get("content"), list) else []
+    return "\n".join(
+        block["text"] for block in content
+        if isinstance(block, dict) and isinstance(block.get("text"), str)
+    ).strip()
+
+
+def _codex_event(record: Dict[str, Any], ts: datetime, branch: Optional[str]) -> Event:
+    payload = record.get("payload") if isinstance(record.get("payload"), dict) else {}
+    if record.get("type") != "event_msg":
+        return Event(ts, "other", branch=branch)
+    ptype = payload.get("type")
+    if ptype in ("user_message", "agent_message"):
+        text = payload.get("message").strip() if isinstance(payload.get("message"), str) else ""
+        if text:
+            return Event(ts, "prompt" if ptype == "user_message" else "assistant", text, branch=branch)
+    elif ptype == "patch_apply_end" and isinstance(payload.get("changes"), dict):
+        return Event(ts, "other", files=tuple(payload["changes"]), branch=branch)
+    elif ptype == "item_completed" and isinstance(payload.get("item"), dict):
+        item = payload["item"]
+        itype = item.get("type")
+        if itype in ("UserMessage", "AgentMessage"):
+            text = _codex_item_text(item)
+            if text:
+                return Event(ts, "prompt" if itype == "UserMessage" else "assistant", text, branch=branch)
+        elif itype == "FileChange" and isinstance(item.get("changes"), dict):
+            return Event(ts, "other", files=tuple(item["changes"]), branch=branch)
+    return Event(ts, "other", branch=branch)
+
+
+def parse_codex_file(path: Path, titles: Dict[str, str], stats: Dict[str, int]) -> Optional[Session]:
+    """Parse one Codex rollout; None unless the user started it interactively."""
+    session: Optional[Session] = None
+    branch: Optional[str] = None
+    for record in read_jsonl(path, stats):
+        payload = record.get("payload") if isinstance(record.get("payload"), dict) else {}
+        if session is None:
+            if record.get("type") != "session_meta":
+                return None
+            if payload.get("source") not in CODEX_KEEP_SOURCES:
+                return None
+            if payload.get("originator") == "Claude Code":
+                return None
+            session_id = payload.get("id") if isinstance(payload.get("id"), str) else path.stem
+            title = titles.get(session_id)
+            if title and title.startswith(COMPANION_PREFIX):
+                return None
+            git = payload.get("git") if isinstance(payload.get("git"), dict) else {}
+            branch = git.get("branch") if isinstance(git.get("branch"), str) else None
+            cwd = payload.get("cwd") if isinstance(payload.get("cwd"), str) else ""
+            session = Session("codex", session_id, cwd, title)
+            continue
+        if record.get("type") == "turn_context" and not session.cwd and isinstance(payload.get("cwd"), str):
+            session.cwd = payload["cwd"]
+        ts = parse_ts(record.get("timestamp"))
+        if ts is not None:
+            session.events.append(_codex_event(record, ts, branch))
+    if session is None or not session.cwd:
+        return None
+    return session

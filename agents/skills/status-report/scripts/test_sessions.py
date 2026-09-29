@@ -68,6 +68,31 @@ def claude_assistant(ts, text=None, edits=(), entrypoint="cli", cwd=CWD, branch=
     }
 
 
+def codex_meta(sid, source="cli", originator="codex-tui", cwd=CWD, branch="main"):
+    return {"timestamp": "2026-09-15T13:59:00Z", "type": "session_meta",
+            "payload": {"id": sid, "session_id": sid, "cwd": cwd, "originator": originator,
+                        "source": source, "thread_source": "user", "git": {"branch": branch}}}
+
+
+def codex_item(ts, item):
+    return {"timestamp": ts, "type": "event_msg", "payload": {"type": "item_completed", "item": item}}
+
+
+def codex_user(ts, text):
+    return codex_item(ts, {"type": "UserMessage", "id": "u",
+                           "content": [{"type": "text", "text": text, "text_elements": []}]})
+
+
+def codex_agent(ts, text):
+    return codex_item(ts, {"type": "AgentMessage", "id": "a", "phase": "final_answer",
+                           "content": [{"type": "Text", "text": text}]})
+
+
+def codex_file_change(ts, paths):
+    return codex_item(ts, {"type": "FileChange", "id": "f", "status": "completed",
+                           "changes": {p: {"type": "update", "unified_diff": "@@"} for p in paths}})
+
+
 class TimeTests(unittest.TestCase):
     def test_parse_ts_utc_z(self):
         ts = sessions.parse_ts("2026-09-15T14:00:00.123Z")
@@ -282,6 +307,80 @@ class ClaudeParserTests(TempDirTestCase):
         record = claude_user("hi", "2026-09-15T14:00:00Z")
         del record["cwd"]
         self.assertIsNone(self._parse([record]))
+
+
+class CodexParserTests(TempDirTestCase):
+    def _parse(self, records, titles=None, name="rollout-2026-09-15T10-00-00-cdx-1.jsonl"):
+        path = write_jsonl(self.tmp / "sessions" / "2026" / "09" / "15" / name, records)
+        return sessions.parse_codex_file(path, titles or {}, {"skipped_lines": 0})
+
+    def test_current_format(self):
+        session = self._parse([
+            codex_meta("cdx-1"),
+            {"timestamp": "2026-09-15T14:00:00Z", "type": "response_item",
+             "payload": {"type": "message", "role": "user",
+                         "content": [{"type": "input_text", "text": "# AGENTS.md instructions"}]}},
+            codex_user("2026-09-15T14:00:01Z", "fix the gateway certs"),
+            codex_agent("2026-09-15T14:10:00Z", "Added regional certificates."),
+            codex_file_change("2026-09-15T14:09:00Z", [CWD + "/stacks/apps.yaml"]),
+        ], titles={"cdx-1": "Gateway certs"})
+        self.assertEqual((session.tool, session.session_id, session.cwd), ("codex", "cdx-1", CWD))
+        self.assertEqual(session.title, "Gateway certs")
+        self.assertEqual([e.text for e in session.events if e.kind == "prompt"],
+                         ["fix the gateway certs"])
+        self.assertEqual([e.text for e in session.events if e.kind == "assistant"],
+                         ["Added regional certificates."])
+        files = [f for e in session.events for f in e.files]
+        self.assertEqual(files, [CWD + "/stacks/apps.yaml"])
+        self.assertTrue(all(e.branch == "main" for e in session.events))
+
+    def test_older_format(self):
+        session = self._parse([
+            codex_meta("cdx-1", source="vscode"),
+            {"timestamp": "2026-08-06T20:26:48Z", "type": "event_msg",
+             "payload": {"type": "user_message", "message": "review this branch"}},
+            {"timestamp": "2026-08-06T20:27:00Z", "type": "event_msg",
+             "payload": {"type": "agent_message", "message": "Two surfaces to review."}},
+            {"timestamp": "2026-08-06T20:28:00Z", "type": "event_msg",
+             "payload": {"type": "patch_apply_end", "changes": {CWD + "/a.yaml": {}}}},
+        ])
+        self.assertEqual([e.text for e in session.events if e.kind == "prompt"], ["review this branch"])
+        self.assertEqual([e.text for e in session.events if e.kind == "assistant"],
+                         ["Two surfaces to review."])
+        self.assertEqual([f for e in session.events for f in e.files], [CWD + "/a.yaml"])
+
+    def test_non_user_sessions_are_dropped(self):
+        prompt = codex_user("2026-09-15T14:00:01Z", "hi")
+        self.assertIsNone(self._parse([codex_meta("cdx-1", source="exec"), prompt]))
+        subagent = codex_meta("cdx-1")
+        subagent["payload"]["source"] = {"subagent": {"other": "guardian"}}
+        self.assertIsNone(self._parse([subagent, prompt]))
+        self.assertIsNone(self._parse([codex_meta("cdx-1", originator="Claude Code"), prompt]))
+        self.assertIsNone(self._parse([codex_meta("cdx-1"), prompt],
+                                      titles={"cdx-1": "Codex Companion Task: <task> review"}))
+
+    def test_corrupt_first_line_drops_session(self):
+        self.assertIsNone(self._parse(["{truncated", codex_user("2026-09-15T14:00:01Z", "hi")]))
+        self.assertIsNone(self._parse([codex_user("2026-09-15T14:00:01Z", "hi")]))
+
+    def test_cwd_falls_back_to_turn_context(self):
+        meta = codex_meta("cdx-1", cwd="")
+        session = self._parse([
+            meta,
+            {"timestamp": "2026-09-15T14:00:00Z", "type": "turn_context", "payload": {"cwd": CWD}},
+            codex_user("2026-09-15T14:00:01Z", "hi"),
+        ])
+        self.assertEqual(session.cwd, CWD)
+
+    def test_load_titles(self):
+        index = write_jsonl(self.tmp / "session_index.jsonl", [
+            {"id": "cdx-1", "thread_name": "Gateway certs", "updated_at": "2026-09-15T14:00:00Z"},
+            {"id": "cdx-2"},
+            "{bad",
+        ])
+        stats = {"skipped_lines": 0}
+        self.assertEqual(sessions.load_codex_titles(index, stats), {"cdx-1": "Gateway certs"})
+        self.assertEqual(sessions.load_codex_titles(self.tmp / "missing.jsonl", stats), {})
 
 
 if __name__ == "__main__":
