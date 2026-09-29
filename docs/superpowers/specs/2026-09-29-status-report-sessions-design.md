@@ -33,7 +33,7 @@ only adds context to that item's bullet. It never gets a bullet of its own.
     runs.
   - Codex: 855 files, of which about 150 are user-started (`source` `cli`/`vscode`,
     `thread_source: user`). 631 are `guardian_review` or `subagent` threads. 53 are
-    `codex_exec` runs, mostly Codex Companion tasks started from Claude Code. 10 have
+    `codex_exec` runs, started by Claude-driven skills such as `codex:adversarial-review`. 10 have
     originator `Claude Code`.
   - Personal projects run next to work repos, so work and personal sessions are mixed.
 
@@ -111,15 +111,12 @@ line (streaming); a file is never loaded whole.
   `NotebookEdit`.
 
 **Codex** (`<codex-dir>/**/*.jsonl`):
-- The first record is `session_meta`. Keep the session only if `payload.source` is a
-  string (`cli`, `vscode`, `exec`), not an object (objects are `subagent`/guardian
-  threads).
-- Drop the session if `payload.originator == "Claude Code"`, or if its `thread_name` in
-  `session_index.jsonl` starts with `Codex Companion Task`.
-- **Implementation check:** list the `codex_exec` sessions in the gap weeks by thread
-  name to confirm the Companion rule catches all Claude-started runs. If other
-  Claude-started runs slip through, add a rule and a test. Do not drop `codex_exec`
-  outright, because the user may run `codex exec` themselves.
+- The first record is `session_meta`. Keep the session only if `payload.source` is `cli`
+  or `vscode`. Drop object values (`subagent`/guardian threads) and `exec`. The user never
+  runs `codex exec` by hand: `exec` sessions come from Claude-driven skills such as
+  `codex:adversarial-review`, and the parent Claude session already covers them.
+- Also drop the session if `payload.originator == "Claude Code"`, or if its `thread_name`
+  in `session_index.jsonl` starts with `Codex Companion Task`.
 - **Typed prompt:** `type == "event_msg"` with `payload.type == "user_message"`; the text
   is `payload.message`.
 - **Assistant text:** `event_msg` with `payload.type == "agent_message"`.
@@ -292,8 +289,9 @@ small synthetic JSONL files built in a temp dir, using only sanitized names (`ac
 - Claude filters: `sdk-cli`-only session dropped; `subagents/` path skipped; tool-result,
   meta, sidechain, local-command and system-reminder-only records not counted as
   prompts; slash commands counted as `/name args`.
-- Codex filters: object `source` (subagent/guardian) dropped; originator `Claude Code`
-  dropped; `Codex Companion Task` thread name dropped; user `cli` session kept.
+- Codex filters: object `source` (subagent/guardian) dropped; `exec` source dropped;
+  originator `Claude Code` dropped; `Codex Companion Task` thread name dropped; user `cli`
+  and `vscode` sessions kept.
 - Bucketing: a session crossing Sunday 23:59 into Monday (local time) splits between the
   two weeks; a session with no in-range prompts is dropped.
 - Denylist: prefix match on path components (`~/Code/beads` does not exclude
