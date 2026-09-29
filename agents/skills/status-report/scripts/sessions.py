@@ -25,6 +25,8 @@ HEAD_PROMPTS = 5
 TAIL_PROMPTS = 3
 IDLE_GAP = timedelta(minutes=30)
 SIZE_LIMIT = 200_000
+EXPAND_MAX_CHARS = 40_000
+EXPAND_MESSAGE_CHARS = 3_000
 WORKTREE_MARKERS = ("/.claude/worktrees/", "/.worktrees/")
 
 
@@ -44,6 +46,7 @@ class Session:
     cwd: str
     title: Optional[str] = None
     events: List[Event] = field(default_factory=list)
+    cwds: List[str] = field(default_factory=list)
 
 
 def parse_ts(value: Any) -> Optional[datetime]:
@@ -223,6 +226,14 @@ def _claude_assistant_event(ts: datetime, content: Any, branch: Optional[str]) -
     return Event(ts, "assistant" if text else "other", text, tuple(files), branch)
 
 
+def _is_typed_user_record(record: Dict[str, Any]) -> bool:
+    """False for user-role records the harness or model wrote (meta, compaction summaries, queued notifications)."""
+    if record.get("isMeta") or record.get("isCompactSummary") or record.get("isVisibleInTranscriptOnly"):
+        return False
+    origin = record.get("origin")
+    return not (isinstance(origin, dict) and origin.get("kind") not in (None, "human"))
+
+
 def parse_claude_file(path: Path, stats: Dict[str, int]) -> Optional[Session]:
     """Parse one Claude Code transcript; None unless it is an interactive session."""
     session = Session(tool="claude", session_id=path.stem, cwd="")
@@ -235,15 +246,17 @@ def parse_claude_file(path: Path, stats: Dict[str, int]) -> Optional[Session]:
             continue
         if record.get("entrypoint") == "cli":
             interactive = True
-        if not session.cwd and isinstance(record.get("cwd"), str):
-            session.cwd = record["cwd"]
+        if isinstance(record.get("cwd"), str) and record["cwd"]:
+            session.cwd = session.cwd or record["cwd"]
+            if record["cwd"] not in session.cwds:
+                session.cwds.append(record["cwd"])
         ts = parse_ts(record.get("timestamp"))
         if ts is None:
             continue
         branch = record.get("gitBranch") if isinstance(record.get("gitBranch"), str) else None
         message = record.get("message") if isinstance(record.get("message"), dict) else {}
         side = bool(record.get("isSidechain"))
-        if rtype == "user" and not record.get("isMeta") and not side:
+        if rtype == "user" and _is_typed_user_record(record) and not side:
             text = claude_prompt_text(message.get("content"))
             if text:
                 session.events.append(Event(ts, "prompt", text, branch=branch))
@@ -324,10 +337,12 @@ def parse_codex_file(path: Path, titles: Dict[str, str], stats: Dict[str, int]) 
             git = payload.get("git") if isinstance(payload.get("git"), dict) else {}
             branch = git.get("branch") if isinstance(git.get("branch"), str) else None
             cwd = payload.get("cwd") if isinstance(payload.get("cwd"), str) else ""
-            session = Session("codex", session_id, cwd, title)
+            session = Session("codex", session_id, cwd, title, cwds=[cwd] if cwd else [])
             continue
-        if record.get("type") == "turn_context" and not session.cwd and isinstance(payload.get("cwd"), str):
-            session.cwd = payload["cwd"]
+        if record.get("type") == "turn_context" and isinstance(payload.get("cwd"), str) and payload["cwd"]:
+            session.cwd = session.cwd or payload["cwd"]
+            if payload["cwd"] not in session.cwds:
+                session.cwds.append(payload["cwd"])
         ts = parse_ts(record.get("timestamp"))
         if ts is not None:
             session.events.append(_codex_event(record, ts, branch))
@@ -338,7 +353,14 @@ def parse_codex_file(path: Path, titles: Dict[str, str], stats: Dict[str, int]) 
 
 # --- Digest ----------------------------------------------------------------
 
-TRIM_STAGES = ((HEAD_PROMPTS, TAIL_PROMPTS), (3, 1), (1, 0))
+# (first prompts, last prompts, final-message chars), applied in order until the output fits.
+TRIM_STAGES = (
+    (HEAD_PROMPTS, TAIL_PROMPTS, FINAL_CHARS),
+    (3, 1, FINAL_CHARS),
+    (1, 0, FINAL_CHARS),
+    (1, 0, 500),
+    (1, 0, 200),
+)
 
 
 def _local_iso(ts: datetime) -> str:
@@ -381,6 +403,7 @@ def build_entry(
         "final_assistant_message": replies[-1].text[:FINAL_CHARS] if replies else None,
         "files_touched": files[:MAX_FILES],
         "_prompts": [p.text for p in prompts],
+        "_final": replies[-1].text[:FINAL_CHARS] if replies else None,
         "_sort": prompts[0].ts,
     }
 
@@ -395,9 +418,11 @@ def build_document(
     """Assemble the output, trimming prompts in stages until it fits size_limit."""
     ordered = sorted(entries, key=lambda e: e["_sort"])
     document: Dict[str, Any] = {}
-    for stage, (head, tail) in enumerate(TRIM_STAGES):
+    for stage, (head, tail, final_chars) in enumerate(TRIM_STAGES):
         for entry in ordered:
             entry["prompts"], entry["prompts_truncated"] = select_prompts(entry["_prompts"], head, tail)
+            if entry["_final"] is not None:
+                entry["final_assistant_message"] = entry["_final"][:final_chars]
         document = {
             "date_range": {"start": start_date, "end": end_date},
             "skipped_lines": skipped_lines,
@@ -452,7 +477,7 @@ def collect(
     stats = {"skipped_lines": 0}
     entries = []
     for session in iter_sessions(claude_dir, codex_dir, start.timestamp(), stats):
-        if is_excluded(session.cwd, exclude_paths):
+        if any(is_excluded(cwd, exclude_paths) for cwd in session.cwds or [session.cwd]):
             continue
         entry = build_entry(session, start, end, repos_dir, home)
         if entry:
@@ -480,10 +505,38 @@ def find_session(
     return None
 
 
+def _cut(text: str, limit: int = EXPAND_MESSAGE_CHARS) -> str:
+    return text if len(text) <= limit else text[:limit] + " [...]"
+
+
+def _fit_blocks(blocks: List[str], budget: int) -> List[str]:
+    """Keep as many opening and closing turns as fit, eliding the middle."""
+    if sum(len(b) + 1 for b in blocks) <= budget:
+        return blocks
+    budget -= 40  # room for the omission marker
+    head: List[str] = []
+    tail: List[str] = []
+    used, first, last = 0, 0, len(blocks) - 1
+    while last >= first and used + len(blocks[last]) + 1 <= budget // 2:
+        tail.insert(0, blocks[last])
+        used += len(blocks[last]) + 1
+        last -= 1
+    while first <= last and used + len(blocks[first]) + 1 <= budget:
+        head.append(blocks[first])
+        used += len(blocks[first]) + 1
+        first += 1
+    omitted = last - first + 1
+    return head + ([f"[... {omitted} turns omitted ...]\n"] if omitted else []) + tail
+
+
 def render_transcript(
-    session: Session, start: Optional[datetime], end: Optional[datetime], home: str
+    session: Session,
+    start: Optional[datetime],
+    end: Optional[datetime],
+    home: str,
+    max_chars: int = EXPAND_MAX_CHARS,
 ) -> str:
-    """Plain-text transcript: typed prompts and assistant text only, no tool traffic."""
+    """Plain-text transcript: typed prompts and assistant text only, no tool traffic, at most max_chars."""
     events = sorted(
         (e for e in session.events if (start is None or start <= e.ts) and (end is None or e.ts <= end)),
         key=lambda e: e.ts,
@@ -498,12 +551,15 @@ def render_transcript(
     if events:
         lines.append(f"span: {_local_iso(events[0].ts)} to {_local_iso(events[-1].ts)}")
     lines.append("")
+    header = "\n".join(lines) + "\n"
+    blocks = []
     for event in events:
         if event.kind == "prompt":
-            lines += [f"USER [{event.ts.astimezone():%Y-%m-%d %H:%M}]:", event.text, ""]
+            blocks.append(f"USER [{event.ts.astimezone():%Y-%m-%d %H:%M}]:\n{_cut(event.text)}\n")
         elif event.kind == "assistant":
-            lines += ["ASSISTANT:", event.text, ""]
-    return "\n".join(lines)
+            blocks.append(f"ASSISTANT:\n{_cut(event.text)}\n")
+    body = "\n".join(_fit_blocks(blocks, max_chars - len(header)))
+    return (header + body)[:max_chars]
 
 
 # --- CLI -------------------------------------------------------------------
@@ -529,6 +585,10 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--expand", metavar="SESSION_ID",
         help="Print one session as a readable transcript instead of collecting",
+    )
+    parser.add_argument(
+        "--max-chars", type=int, default=EXPAND_MAX_CHARS,
+        help="With --expand, cap the transcript at this many characters (default: %(default)s)",
     )
     args = parser.parse_args(argv)
     if args.expand:
@@ -556,7 +616,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             print(f"session not found: {args.expand}", file=sys.stderr)
             return 1
         start, end = date_window(args.start_date, args.end_date) if args.start_date else (None, None)
-        print(render_transcript(session, start, end, home))
+        print(render_transcript(session, start, end, home, args.max_chars))
         return 0
 
     excludes = [_expand(p) for p in args.exclude_paths.split(",") if p.strip()]

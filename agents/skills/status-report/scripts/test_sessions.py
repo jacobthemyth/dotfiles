@@ -581,5 +581,78 @@ class ExpandTests(TempDirTestCase):
             sessions.main(["--expand", "s1", "--start-date", "2026-09-14"])
 
 
+class ReviewFixTests(TempDirTestCase):
+    """Regressions from the final whole-branch review."""
+
+    def setUp(self):
+        super().setUp()
+        self.claude = self.tmp / "claude" / "projects"
+        self.codex = self.tmp / "codex" / "sessions"
+
+    def claude_session(self, name, records):
+        return write_jsonl(self.claude / "-home-dev-Code-acme-api-service" / f"{name}.jsonl", records)
+
+    def run_collect(self, excludes=(), **kwargs):
+        return sessions.collect("2026-09-14", "2026-09-20", self.claude, self.codex,
+                                list(excludes), REPOS, HOME, **kwargs)
+
+    def test_compaction_summaries_and_system_origins_are_not_prompts(self):
+        self.claude_session("s1", [
+            claude_user("real prompt", "2026-09-15T14:00:00Z"),
+            claude_user("This session is being continued from a previous conversation...",
+                        "2026-09-15T14:01:00Z", isCompactSummary=True),
+            claude_user("transcript-only text", "2026-09-15T14:02:00Z", isVisibleInTranscriptOnly=True),
+            claude_user("queued notification text", "2026-09-15T14:03:00Z",
+                        origin={"kind": "task-notification"}),
+            claude_user("typed with origin", "2026-09-15T14:04:00Z", origin={"kind": "human"}),
+        ])
+        [entry] = self.run_collect()["sessions"]
+        self.assertEqual(entry["prompts"], ["real prompt", "typed with origin"])
+        self.assertEqual(entry["prompt_count"], 2)
+
+    def test_session_relocated_into_excluded_path_is_dropped(self):
+        self.claude_session("s1", [
+            claude_user("start in work repo", "2026-09-15T14:00:00Z"),
+            claude_user("now personal", "2026-09-15T14:05:00Z", cwd="/home/dev/Code/beads"),
+        ])
+        self.assertEqual(self.run_collect(excludes=["/home/dev/Code/beads"])["sessions"], [])
+
+    def test_size_cap_trims_final_message_last(self):
+        for n in range(3):
+            self.claude_session(f"s{n}", [claude_user("go", "2026-09-15T14:00:00Z"),
+                                          claude_assistant("2026-09-15T14:01:00Z", text="r" * 3000)])
+        full = self.run_collect()
+        self.assertTrue(all(len(e["final_assistant_message"]) == sessions.FINAL_CHARS
+                            for e in full["sessions"]))
+        trimmed = self.run_collect(size_limit=1)
+        self.assertEqual(len(trimmed["sessions"]), 3)
+        self.assertTrue(all(len(e["final_assistant_message"]) == 200 for e in trimmed["sessions"]))
+
+    def test_expand_output_is_bounded_and_keeps_head_and_conclusion(self):
+        records = []
+        for i in range(60):
+            records.append(claude_user(f"prompt {i} " + "p" * 5000, f"2026-09-15T14:{i:02d}:00Z"))
+            records.append(claude_assistant(f"2026-09-15T14:{i:02d}:30Z", text=f"reply {i} " + "a" * 5000))
+        records.append(claude_assistant("2026-09-15T15:30:00Z", text="FINAL CONCLUSION"))
+        self.claude_session("big", records)
+        session = sessions.find_session("big", self.claude, self.codex, {"skipped_lines": 0})
+        out = sessions.render_transcript(session, None, None, HOME, max_chars=20000)
+        self.assertLessEqual(len(out), 20000)
+        self.assertIn("prompt 0 ", out)
+        self.assertIn("FINAL CONCLUSION", out)
+        self.assertRegex(out, r"\[\.\.\. \d+ turns omitted \.\.\.\]")
+        small = sessions.render_transcript(session, None, None, HOME)
+        self.assertLessEqual(len(small), sessions.EXPAND_MAX_CHARS)
+
+    def test_expand_cli_accepts_max_chars(self):
+        self.claude_session("s1", [claude_user("go " + "x" * 5000, "2026-09-15T14:00:00Z")])
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = sessions.main(["--claude-dir", str(self.claude), "--codex-dir", str(self.codex),
+                                  "--expand", "s1", "--max-chars", "1000"])
+        self.assertEqual(code, 0)
+        self.assertLessEqual(len(out.getvalue()), 1001)  # print adds a newline
+
+
 if __name__ == "__main__":
     unittest.main()

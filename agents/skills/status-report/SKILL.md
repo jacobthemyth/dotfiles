@@ -25,7 +25,9 @@ Pick ONE mode from the user's request:
 
 Read these lines from its stdout: `WORK_DIR`, `COMBINED_JSON`, `START_DATE`, `END_DATE`,
 `OUTPUT_STEM`. Then read the `COMBINED_JSON` file — it holds the github, git, documents, and
-sessions data plus the `date_range`. If the script exits non-zero because config is missing, tell the
+sessions data plus the `date_range`. The `sessions` key can be large; read everything else
+with `jq 'del(.sessions)' "$COMBINED_JSON"` and leave `sessions` for step 6.
+If the script exits non-zero because config is missing, tell the
 user to create `~/.config/status-report/config.json` and stop.
 
 ## 3. Collect Linear via MCP
@@ -101,13 +103,20 @@ expand a leading `~`).
 typed into during the period (already filtered for automation, subagents and personal paths).
 If `sessions` is absent, the collector failed. Say so in your end summary and continue.
 
+Read the entries in slices rather than all at once, for example
+`jq -c '.sessions.sessions[0:10][]' "$COMBINED_JSON"`, then `[10:20]`, and so on until a slice
+comes back empty. (Ten entries stay well under the size at which command output is cut off.) Check `.sessions.size_trimmed`: if it is true, prompts and
+`final_assistant_message` were cut to fit, so lean more on deep reads.
+
 1. **Match.** For each entry, look for a GitHub PR or local commit in the same `repo`
    (compare the repo name, e.g. `org/name`, to the PR's `repository`) whose branch is in the
    entry's `branches`, or whose timestamp falls between `first_prompt_at` and
    `last_prompt_at`. A matched session is **context only**: use it to explain why or what
    resulted, inside that PR's or commit's bullet. It never gets a bullet of its own.
-2. **Group the unmatched entries** by `repo` (or by `cwd` when `repo` is null). Use `title`
-   and `prompts` to merge sessions on the same topic into one piece of work.
+2. **Group the unmatched entries by topic.** Sessions in the same `repo` (or `cwd` when
+   `repo` is null) whose `title` and `prompts` are about the same work form one group. A
+   repo is often a catch-all workspace for unrelated investigations, so never merge
+   sessions just because they share a repo.
 3. **Deep read.** A group qualifies if its total `active_minutes` is at least 45 **or** its
    total `prompt_count` is at least 10, **and** its prompts plus `final_assistant_message`
    don't make clear what it concluded. Take at most **3** qualifying groups, largest total
@@ -118,8 +127,10 @@ If `sessions` is absent, the collector failed. Say so in your end summary and co
    ~/.claude/skills/status-report/scripts/sessions.py --expand <session_id> --start-date <START_DATE> --end-date <END_DATE>
    ```
 
-   Read the transcript (typed prompts and assistant replies only). If it exits non-zero,
-   note it and use the summary entry.
+   Read the transcript (typed prompts and assistant replies only). It is capped at about
+   40,000 characters: the opening turns and the closing turns (where conclusions usually
+   are) are kept, and the middle is marked `[... N turns omitted ...]`. If it exits
+   non-zero, note it and use the summary entry.
 4. **Discard.** Drop unmatched sessions whose `cwd` is outside the repos directory (e.g. `~`
    or `~/Desktop`) unless their prompts are clearly about work for the client. Drop tooling
    and yak-shaving sessions (editor or agent setup, skill writing, dotfiles-style work),
