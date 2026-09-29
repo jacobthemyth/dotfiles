@@ -3,6 +3,30 @@
 **Date:** 2026-09-29
 **Status:** Approved design; not yet implemented.
 
+> **Amendment (2026-09-29, during planning; from probing real session files):**
+> - Current Codex versions record typed prompts as `event_msg` / `item_completed` with
+>   `item.type == "UserMessage"` (text in `item.content[].text`), and assistant text as
+>   `item.type == "AgentMessage"`. Only older sessions (14 of 161 interactive in the gap)
+>   use `user_message` / `agent_message`. Parse both. Files touched come from
+>   `item_completed` `FileChange` items (`item.changes` keys) or, in older sessions,
+>   `patch_apply_end` (`payload.changes` keys), not from parsing `apply_patch` text.
+> - Codex worktrees live under `/.worktrees/<name>`; remove that suffix as well as
+>   `/.claude/worktrees/<name>` when deriving `repo`.
+> - Each entry gets a `title`: Claude's last `ai-title` record (`aiTitle`), or the
+>   Codex `thread_name` from `session_index.jsonl`. `null` if there is none. It helps
+>   with grouping.
+> - Claude records that the harness injects as user text are not prompts: text starting
+>   with `<task-notification>`, `<bash-stdout>`, `<bash-stderr>`, or
+>   `[Request interrupted by user`, in addition to `<local-command-*>`. `<system-reminder>`
+>   blocks are removed from prompt text; if nothing is left, it is not a prompt. Slash
+>   commands can start with `<command-message>` as well as `<command-name>`.
+> - Expand-mode prompt headers include the date (`USER [YYYY-MM-DD HH:MM]:`), because
+>   sessions can span days.
+> - The status-report repo itself (`~/Documents/status-report`) is added to the real
+>   denylist. Report sessions run from there, which is the *parent* of
+>   `output_directory`, so the automatic `output_directory` exclusion does not catch
+>   them.
+
 ## Overview
 
 Add the user's local Claude Code and Codex sessions as a status-report source, make Slack
