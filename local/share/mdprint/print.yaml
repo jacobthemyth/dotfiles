@@ -1,0 +1,27 @@
+from: markdown+smart+gfm_auto_identifiers-citations-tex_math_dollars-tex_math_single_backslash-tex_math_double_backslash-raw_tex-raw_attribute
+to: typst
+standalone: true
+pdf-engine: typst
+table-caption-position: above
+figure-caption-position: below
+variables:
+  papersize: us-letter
+  margin:
+    top: 0.68in
+    bottom: 0.65in
+    left: 0.72in
+    right: 0.72in
+  mainfont: New Computer Modern
+  mathfont:
+    - New Computer Modern Math
+  codefont:
+    - DejaVu Sans Mono
+  fontsize: 10.5pt
+  linestretch: 1.04
+  page-numbering: "1"
+  linkcolor: "1F5E85"
+  filecolor: "1F5E85"
+  citecolor: "1F5E85"
+metadata:
+  responsive-table-max-columns: 6
+  responsive-table-max-score: 72

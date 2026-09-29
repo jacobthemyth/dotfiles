@@ -1,0 +1,119 @@
+#!/bin/sh
+
+set -eu
+
+if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
+  echo "Usage: mdprint INPUT.md [OUTPUT.pdf]" >&2
+  exit 2
+fi
+
+input=$1
+
+if [ ! -f "$input" ]; then
+  echo "mdprint: input file not found: $input" >&2
+  exit 1
+fi
+
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)
+support_dir=$(CDPATH='' cd -- "$script_dir/../share/mdprint" && pwd -P)
+
+input_dir=$(CDPATH='' cd -- "$(dirname -- "$input")" && pwd -P)
+input="$input_dir/$(basename -- "$input")"
+
+if [ "$#" -ge 2 ]; then
+  output=$2
+  case "$output" in
+    /*) ;;
+    *) output="$(pwd -P)/$output" ;;
+  esac
+else
+  output=${input%.*}.pdf
+fi
+
+first_line=$(sed -n '1p' "$input")
+pandoc_input=$input
+
+if [ "$first_line" = "---" ]; then
+  pandoc_input=-
+fi
+
+set -- "$pandoc_input" \
+  --defaults="$support_dir/print.yaml" \
+  --lua-filter="$support_dir/responsive-tables.lua" \
+  --lua-filter="$support_dir/unresolved-links.lua" \
+  --include-in-header="$support_dir/print.typ" \
+  --include-before-body="$support_dir/print-body.typ" \
+  --resource-path="$input_dir" \
+  -o "$output"
+
+if [ "$pandoc_input" != "-" ]; then
+  exec pandoc "$@"
+fi
+
+awk '
+function trim(value) {
+  sub(/^[[:space:]]+/, "", value)
+  sub(/[[:space:]]+$/, "", value)
+  return value
+}
+
+function escape_cell(value) {
+  gsub(/[|]/, "\\|", value)
+  return value
+}
+
+function flush_property() {
+  if (!have_property) {
+    return
+  }
+
+  print "| " escape_cell(property) " | " escape_cell(value) " |"
+  property = ""
+  value = ""
+  have_property = 0
+}
+
+NR == 1 {
+  print "| Property | Value |"
+  print "| --- | --- |"
+  in_frontmatter = 1
+  next
+}
+
+in_frontmatter {
+  line = $0
+  sub(/\r$/, "", line)
+
+  if (line == "---" || line == "...") {
+    flush_property()
+    print ""
+    in_frontmatter = 0
+    next
+  }
+
+  if (line ~ /^[^[:space:]][^:]*:/) {
+    flush_property()
+    separator = index(line, ":")
+    property = trim(substr(line, 1, separator - 1))
+    value = trim(substr(line, separator + 1))
+    if (value ~ /^[>|][+-]?$/) {
+      value = ""
+    }
+    have_property = 1
+    next
+  }
+
+  if (line !~ /^[[:space:]]*$/ && line !~ /^[[:space:]]*#/) {
+    continuation = trim(line)
+    if (!have_property) {
+      have_property = 1
+    } else if (value != "") {
+      value = value "<br>"
+    }
+    value = value continuation
+  }
+  next
+}
+
+{ print }
+' "$input" | pandoc "$@"

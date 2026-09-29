@@ -47,6 +47,7 @@ brew "node-build"
 brew "nodenv"
 brew "nodenv/nodenv/nodenv-default-packages"
 brew "pandoc"
+brew "typst"
 brew "pgformatter" # ale.vim
 brew "pipx"
 brew "podman"
