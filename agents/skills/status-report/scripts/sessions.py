@@ -157,3 +157,101 @@ def select_prompts(
         else:
             result.append(prompt)
     return result, truncated
+
+
+# --- Claude Code -----------------------------------------------------------
+
+# User-role text the harness injects, which the user never typed.
+NON_PROMPT_PREFIXES = (
+    "<local-command-",
+    "<bash-stdout>",
+    "<bash-stderr>",
+    "<task-notification>",
+    "[Request interrupted by user",
+)
+SYSTEM_REMINDER_RE = re.compile(r"<system-reminder>.*?</system-reminder>", re.S)
+CLAUDE_EDIT_TOOLS = ("Edit", "Write", "MultiEdit", "NotebookEdit")
+
+
+def _between(text: str, start_tag: str, end_tag: str) -> str:
+    start = text.find(start_tag)
+    if start < 0:
+        return ""
+    start += len(start_tag)
+    end = text.find(end_tag, start)
+    return text[start:end].strip() if end >= 0 else ""
+
+
+def claude_prompt_text(content: Any) -> Optional[str]:
+    """Return the typed prompt in a Claude user record's content, or None."""
+    if isinstance(content, str):
+        text = content
+    elif isinstance(content, list):
+        blocks = [b for b in content if isinstance(b, dict)]
+        if any(b.get("type") == "tool_result" for b in blocks):
+            return None
+        text = "\n".join(
+            b["text"] for b in blocks if b.get("type") == "text" and isinstance(b.get("text"), str)
+        )
+    else:
+        return None
+    text = text.strip()
+    if text.startswith("<command-"):
+        name = _between(text, "<command-name>", "</command-name>")
+        args = _between(text, "<command-args>", "</command-args>")
+        return f"{name} {args}".strip() if name else None
+    if text.startswith(NON_PROMPT_PREFIXES):
+        return None
+    text = SYSTEM_REMINDER_RE.sub("", text).strip()
+    return text or None
+
+
+def _claude_assistant_event(ts: datetime, content: Any, branch: Optional[str]) -> Event:
+    texts: List[str] = []
+    files: List[str] = []
+    for block in content if isinstance(content, list) else []:
+        if not isinstance(block, dict):
+            continue
+        if block.get("type") == "text" and isinstance(block.get("text"), str):
+            texts.append(block["text"])
+        elif block.get("type") == "tool_use" and block.get("name") in CLAUDE_EDIT_TOOLS:
+            tool_input = block.get("input") if isinstance(block.get("input"), dict) else {}
+            file_path = tool_input.get("file_path") or tool_input.get("notebook_path")
+            if isinstance(file_path, str):
+                files.append(file_path)
+    text = "\n".join(texts).strip()
+    return Event(ts, "assistant" if text else "other", text, tuple(files), branch)
+
+
+def parse_claude_file(path: Path, stats: Dict[str, int]) -> Optional[Session]:
+    """Parse one Claude Code transcript; None unless it is an interactive session."""
+    session = Session(tool="claude", session_id=path.stem, cwd="")
+    interactive = False
+    for record in read_jsonl(path, stats):
+        rtype = record.get("type")
+        if rtype == "ai-title":
+            if isinstance(record.get("aiTitle"), str) and record["aiTitle"]:
+                session.title = record["aiTitle"]
+            continue
+        if record.get("entrypoint") == "cli":
+            interactive = True
+        if not session.cwd and isinstance(record.get("cwd"), str):
+            session.cwd = record["cwd"]
+        ts = parse_ts(record.get("timestamp"))
+        if ts is None:
+            continue
+        branch = record.get("gitBranch") if isinstance(record.get("gitBranch"), str) else None
+        message = record.get("message") if isinstance(record.get("message"), dict) else {}
+        side = bool(record.get("isSidechain"))
+        if rtype == "user" and not record.get("isMeta") and not side:
+            text = claude_prompt_text(message.get("content"))
+            if text:
+                session.events.append(Event(ts, "prompt", text, branch=branch))
+                continue
+        elif rtype == "assistant" and not side:
+            session.events.append(_claude_assistant_event(ts, message.get("content"), branch))
+            continue
+        session.events.append(Event(ts, "other", branch=branch))
+    if not interactive or not session.cwd:
+        return None
+    return session
