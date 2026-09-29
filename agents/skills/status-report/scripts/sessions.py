@@ -460,6 +460,52 @@ def collect(
     return build_document(entries, start_date, end_date, stats["skipped_lines"], size_limit)
 
 
+# --- Expand ----------------------------------------------------------------
+
+def find_session(
+    session_id: str, claude_dir: Path, codex_dir: Path, stats: Dict[str, int]
+) -> Optional[Session]:
+    """Locate a qualifying session by id (Claude file stem, or Codex rollout id)."""
+    if claude_dir.is_dir():
+        for path in claude_dir.glob(f"*/{session_id}.jsonl"):
+            session = parse_claude_file(path, stats)
+            if session:
+                return session
+    if codex_dir.is_dir():
+        titles = load_codex_titles(codex_dir.parent / "session_index.jsonl", stats)
+        for path in codex_dir.rglob(f"*{session_id}.jsonl"):
+            session = parse_codex_file(path, titles, stats)
+            if session and session.session_id == session_id:
+                return session
+    return None
+
+
+def render_transcript(
+    session: Session, start: Optional[datetime], end: Optional[datetime], home: str
+) -> str:
+    """Plain-text transcript: typed prompts and assistant text only, no tool traffic."""
+    events = sorted(
+        (e for e in session.events if (start is None or start <= e.ts) and (end is None or e.ts <= end)),
+        key=lambda e: e.ts,
+    )
+    branches = sorted({e.branch for e in events if e.branch and e.branch != "HEAD"})
+    lines = [
+        f"# {session.tool} session {session.session_id}",
+        f"title: {session.title or '-'}",
+        f"cwd: {abbreviate(session.cwd, home)}",
+        f"branches: {', '.join(branches) or '-'}",
+    ]
+    if events:
+        lines.append(f"span: {_local_iso(events[0].ts)} to {_local_iso(events[-1].ts)}")
+    lines.append("")
+    for event in events:
+        if event.kind == "prompt":
+            lines += [f"USER [{event.ts.astimezone():%Y-%m-%d %H:%M}]:", event.text, ""]
+        elif event.kind == "assistant":
+            lines += ["ASSISTANT:", event.text, ""]
+    return "\n".join(lines)
+
+
 # --- CLI -------------------------------------------------------------------
 
 def _expand(path: str) -> str:
@@ -480,28 +526,42 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     )
     parser.add_argument("--repos-dir", default="~/Code", help="Root that repo names are relative to")
     parser.add_argument("--output", help="Output JSON file path")
+    parser.add_argument(
+        "--expand", metavar="SESSION_ID",
+        help="Print one session as a readable transcript instead of collecting",
+    )
     args = parser.parse_args(argv)
-    if not (args.start_date and args.end_date and args.output):
+    if args.expand:
+        if bool(args.start_date) != bool(args.end_date):
+            parser.error("--start-date and --end-date must be given together")
+    elif not (args.start_date and args.end_date and args.output):
         parser.error("--start-date, --end-date and --output are required")
-    try:
-        date_window(args.start_date, args.end_date)
-    except ValueError as exc:
-        parser.error(f"invalid date: {exc}")
+    if args.start_date:
+        try:
+            date_window(args.start_date, args.end_date)
+        except ValueError as exc:
+            parser.error(f"invalid date: {exc}")
     return args
 
 
 def main(argv: Optional[List[str]] = None) -> int:
     args = parse_args(argv)
     home = str(Path.home())
+    claude_dir = Path(_expand(args.claude_dir))
+    codex_dir = Path(_expand(args.codex_dir))
+
+    if args.expand:
+        session = find_session(args.expand, claude_dir, codex_dir, {"skipped_lines": 0})
+        if session is None:
+            print(f"session not found: {args.expand}", file=sys.stderr)
+            return 1
+        start, end = date_window(args.start_date, args.end_date) if args.start_date else (None, None)
+        print(render_transcript(session, start, end, home))
+        return 0
+
     excludes = [_expand(p) for p in args.exclude_paths.split(",") if p.strip()]
     document = collect(
-        args.start_date,
-        args.end_date,
-        Path(_expand(args.claude_dir)),
-        Path(_expand(args.codex_dir)),
-        excludes,
-        _expand(args.repos_dir),
-        home,
+        args.start_date, args.end_date, claude_dir, codex_dir, excludes, _expand(args.repos_dir), home
     )
     try:
         Path(args.output).write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")

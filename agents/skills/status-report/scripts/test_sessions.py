@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Tests for sessions.py (Claude Code / Codex session digests)."""
 
+import contextlib
+import io
 import importlib.util
 import json
 import os
@@ -519,6 +521,64 @@ class CollectTests(TempDirTestCase):
                               "--claude-dir", str(self.claude), "--codex-dir", str(self.codex),
                               "--output", str(self.tmp / "no" / "such" / "dir" / "x.json")])
         self.assertEqual(code, 1)
+
+
+class ExpandTests(TempDirTestCase):
+    def setUp(self):
+        super().setUp()
+        self.claude = self.tmp / "claude" / "projects"
+        self.codex = self.tmp / "codex" / "sessions"
+        write_jsonl(self.claude / "-home-dev-Code-acme-api-service" / "s1.jsonl", [
+            {"type": "ai-title", "aiTitle": "DNS 502s"},
+            claude_user("old question", "2026-09-10T14:00:00Z"),
+            claude_user("why the 502s?", "2026-09-15T14:00:00Z"),
+            {"type": "assistant", "timestamp": "2026-09-15T14:01:00Z", "cwd": CWD, "entrypoint": "cli",
+             "message": {"content": [{"type": "tool_use", "name": "Bash",
+                                      "input": {"command": "SECRET_TOOL_INPUT"}}]}},
+            claude_user([{"type": "tool_result", "tool_use_id": "t", "content": "SECRET_TOOL_OUTPUT"}],
+                        "2026-09-15T14:02:00Z"),
+            claude_assistant("2026-09-15T14:03:00Z", text="Stale DNS cache."),
+        ])
+        write_jsonl(self.codex / "2026" / "09" / "15" / "rollout-2026-09-15T10-00-00-cdx-1.jsonl",
+                    [codex_meta("cdx-1"), codex_user("2026-09-15T14:00:00Z", "codex prompt")])
+
+    def expand(self, *extra):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = sessions.main(["--claude-dir", str(self.claude), "--codex-dir", str(self.codex), *extra])
+        return code, out.getvalue(), err.getvalue()
+
+    def test_claude_transcript_has_no_tool_traffic(self):
+        code, out, _ = self.expand("--expand", "s1")
+        self.assertEqual(code, 0)
+        self.assertIn("title: DNS 502s", out)
+        self.assertIn("USER [2026-09-15 10:00]:\nwhy the 502s?", out)
+        self.assertIn("ASSISTANT:\nStale DNS cache.", out)
+        self.assertIn("old question", out)
+        self.assertNotIn("SECRET_TOOL_INPUT", out)
+        self.assertNotIn("SECRET_TOOL_OUTPUT", out)
+
+    def test_date_filter(self):
+        code, out, _ = self.expand("--expand", "s1", "--start-date", "2026-09-14", "--end-date", "2026-09-20")
+        self.assertEqual(code, 0)
+        self.assertNotIn("old question", out)
+        self.assertIn("why the 502s?", out)
+
+    def test_codex_by_id(self):
+        code, out, _ = self.expand("--expand", "cdx-1")
+        self.assertEqual(code, 0)
+        self.assertIn("# codex session cdx-1", out)
+        self.assertIn("codex prompt", out)
+
+    def test_unknown_id(self):
+        code, out, err = self.expand("--expand", "nope")
+        self.assertEqual(code, 1)
+        self.assertEqual(out, "")
+        self.assertIn("session not found: nope", err)
+
+    def test_half_a_date_range_is_rejected(self):
+        with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+            sessions.main(["--expand", "s1", "--start-date", "2026-09-14"])
 
 
 if __name__ == "__main__":
