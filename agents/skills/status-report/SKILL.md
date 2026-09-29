@@ -1,13 +1,13 @@
 ---
 name: status-report
-description: Generate a status report of the user's work activity (GitHub, git, Linear, Google Calendar, documents, Slack). Use when the user asks to "generate/create my status report", a "weekly status report", or a "monthly status report". Defaults to the previous full week.
+description: Generate a status report of the user's work activity (GitHub, git, Linear, Google Calendar, documents, Claude Code and Codex sessions, Slack if available). Use when the user asks to "generate/create my status report", a "weekly status report", or a "monthly status report". Defaults to the previous full week.
 ---
 
 # Status Report
 
 Generate an executive-level status report from the user's work activity. Deterministic
-sources are collected by a script; Linear and Google Calendar are collected by you via MCP;
-you write the report.
+sources (GitHub, git, documents, Claude Code and Codex sessions) are collected by a script;
+Linear and Google Calendar are collected by you via MCP; you write the report.
 
 ## 1. Resolve the reporting period
 
@@ -24,8 +24,8 @@ Pick ONE mode from the user's request:
 ```
 
 Read these lines from its stdout: `WORK_DIR`, `COMBINED_JSON`, `START_DATE`, `END_DATE`,
-`OUTPUT_STEM`. Then read the `COMBINED_JSON` file — it holds the github, git, and documents
-data plus the `date_range`. If the script exits non-zero because config is missing, tell the
+`OUTPUT_STEM`. Then read the `COMBINED_JSON` file — it holds the github, git, documents, and
+sessions data plus the `date_range`. If the script exits non-zero because config is missing, tell the
 user to create `~/.config/status-report/config.json` and stop.
 
 ## 3. Collect Linear via MCP
@@ -87,26 +87,57 @@ expand a leading `~`).
 - If the file exists, read it directly. Use the threads where the user (the configured
   `slack_user_name`) participated, following the SLACK DATA HANDLING rules in
   `report-style.md`.
-- If the file is **missing** (and `slack_export_directory` is configured), the user may have
-  forgotten to add it. ASK them before generating: offer to (a) wait while they add
-  `slack-<START_DATE>.md` and re-run, or (b) generate without Slack this time. Do not
-  fabricate Slack content.
-  - To help with (a), offer them the ready-to-send prompt in
-    `~/.claude/skills/status-report/reference/slack-summary-prompt.md`. Read it, substitute
-    `<SLACK_USER_NAME>` (from config `slack_user_name`), `<START_DATE>`, and `<END_DATE>`, and
-    hand them the filled-in text to run in a Slack-connected session. You cannot read Slack
-    yourself.
+- If the file is **missing** (and `slack_export_directory` is configured), do **not** ask
+  and do not stop. Continue without Slack, and include this line in your end summary to
+  the user: `No Slack summary for this week (slack-<START_DATE>.md); add one and re-run to
+  include it.` Do not fabricate Slack content. (If the user asks how to produce one, the
+  fill-in prompt is at `~/.claude/skills/status-report/reference/slack-summary-prompt.md`;
+  do not offer it unprompted.)
 - If `slack_export_directory` is not configured at all, skip Slack silently.
 
-## 6. Synthesize the report
+## 6. Analyze agent sessions
+
+`COMBINED_JSON.sessions.sessions[]` holds one entry per Claude Code / Codex session the user
+typed into during the period (already filtered for automation, subagents and personal paths).
+If `sessions` is absent, the collector failed. Say so in your end summary and continue.
+
+1. **Match.** For each entry, look for a GitHub PR or local commit in the same `repo`
+   (compare the repo name, e.g. `org/name`, to the PR's `repository`) whose branch is in the
+   entry's `branches`, or whose timestamp falls between `first_prompt_at` and
+   `last_prompt_at`. A matched session is **context only**: use it to explain why or what
+   resulted, inside that PR's or commit's bullet. It never gets a bullet of its own.
+2. **Group the unmatched entries** by `repo` (or by `cwd` when `repo` is null). Use `title`
+   and `prompts` to merge sessions on the same topic into one piece of work.
+3. **Deep read.** A group qualifies if its total `active_minutes` is at least 45 **or** its
+   total `prompt_count` is at least 10, **and** its prompts plus `final_assistant_message`
+   don't make clear what it concluded. Take at most **3** qualifying groups, largest total
+   `active_minutes` first. For each, expand the group's session with the most
+   `active_minutes`:
+
+   ```bash
+   ~/.claude/skills/status-report/scripts/sessions.py --expand <session_id> --start-date <START_DATE> --end-date <END_DATE>
+   ```
+
+   Read the transcript (typed prompts and assistant replies only). If it exits non-zero,
+   note it and use the summary entry.
+4. **Discard.** Drop unmatched sessions whose `cwd` is outside the repos directory (e.g. `~`
+   or `~/Desktop`) unless their prompts are clearly about work for the client. Drop tooling
+   and yak-shaving sessions (editor or agent setup, skill writing, dotfiles-style work),
+   even inside a work repo, unless the result was for the team.
+5. **Remember for the end summary:** which sessions you deep-read (title or repo) and how
+   many you dropped in step 4.
+
+Follow SESSION DATA HANDLING in `report-style.md` when writing these into the report.
+
+## 7. Synthesize the report
 
 Read `~/.claude/skills/status-report/reference/report-style.md` and follow it exactly.
-Combine the `COMBINED_JSON` contents with the Linear, Calendar, and Slack material you gathered.
+Combine the `COMBINED_JSON` contents with the Linear, Calendar, Slack, and session material you gathered.
 
 **Hard rule:** use only collected data. Never fabricate activity. If every source came back
 empty, tell the user you cannot produce a report rather than inventing content.
 
-## 7. Write the report and preview
+## 8. Write the report and preview
 
 1. Read `output_directory` from `~/.config/status-report/config.json`
    (`jq -r '.output_directory' ~/.config/status-report/config.json`, expand a leading `~`).
@@ -126,4 +157,7 @@ empty, tell the user you cannot produce a report rather than inventing content.
    *Report generated on <YYYY-MM-DD HH:MM:SS>*
    ```
 
-3. Tell the user the output path and show the first ~20 lines as a preview.
+3. Tell the user the output path and show the first ~20 lines as a preview. Then list, briefly:
+   - any source that was unavailable or failed (Linear, Calendar, sessions collector)
+   - the missing-Slack line from step 5, if it applies
+   - the sessions you deep-read and how many you dropped (step 6)
