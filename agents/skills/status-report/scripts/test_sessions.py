@@ -383,5 +383,143 @@ class CodexParserTests(TempDirTestCase):
         self.assertEqual(sessions.load_codex_titles(self.tmp / "missing.jsonl", stats), {})
 
 
+class CollectTests(TempDirTestCase):
+    def setUp(self):
+        super().setUp()
+        self.claude = self.tmp / "claude" / "projects"
+        self.codex = self.tmp / "codex" / "sessions"
+
+    def claude_session(self, name, records, project="-home-dev-Code-acme-api-service"):
+        return write_jsonl(self.claude / project / f"{name}.jsonl", records)
+
+    def run_collect(self, start="2026-09-14", end="2026-09-20", excludes=(), size_limit=None):
+        kwargs = {} if size_limit is None else {"size_limit": size_limit}
+        return sessions.collect(start, end, self.claude, self.codex, list(excludes), REPOS, HOME, **kwargs)
+
+    def test_entry_fields(self):
+        self.claude_session("s1", [
+            {"type": "ai-title", "aiTitle": "Retry work"},
+            claude_user("add retries", "2026-09-15T14:00:00Z",
+                        cwd=CWD + "/.claude/worktrees/add-retries", branch="devuser/add-retries"),
+            claude_assistant("2026-09-15T14:20:00Z", text="Done. " + "y" * 2000,
+                             edits=[CWD + "/a.py", CWD + "/a.py", CWD + "/b.py"],
+                             cwd=CWD + "/.claude/worktrees/add-retries", branch="HEAD"),
+        ])
+        doc = self.run_collect()
+        self.assertEqual(doc["date_range"], {"start": "2026-09-14", "end": "2026-09-20"})
+        self.assertFalse(doc["size_trimmed"])
+        [entry] = doc["sessions"]
+        self.assertEqual(entry["tool"], "claude")
+        self.assertEqual(entry["session_id"], "s1")
+        self.assertEqual(entry["title"], "Retry work")
+        self.assertEqual(entry["cwd"], "~/Code/acme/api-service/.claude/worktrees/add-retries")
+        self.assertEqual((entry["repo"], entry["worktree"]), ("acme/api-service", "add-retries"))
+        self.assertEqual(entry["branches"], ["devuser/add-retries"])
+        self.assertEqual(entry["first_prompt_at"], "2026-09-15T10:00:00-04:00")
+        self.assertEqual(entry["last_prompt_at"], "2026-09-15T10:00:00-04:00")
+        self.assertEqual(entry["active_minutes"], 20)
+        self.assertEqual(entry["prompt_count"], 1)
+        self.assertEqual(entry["prompts"], ["add retries"])
+        self.assertFalse(entry["prompts_truncated"])
+        self.assertEqual(len(entry["final_assistant_message"]), sessions.FINAL_CHARS)
+        self.assertEqual(entry["files_touched"], ["~/Code/acme/api-service/a.py", "~/Code/acme/api-service/b.py"])
+        self.assertFalse(any(key.startswith("_") for key in entry))
+
+    def test_files_touched_capped(self):
+        edits = [f"{CWD}/f{i}.py" for i in range(30)]
+        self.claude_session("s1", [claude_user("go", "2026-09-15T14:00:00Z"),
+                                   claude_assistant("2026-09-15T14:01:00Z", text="ok", edits=edits)])
+        [entry] = self.run_collect()["sessions"]
+        self.assertEqual(len(entry["files_touched"]), sessions.MAX_FILES)
+
+    def test_session_split_across_weeks_at_local_midnight(self):
+        self.claude_session("s1", [
+            claude_user("sunday night", "2026-09-21T03:50:00Z"),   # Sun 23:50 EDT
+            claude_user("monday morning", "2026-09-21T04:10:00Z"),  # Mon 00:10 EDT
+        ])
+        week1 = self.run_collect("2026-09-14", "2026-09-20")["sessions"]
+        week2 = self.run_collect("2026-09-21", "2026-09-27")["sessions"]
+        self.assertEqual(week1[0]["prompts"], ["sunday night"])
+        self.assertEqual(week2[0]["prompts"], ["monday morning"])
+
+    def test_no_in_range_prompt_is_dropped(self):
+        self.claude_session("s1", [
+            claude_user("last week", "2026-09-10T14:00:00Z"),
+            claude_assistant("2026-09-15T14:00:00Z", text="late reply"),
+        ])
+        self.assertEqual(self.run_collect()["sessions"], [])
+
+    def test_denylist(self):
+        self.claude_session("s1", [claude_user("personal", "2026-09-15T14:00:00Z",
+                                                cwd="/home/dev/Code/beads")])
+        self.claude_session("s2", [claude_user("work", "2026-09-15T14:00:00Z",
+                                                cwd="/home/dev/Code/beadsmith")])
+        doc = self.run_collect(excludes=["/home/dev/Code/beads"])
+        self.assertEqual([e["session_id"] for e in doc["sessions"]], ["s2"])
+
+    def test_subagent_transcripts_are_not_read(self):
+        write_jsonl(self.claude / "-home-dev-Code-acme-api-service" / "s1" / "subagents" / "agent-1.jsonl",
+                    [claude_user("subagent task", "2026-09-15T14:00:00Z")])
+        self.assertEqual(self.run_collect()["sessions"], [])
+
+    def test_codex_and_claude_merged_in_time_order(self):
+        self.claude_session("late", [claude_user("second", "2026-09-16T14:00:00Z")])
+        write_jsonl(self.codex / "2026" / "09" / "15" / "rollout-x-cdx-1.jsonl",
+                    [codex_meta("cdx-1"), codex_user("2026-09-15T14:00:00Z", "first")])
+        doc = self.run_collect()
+        self.assertEqual([e["session_id"] for e in doc["sessions"]], ["cdx-1", "late"])
+        self.assertEqual(doc["sessions"][0]["tool"], "codex")
+
+    def test_old_files_are_not_opened(self):
+        path = self.claude_session("s1", [claude_user("go", "2026-09-15T14:00:00Z")])
+        old = datetime(2026, 9, 1).timestamp()
+        os.utime(path, (old, old))
+        self.assertEqual(self.run_collect()["sessions"], [])
+
+    def test_size_cap_trims_prompts_never_entries(self):
+        for n in range(3):
+            self.claude_session(f"s{n}", [claude_user(f"prompt {i} " + "z" * 290, f"2026-09-15T14:{i:02d}:00Z")
+                                          for i in range(10)])
+        full = self.run_collect()
+        self.assertFalse(full["size_trimmed"])
+        self.assertTrue(all(len(e["prompts"]) == 8 for e in full["sessions"]))
+        trimmed = self.run_collect(size_limit=1)
+        self.assertTrue(trimmed["size_trimmed"])
+        self.assertEqual(len(trimmed["sessions"]), 3)
+        self.assertTrue(all(len(e["prompts"]) == 1 and e["prompts_truncated"] for e in trimmed["sessions"]))
+
+    def test_skipped_lines_reported(self):
+        self.claude_session("s1", [claude_user("go", "2026-09-15T14:00:00Z"), "{broken"])
+        self.assertEqual(self.run_collect()["skipped_lines"], 1)
+
+    def test_missing_source_dirs(self):
+        self.assertEqual(self.run_collect()["sessions"], [])
+
+    def test_main_writes_output(self):
+        self.claude_session("s1", [claude_user("go", "2026-09-15T14:00:00Z")])
+        out = self.tmp / "out" / "sessions.json"
+        out.parent.mkdir()
+        code = sessions.main([
+            "--start-date", "2026-09-14", "--end-date", "2026-09-20",
+            "--claude-dir", str(self.claude), "--codex-dir", str(self.codex),
+            "--exclude-paths", "/home/dev/Code/beads,,", "--repos-dir", REPOS,
+            "--output", str(out),
+        ])
+        self.assertEqual(code, 0)
+        self.assertEqual(len(json.loads(out.read_text())["sessions"]), 1)
+
+    def test_main_rejects_bad_arguments(self):
+        with self.assertRaises(SystemExit):
+            sessions.main(["--start-date", "2026-09-14", "--end-date", "2026-09-20"])  # no --output
+        with self.assertRaises(SystemExit):
+            sessions.main(["--start-date", "2026-9-xx", "--end-date", "2026-09-20", "--output", "x"])
+
+    def test_main_unwritable_output(self):
+        code = sessions.main(["--start-date", "2026-09-14", "--end-date", "2026-09-20",
+                              "--claude-dir", str(self.claude), "--codex-dir", str(self.codex),
+                              "--output", str(self.tmp / "no" / "such" / "dir" / "x.json")])
+        self.assertEqual(code, 1)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -334,3 +334,183 @@ def parse_codex_file(path: Path, titles: Dict[str, str], stats: Dict[str, int]) 
     if session is None or not session.cwd:
         return None
     return session
+
+
+# --- Digest ----------------------------------------------------------------
+
+TRIM_STAGES = ((HEAD_PROMPTS, TAIL_PROMPTS), (3, 1), (1, 0))
+
+
+def _local_iso(ts: datetime) -> str:
+    return ts.astimezone().isoformat(timespec="seconds")
+
+
+def build_entry(
+    session: Session, start: datetime, end: datetime, repos_dir: str, home: str
+) -> Optional[Dict[str, Any]]:
+    """Digest a session's in-range events; None if the user typed nothing in range."""
+    events = sorted((e for e in session.events if start <= e.ts <= end), key=lambda e: e.ts)
+    prompts = [e for e in events if e.kind == "prompt"]
+    if not prompts:
+        return None
+    replies = [e for e in events if e.kind == "assistant" and e.text]
+    files: List[str] = []
+    branches: List[str] = []
+    for event in events:
+        for file_path in event.files:
+            short = abbreviate(file_path, home)
+            if short not in files:
+                files.append(short)
+        if event.branch and event.branch != "HEAD" and event.branch not in branches:
+            branches.append(event.branch)
+    repo, worktree = derive_repo(session.cwd, repos_dir)
+    return {
+        "tool": session.tool,
+        "session_id": session.session_id,
+        "title": session.title,
+        "cwd": abbreviate(session.cwd, home),
+        "repo": repo,
+        "worktree": worktree,
+        "branches": branches,
+        "first_prompt_at": _local_iso(prompts[0].ts),
+        "last_prompt_at": _local_iso(prompts[-1].ts),
+        "active_minutes": active_minutes([e.ts for e in events]),
+        "prompt_count": len(prompts),
+        "prompts": [],
+        "prompts_truncated": False,
+        "final_assistant_message": replies[-1].text[:FINAL_CHARS] if replies else None,
+        "files_touched": files[:MAX_FILES],
+        "_prompts": [p.text for p in prompts],
+        "_sort": prompts[0].ts,
+    }
+
+
+def build_document(
+    entries: List[Dict[str, Any]],
+    start_date: str,
+    end_date: str,
+    skipped_lines: int,
+    size_limit: int = SIZE_LIMIT,
+) -> Dict[str, Any]:
+    """Assemble the output, trimming prompts in stages until it fits size_limit."""
+    ordered = sorted(entries, key=lambda e: e["_sort"])
+    document: Dict[str, Any] = {}
+    for stage, (head, tail) in enumerate(TRIM_STAGES):
+        for entry in ordered:
+            entry["prompts"], entry["prompts_truncated"] = select_prompts(entry["_prompts"], head, tail)
+        document = {
+            "date_range": {"start": start_date, "end": end_date},
+            "skipped_lines": skipped_lines,
+            "size_trimmed": stage > 0,
+            "sessions": [
+                {k: v for k, v in entry.items() if not k.startswith("_")} for entry in ordered
+            ],
+        }
+        if len(json.dumps(document, indent=2)) <= size_limit:
+            break
+    return document
+
+
+def _modified_since(path: Path, since_ts: float) -> bool:
+    try:
+        return path.stat().st_mtime >= since_ts
+    except OSError:
+        return False
+
+
+def iter_sessions(
+    claude_dir: Path, codex_dir: Path, since_ts: float, stats: Dict[str, int]
+) -> Iterator[Session]:
+    """Yield qualifying sessions from files modified since since_ts."""
+    if claude_dir.is_dir():
+        # */*.jsonl is top-level transcripts only; subagents live one level deeper.
+        for path in sorted(claude_dir.glob("*/*.jsonl")):
+            if _modified_since(path, since_ts):
+                session = parse_claude_file(path, stats)
+                if session:
+                    yield session
+    if codex_dir.is_dir():
+        titles = load_codex_titles(codex_dir.parent / "session_index.jsonl", stats)
+        for path in sorted(codex_dir.rglob("*.jsonl")):
+            if _modified_since(path, since_ts):
+                session = parse_codex_file(path, titles, stats)
+                if session:
+                    yield session
+
+
+def collect(
+    start_date: str,
+    end_date: str,
+    claude_dir: Path,
+    codex_dir: Path,
+    exclude_paths: List[str],
+    repos_dir: str,
+    home: str,
+    size_limit: int = SIZE_LIMIT,
+) -> Dict[str, Any]:
+    start, end = date_window(start_date, end_date)
+    stats = {"skipped_lines": 0}
+    entries = []
+    for session in iter_sessions(claude_dir, codex_dir, start.timestamp(), stats):
+        if is_excluded(session.cwd, exclude_paths):
+            continue
+        entry = build_entry(session, start, end, repos_dir, home)
+        if entry:
+            entries.append(entry)
+    return build_document(entries, start_date, end_date, stats["skipped_lines"], size_limit)
+
+
+# --- CLI -------------------------------------------------------------------
+
+def _expand(path: str) -> str:
+    return os.path.normpath(os.path.expanduser(path))
+
+
+def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Collect Claude Code and Codex session digests for status reports"
+    )
+    parser.add_argument("--start-date", help="YYYY-MM-DD (local time, inclusive)")
+    parser.add_argument("--end-date", help="YYYY-MM-DD (local time, inclusive)")
+    parser.add_argument("--claude-dir", default="~/.claude/projects")
+    parser.add_argument("--codex-dir", default="~/.codex/sessions")
+    parser.add_argument(
+        "--exclude-paths", default="",
+        help="Comma-separated path prefixes; sessions whose cwd is under one are dropped",
+    )
+    parser.add_argument("--repos-dir", default="~/Code", help="Root that repo names are relative to")
+    parser.add_argument("--output", help="Output JSON file path")
+    args = parser.parse_args(argv)
+    if not (args.start_date and args.end_date and args.output):
+        parser.error("--start-date, --end-date and --output are required")
+    try:
+        date_window(args.start_date, args.end_date)
+    except ValueError as exc:
+        parser.error(f"invalid date: {exc}")
+    return args
+
+
+def main(argv: Optional[List[str]] = None) -> int:
+    args = parse_args(argv)
+    home = str(Path.home())
+    excludes = [_expand(p) for p in args.exclude_paths.split(",") if p.strip()]
+    document = collect(
+        args.start_date,
+        args.end_date,
+        Path(_expand(args.claude_dir)),
+        Path(_expand(args.codex_dir)),
+        excludes,
+        _expand(args.repos_dir),
+        home,
+    )
+    try:
+        Path(args.output).write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+    except OSError as exc:
+        print(f"Error writing {args.output}: {exc}", file=sys.stderr)
+        return 1
+    print(f"Collected {len(document['sessions'])} agent sessions", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
