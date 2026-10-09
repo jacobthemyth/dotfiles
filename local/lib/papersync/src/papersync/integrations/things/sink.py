@@ -44,10 +44,47 @@ def _open_url(url: str) -> None:
 
 
 def _run_osascript(script: str) -> None:
+    """Run an AppleScript, surfacing osascript's stderr.
+
+    Unlike the Things URLs, the scripts sent here carry only tag names, and
+    osascript reports error positions rather than script text, so the stderr
+    is safe to show and is the only place the Apple Event error code appears.
+    """
     try:
         subprocess.run(["osascript", "-e", script], check=True, capture_output=True)
-    except (subprocess.CalledProcessError, OSError) as exc:
+    except subprocess.CalledProcessError as exc:
+        detail = exc.stderr.decode(errors="replace").strip()
+        raise RuntimeError(
+            f"osascript failed with exit status {exc.returncode}: {detail}"
+        ) from None
+    except OSError as exc:
         raise _command_error("osascript", exc) from None
+
+
+AUTOMATION_PROBE = """with timeout of 5 seconds
+tell application "Things3"
+  if not running then error "Things3 is not running"
+  get count of tags
+end tell
+end timeout"""
+
+AUTOMATION_HINT = (
+    "grant your terminal access to Things3 under System Settings > Privacy & Security > Automation"
+)
+
+
+def automation_problem(runner: Callable[[str], None] = _run_osascript) -> str | None:
+    """Send one short Apple Event to Things3; describe the failure, or None.
+
+    ``running`` is answered without launching the app, so a probe on a machine
+    where Things3 is closed fails fast instead of starting it. A timeout
+    (-1712) usually means a macOS consent dialog nobody answered.
+    """
+    try:
+        runner(AUTOMATION_PROBE)
+    except RuntimeError as exc:
+        return f"{exc}; {AUTOMATION_HINT}"
+    return None
 
 
 def _applescript_string(name: str) -> str:

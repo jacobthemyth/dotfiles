@@ -367,6 +367,12 @@ def test_doctor_runs(tmp_path: Path) -> None:
     assert "uv" in r.output and "Things database" in r.output
 
 
+def test_doctor_checks_things_automation(tmp_path: Path) -> None:
+    r = CliRunner().invoke(main, ["doctor"], env=_env(tmp_path))
+    assert "ok   Things automation" in r.output
+    assert "osascript:" not in r.output
+
+
 def test_doctor_reports_missing_uv_and_continues(tmp_path: Path) -> None:
     env = _env(tmp_path)
     empty = tmp_path / "emptybin"

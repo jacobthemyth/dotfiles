@@ -12,6 +12,8 @@ from papersync.integrations.things.sink import (
     STATE_PRINTED,
     STATE_SCANNED,
     ThingsSink,
+    _run_osascript,
+    automation_problem,
     create_tags_script,
 )
 from papersync.model import Change, scanned_block
@@ -202,3 +204,34 @@ def test_create_tags_script_escapes_backslashes_and_quotes() -> None:
     assert '{name:"a\\"b\\\\c"}' in create_tags_script(['a"b\\c'])
     with pytest.raises(ValueError, match="line break"):
         create_tags_script(["a\nb"])
+
+
+def test_run_osascript_error_includes_stderr() -> None:
+    with pytest.raises(RuntimeError, match=r"osascript failed with exit status 1: .*boom"):
+        _run_osascript('error "boom"')
+
+
+def test_automation_problem_is_none_when_things_answers() -> None:
+    assert automation_problem(runner=lambda _script: None) is None
+
+
+def test_automation_problem_probes_things3_without_launching_it() -> None:
+    seen: list[str] = []
+    automation_problem(runner=seen.append)
+    assert len(seen) == 1
+    assert 'tell application "Things3"' in seen[0]
+    assert "running" in seen[0]
+    assert "with timeout of" in seen[0]
+
+
+def test_automation_problem_names_the_settings_pane() -> None:
+    def runner(_script: str) -> None:
+        raise RuntimeError(
+            "osascript failed with exit status 1: execution error: "
+            "Things3 got an error: AppleEvent timed out. (-1712)"
+        )
+
+    problem = automation_problem(runner=runner)
+    assert problem is not None
+    assert "AppleEvent timed out. (-1712)" in problem
+    assert "System Settings > Privacy & Security > Automation" in problem

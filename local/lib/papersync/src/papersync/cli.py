@@ -23,7 +23,7 @@ from papersync.integrations.obsidian.sink import NOT_YET, ObsidianSink
 from papersync.integrations.obsidian.source import ObsidianSource
 from papersync.integrations.things import auth as things_auth
 from papersync.integrations.things.db import ThingsDb, ThingsDbNotFound, find_db_path
-from papersync.integrations.things.sink import ThingsSink
+from papersync.integrations.things.sink import ThingsSink, automation_problem
 from papersync.integrations.things.source import ThingsSource
 from papersync.ledger import Ledger, LedgerEntry
 from papersync.model import Change, Item, Plan
@@ -556,6 +556,10 @@ def doctor() -> None:
         report("Things database", exc.message)
     except Exception as exc:
         report("Things database", str(exc))
+    if os.environ.get("PAPERSYNC_OPENER") == "none":
+        report("Things automation", automation_problem(runner=lambda _script: None))
+    else:
+        report("Things automation", automation_problem())
     try:
         import keyring
 
