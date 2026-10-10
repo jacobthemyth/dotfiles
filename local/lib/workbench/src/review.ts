@@ -2,6 +2,7 @@ import { existsSync, realpathSync, rmSync } from "node:fs";
 import { userInfo } from "node:os";
 import { join } from "node:path";
 import { loadConfig, type Config } from "./config";
+import { normaliseNotes } from "./comments";
 import * as git from "./git";
 import * as hunk from "./hunk";
 import { sub } from "./paths";
@@ -80,6 +81,28 @@ const SIDEBAR = (ws: string) => `workbench sidebar ${ws}`;
 // Working tree against the merge base, so uncommitted edits show; the plain range when merge-base fails.
 export const diffRef = (wt: string, base: string, branch: string) => git.mergeBase(wt, base, branch) ?? `${base}...${branch}`;
 
+// A fresh hunk holds none of the reviewer's notes: re-show `m`'s snapshotted ones as agent comments by "you".
+// normaliseNotes keeps only source "user", so these are never delivered. A note already live is skipped
+// (by note id, or a "you:" comment with the same body on the same file); if the live list cannot be
+// fetched it comes back empty and every note is re-added.
+function reshowOwnNotes(r: Review, m: Member): void {
+  let raw: hunk.RawNote[];
+  try { raw = loadNotes(r.workset, m.id); } catch { return; }
+  const saved = normaliseNotes(raw);
+  if (saved.length === 0) return;
+  const t = hunkTarget(r, m);
+  const live = hunk.allNotes(t);
+  const ids = new Set(live.map((n) => n.noteId));
+  const shown = new Set(live.filter((n) => n.author === "you").map((n) => `${n.filePath}\0${n.body}`));
+  const body = new Map(raw.map((n) => [n.noteId, String(n.body ?? "").trim()]));
+  for (const c of saved) {
+    const summary = `you: ${body.get(c.id) || c.text}`;
+    if (ids.has(c.id) || shown.has(`${c.path}\0${summary}`)) continue;
+    const line = c.line.side === "old" ? { oldLine: c.line.start } : { newLine: c.line.start };
+    hunk.addAgentComment(t, { file: c.path, ...line, summary, author: "you" });
+  }
+}
+
 // Runs hunk for `m` in `pane` (default: the recorded hunk pane), then looks for the session it registers
 // and shows it the agent replies to `m`'s comments (a fresh hunk holds no notes).
 function startHunk(r: Review, m: Member, base: string, pane = r.hunkPaneId): boolean {
@@ -88,6 +111,7 @@ function startHunk(r: Review, m: Member, base: string, pane = r.hunkPaneId): boo
   r.hunkPaneCwd = m.worktree;
   r.current = m.id;
   r.hunkSessionId = hunk.waitForSession(pane);
+  reshowOwnNotes(r, m);
   rehydrateReplies(r, m);
   return true;
 }
@@ -115,6 +139,7 @@ function adoptHunk(r: Review, ws: Workset, pane: string, fallback: Member): void
   r.current = m.id;
   r.hunkSessionId = hunk.waitForSession(pane);
   snapshotNotes(r, m);
+  reshowOwnNotes(r, m);
   rehydrateReplies(r, m);
 }
 

@@ -151,3 +151,47 @@ test("sessionEnded stops that session's watcher", async () => {
   expect(await settled(w)).toBe(true);
   expect(existsSync(pidPath())).toBe(false);
 });
+
+test("prompt submitted with unread reviews adds a context line naming the count", async () => {
+  const { handle } = await import("../src/hook");
+  const prompt = () => handle({ kind: "promptSubmitted", harness: "claude", session: "a", cwd: "/w" });
+  expect(prompt()).toEqual({});
+  put("claude-a", review("r1"));
+  put("claude-a", review("r2"));
+  put("claude-a", review("r0"), true);
+  expect(prompt().context).toBe("workbench: 2 unread review(s) in your inbox; run `workbench inbox show`.");
+});
+
+test("wait exits when its session's pointer is closed", async () => {
+  const { openPointer, closePointer } = await import("../src/session");
+  openPointer("claude", "a", "/w");
+  setTimeout(() => closePointer("claude-a"), 100);
+  const t0 = Date.now();
+  expect(await inbox.wait("claude-a", 5000, 30)).toBeNull();
+  expect(Date.now() - t0).toBeLessThan(2000);
+  expect(existsSync(pidPath())).toBe(false);
+});
+
+test("stopWatcher logs its decision: stopping a verified watcher, ignoring a stale pid file", async () => {
+  const lines: string[] = [];
+  const err = console.error; console.error = (s: string) => { lines.push(s); };
+  const other = Bun.spawn(["sleep", "30"]);
+  try {
+    const w = spawnWorkbench(); await sleep(300);
+    writePid(w.pid, Date.now());
+    inbox.stopWatcher("claude-a");
+    expect(await settled(w)).toBe(true);
+    writePid(other.pid);
+    inbox.stopWatcher("claude-a");
+    expect(lines).toEqual([`workbench: stopping watcher ${w.pid}`, "workbench: ignoring stale pid file for claude-a"]);
+  } finally { console.error = err; other.kill(); }
+});
+
+test("a pointer closed before the watcher started does not stop it (a resume reopens it in parallel)", async () => {
+  const { openPointer, closePointer } = await import("../src/session");
+  openPointer("claude", "a", "/w");
+  closePointer("claude-a");
+  await sleep(20);
+  setTimeout(() => put("claude-a", review("rv1")), 150);
+  expect((await inbox.wait("claude-a", 3000, 30))?.id).toBe("rv1");
+});

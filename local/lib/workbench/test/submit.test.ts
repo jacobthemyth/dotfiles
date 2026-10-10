@@ -328,3 +328,14 @@ test("submit delivers only to sessions whose pointer is still bound to the works
   expect(out.sessions).toEqual(["claude-late", "claude-one"]);
   expect(existsSync(join(tmp, "state", "inbox", "claude-moved", `${r.id}.json`))).toBe(false);
 });
+
+test("close clears a lock left without a review file and prints one line", async () => {
+  const { writeJson } = await import("../src/store");
+  writeJson(join(tmp, "state", "locks", "ws1.json"), { workset: "ws1", review: "r-orphan", paths: [tmp], opened: "t", holder: "jake" });
+  const { run } = await import("../src/cmd/close");
+  const out: string[] = [];
+  const orig = console.log; console.log = (s: string) => { out.push(s); };
+  try { expect(await run(["ws1"])).toBe(0); } finally { console.log = orig; }
+  expect(loadLock("ws1")).toBeNull();
+  expect(out).toEqual(["closed r-orphan for ws1: lock released, comments kept"]);
+});

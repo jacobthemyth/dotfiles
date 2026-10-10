@@ -244,3 +244,43 @@ test("open refuses a work worktree that does not have the member's branch checke
   expect(loadReview("ws1")).toBeNull();
   expect(loadLock("ws1")).toBeNull();
 });
+
+const userNotes = () => JSON.parse(readFileSync(join(import.meta.dir, "fixtures", "hunk-user-notes.json"), "utf8")).comments;
+function seedNotes(memberId: string) {
+  writeJson(join(tmp, "state", "reviews", "ws1", "notes", `${memberId.replace(/[/#]/g, "_")}.json`), userNotes());
+}
+const ownAdds = (cmds: string[]) => cmds.filter((c) => c.startsWith("hunk session comment add") && c.includes("--author you"));
+
+test("re-pointing to another worktree re-shows that member's snapshotted notes as the reviewer's agent comments", () => {
+  const a = worktree("feat");
+  const b = worktree("feat2", "feat");
+  const ws = workset([{ branch: "feat", worktree: a }, { branch: "feat2", worktree: b, base: "feat" }]);
+  const r = openReview("ws1", { allowDirty: false });
+  const to = ws.members.find((m) => m.branch === "feat2")!;
+  seedNotes(to.id);
+  process.env.WORKBENCH_DRY_RUN_HUNK_SESSIONS = JSON.stringify({ sessions: [{ sessionId: "sid-1", terminal: { locations: [{ source: "tmux", paneId: "%1" }] } }] });
+  const n = r.commands!.length;
+  expect(repoint(r, ws, to, "feat")).toBe(true);
+  const cmds = loadReview("ws1")!.commands!.slice(n);
+  expect(ownAdds(cmds)).toEqual([
+    "hunk session comment add sid-1 --file f.txt --new-line 2 --summary you: user note text --author you --json",
+    "hunk session comment add sid-1 --file src/old.ts --old-line 4 --summary you: ? why was this removed --author you --json",
+  ]);
+  expect(cmds.findIndex((c) => c.includes("--author you"))).toBeGreaterThan(cmds.findIndex((c) => c === "hunk session list --json"));
+});
+
+test("a snapshotted note already live in hunk is not re-added", () => {
+  const a = worktree("feat");
+  const b = worktree("feat2", "feat");
+  const ws = workset([{ branch: "feat", worktree: a }, { branch: "feat2", worktree: b, base: "feat" }]);
+  const r = openReview("ws1", { allowDirty: false });
+  const to = ws.members.find((m) => m.branch === "feat2")!;
+  seedNotes(to.id);
+  process.env.WORKBENCH_DRY_RUN_HUNK_SESSIONS = JSON.stringify({ sessions: [{ sessionId: "sid-1", terminal: { locations: [{ source: "tmux", paneId: "%1" }] } }] });
+  process.env.WORKBENCH_DRY_RUN_HUNK_NOTES = JSON.stringify({ comments: [userNotes()[0]] });
+  const n = r.commands!.length;
+  repoint(r, ws, to, "feat");
+  const adds = ownAdds(loadReview("ws1")!.commands!.slice(n));
+  expect(adds).toHaveLength(1);
+  expect(adds[0]).toContain("--file src/old.ts");
+});

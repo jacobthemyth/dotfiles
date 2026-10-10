@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { normaliseNotes, type Comment } from "./comments";
 import * as git from "./git";
 import { sub } from "./paths";
-import { archiveFile, clearNotes, hasWorktree, killWindow, loadNotes, loadReview, releaseReview, snapshotNotes, type Review } from "./review";
+import { archiveFile, clearNotes, hasWorktree, killWindow, loadLock, loadNotes, loadReview, releaseReview, snapshotNotes, type Review } from "./review";
 import { loadPointer, pointerKeys } from "./session";
 import { now, writeJson } from "./store";
 import { loadWorkset, type Member, type Workset } from "./workset";
@@ -137,10 +137,15 @@ export function summary(f: ReviewFile): string {
 export const closedLine = (name: string, id: string) => `closed ${id} for ${name}: lock released, comments kept`;
 
 // Leaves the review without submitting: notes are snapshotted and kept, the lock released, nothing committed.
-// A review whose workset was deleted can still be closed, so its lock never sticks.
+// A review whose workset was deleted can still be closed, and so can a lock whose review file is gone
+// (an open that failed part-way), so a lock never sticks.
 export function closeReview(name: string): string {
   const review = loadReview(name), ws = loadWorkset(name);
-  if (!review) throw new Error(ws ? `workbench: no open review for "${name}"` : `workbench: no workset "${name}"`);
+  if (!review) {
+    const lock = loadLock(name);
+    if (lock) { releaseReview(name); return lock.review; }
+    throw new Error(ws ? `workbench: no open review for "${name}"` : `workbench: no workset "${name}"`);
+  }
   if (ws) snapshotCurrent(ws, review, console.error);
   releaseReview(name);
   return review.id;

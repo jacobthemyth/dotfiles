@@ -4,6 +4,7 @@ type In = Record<string, any>;
 export function parseClaudeHook(i: unknown): Event | null {
   if (!i || typeof i !== "object") return null;
   const h = i as In;
+  if (!h.session_id) return null; // an empty key would make pointer "claude-"
   const s = { harness: "claude", session: String(h.session_id ?? ""), cwd: String(h.cwd ?? "") };
   switch (h.hook_event_name) {
     case "SessionStart": return { kind: "sessionStarted", ...s, resumed: h.source !== "startup" && h.source !== "clear" };

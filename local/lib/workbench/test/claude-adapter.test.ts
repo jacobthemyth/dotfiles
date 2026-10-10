@@ -35,3 +35,12 @@ test("outcome renders hookEventName and context; deny only on PreToolUse", () =>
   const pre = parseClaudeHook({ ...base, hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command: "x" } })!;
   expect(JSON.parse(renderClaudeOutcome(pre, { deny: "no" })).hookSpecificOutput).toMatchObject({ permissionDecision: "deny", permissionDecisionReason: "no" });
 });
+test("an empty or missing session_id is null", () => {
+  expect(parseClaudeHook({ ...base, session_id: "", hook_event_name: "SessionStart", source: "startup" })).toBeNull();
+  expect(parseClaudeHook({ cwd: "/w", hook_event_name: "UserPromptSubmit" })).toBeNull();
+});
+test("workbench hook with an unknown harness exits 1, never 2", async () => {
+  const { run } = await import("../src/cmd/hook");
+  const err = console.error; console.error = () => {};
+  try { expect(await run(["nope"])).toBe(1); } finally { console.error = err; }
+});

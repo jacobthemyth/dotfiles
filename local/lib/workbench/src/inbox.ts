@@ -2,6 +2,7 @@ import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { join } from "node:path";
 import { sub } from "./paths";
+import { loadPointer } from "./session";
 import { readJson, removeFile, writeJson } from "./store";
 import { inboxFile, type ReviewFile } from "./submit";
 
@@ -52,19 +53,32 @@ function isOurWatcher(e: Entry): boolean {
   return Date.now() - elapsed * 1000 <= e.started + 2000; // elapsed time sidesteps ps's local-time lstart
 }
 
+// The kill decision for a pid file's entry, logged on stderr so a lingering watcher can be diagnosed.
+function stopIfOurs(key: string, e: Entry): void {
+  if (!isOurWatcher(e)) { console.error(`workbench: ignoring stale pid file for ${key}`); return; }
+  console.error(`workbench: stopping watcher ${e.pid}`);
+  try { process.kill(e.pid, "SIGTERM"); } catch { /* already gone */ }
+}
+
 // Stops the key's registered watcher if it verifiably is one, and removes the pid file.
 export function stopWatcher(key: string): void {
   const e = readEntry(key);
-  if (e && isOurWatcher(e)) { try { process.kill(e.pid, "SIGTERM"); } catch { /* already gone */ } }
+  if (e) stopIfOurs(key, e);
   removeFile(pidFile(key));
 }
 
+// Closed since `since`: a pointer closed earlier is a resume in flight (SessionStart runs the watcher and the
+// hook that reopens the pointer in parallel), not an end.
+const closedSince = (key: string, since: number): boolean => {
+  try { const c = loadPointer(key)?.closed; return !!c && Date.parse(c) >= since; } catch { return false; }
+};
+
 // Polls (fs.watch is unreliable across tmp mounts). Registers in watch/<key>.pid, replacing any previous
-// watcher, and gives up (null) if a newer live watcher takes the pid file.
+// watcher, and gives up (null) if a newer live watcher takes the pid file or the session's pointer closes.
 export async function wait(key: string, timeoutMs: number, pollMs = 2000): Promise<ReviewFile | null> {
   const me = process.pid;
   const prev = readEntry(key);
-  if (prev && prev.pid !== me && isOurWatcher(prev)) { try { process.kill(prev.pid, "SIGTERM"); } catch { /* already gone */ } }
+  if (prev && prev.pid !== me) stopIfOurs(key, prev);
   const mine: Entry = { pid: me, started: Date.now(), token: randomBytes(8).toString("hex") };
   writeJson(pidFile(key), mine);
   const ours = () => readEntry(key)?.token === mine.token;
@@ -76,6 +90,7 @@ export async function wait(key: string, timeoutMs: number, pollMs = 2000): Promi
     for (;;) {
       const unread = list(key).filter((r) => !r.read);
       if (unread.length) return unread[unread.length - 1];
+      if (closedSince(key, mine.started)) return null; // SessionEnd may fail to kill us; a closed pointer ends us
       const owner = readEntry(key);
       if (owner && owner.token !== mine.token && owner.pid !== me && isOurWatcher(owner)) return null;
       if (Date.now() >= deadline) return null;

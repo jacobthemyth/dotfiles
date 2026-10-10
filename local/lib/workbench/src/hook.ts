@@ -2,7 +2,7 @@ import { realpathSync } from "node:fs";
 import type { Event, Outcome } from "./events";
 import { openPointer, closePointer, pointerKey, currentWorkset, joinWorkset } from "./session";
 import { createWorkset, loadWorkset, deleteWorkset, saveWorkset, addMember } from "./workset";
-import { stopWatcher } from "./inbox";
+import { stopWatcher, unreadCount } from "./inbox";
 import { recognise } from "./record";
 import * as git from "./git";
 import * as gh from "./gh";
@@ -68,9 +68,12 @@ export function handle(e: Event): Outcome {
       return {};
     }
     case "promptSubmitted": {
-      const locks = activeLocks();
-      if (locks.length === 0) return {};
-      return { context: locks.map((l) => `workbench: review open on workset ${l.workset}; worktrees ${l.paths.join(", ")} are locked until submit or close. Do not edit there.`).join("\n") };
+      const lines = activeLocks().map((l) => `workbench: review open on workset ${l.workset}; worktrees ${l.paths.join(", ")} are locked until submit or close. Do not edit there.`);
+      // The watcher gives up after 2 h: the next prompt still surfaces what arrived since (one readdir, no git).
+      let unread = 0;
+      try { unread = unreadCount(pointerKey(e.harness, e.session)); } catch { /* the lock lines still matter */ }
+      if (unread > 0) lines.push(`workbench: ${unread} unread review(s) in your inbox; run \`workbench inbox show\`.`);
+      return lines.length ? { context: lines.join("\n") } : {};
     }
     // The watcher restart is the hook entry's job (cmd/hook.ts --watch), not handle's.
     case "turnEnded": return {};

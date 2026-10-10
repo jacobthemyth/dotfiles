@@ -28,7 +28,8 @@ async function watch(): Promise<number> {
 // Hooks must never block or add noise: every failure is logged to stderr and exits 0.
 export async function run(args: string[]): Promise<number> {
   const [harness] = args;
-  if (harness !== "claude") { console.error("workbench hook: unknown harness"); return 2; }
+  // 1, never 2: exit 2 from a hook blocks the tool call.
+  if (harness !== "claude") { console.error("workbench hook: unknown harness"); return 1; }
   if (args.includes("--watch")) return watch();
   try {
     const raw = (await Bun.stdin.text()).trim();
