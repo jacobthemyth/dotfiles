@@ -1,5 +1,6 @@
 import { test, expect, beforeEach, afterEach } from "bun:test";
-import { mkdtempSync, mkdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { writeJson } from "../src/store";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openReview, loadReview, loadLock, loadNotes, repoint } from "../src/review";
@@ -17,7 +18,7 @@ function sh(cwd: string, ...args: string[]) {
 }
 
 let tmp: string, repo: string;
-const KEYS = ["WORKBENCH_CONFIG", "WORKBENCH_STATE_DIR", "WORKBENCH_DRY_RUN", "WORKBENCH_DRY_RUN_TMUX", "WORKBENCH_DRY_RUN_FAIL"] as const;
+const KEYS = ["WORKBENCH_CONFIG", "WORKBENCH_STATE_DIR", "WORKBENCH_DRY_RUN", "WORKBENCH_DRY_RUN_TMUX", "WORKBENCH_DRY_RUN_FAIL", "WORKBENCH_DRY_RUN_HUNK_SESSIONS", "WORKBENCH_DRY_RUN_HUNK_NOTES"] as const;
 const saved = Object.fromEntries(KEYS.map((k) => [k, process.env[k]]));
 beforeEach(() => {
   tmp = realpathSync(mkdtempSync(join(tmpdir(), "wb-open-")));
@@ -133,7 +134,7 @@ test("open refuses when git status fails in a work worktree", () => {
   expect(loadLock("ws1")).toBeNull();
 });
 
-const panes = (list: { id: string; dead?: boolean; start: string }[]) =>
+const panes = (list: { id: string; dead?: boolean; command?: string; start: string }[]) =>
   JSON.stringify({ sessions: { "wb-ws1": { panes: list } } });
 const SIDEBAR = { id: "%2", start: '"workbench sidebar ws1"' };
 function reopen(stub: string): string[] {
@@ -208,4 +209,29 @@ test("re-pointing within the hunk worktree reloads, and falls back to a respawn 
   expect(cmds.findIndex((c) => c.startsWith("hunk session reload"))).toBeLessThan(cmds.findIndex((c) => c.startsWith("tmux respawn-pane")));
   process.env.WORKBENCH_DRY_RUN_FAIL = "hunk session reload,tmux respawn-pane";
   expect(repoint(r, ws, m, "main")).toBe(false);
+});
+
+test("a new review on a window left up adopts its hunk pane and session, snapshots notes and rehydrates replies", () => {
+  const wt = worktree("feat");
+  workset([{ branch: "feat", worktree: wt }]);
+  const id = `${repo}#feat`;
+  // An earlier, submitted review whose comment has a reply hunk has not shown.
+  writeJson(join(tmp, "state", "reviews", "ws1", "r-old.json"), {
+    id: "r-old", workset: "ws1", submitted: "t", message: null, edits: [], failed: [], sessions: [],
+    comments: [{ id: "user:1", member: id, repo, slug: null, branch: "feat", path: "f.txt", line: { side: "new", start: 1, end: 1 },
+      sha: "", type: "question", text: "why?", replies: [{ at: "t", by: "claude-x", text: "because" }] }],
+  });
+  // The window survived the earlier review: a live hunk (by command, started by hand) and the sidebar.
+  process.env.WORKBENCH_DRY_RUN_TMUX = panes([SIDEBAR, { id: "%7", command: "hunk", start: "" }]);
+  process.env.WORKBENCH_DRY_RUN_HUNK_SESSIONS = JSON.stringify({ sessions: [{ sessionId: "sid-7", terminal: { locations: [{ source: "tmux", paneId: "%7" }] } }] });
+  process.env.WORKBENCH_DRY_RUN_HUNK_NOTES = JSON.stringify({ comments: [] });
+  const r = openReview("ws1", { allowDirty: false });
+  expect(r).toMatchObject({ hunkPaneId: "%7", hunkSessionId: "sid-7", current: id });
+  const cmds = r.commands!;
+  expect(acts(cmds)).toEqual([]); // nothing restarted
+  expect(cmds).toContain("hunk session list --json");
+  expect(cmds).toContain("hunk session comment list sid-7 --type all --json");
+  expect(cmds.some((c) => c.startsWith("hunk session comment add sid-7 --file f.txt --new-line 1 --summary ↩ because"))).toBe(true);
+  expect(existsSync(join(tmp, "state", "reviews", "ws1", "notes", `${id.replace(/[/#]/g, "_")}.json`))).toBe(true);
+  expect(JSON.parse(readFileSync(join(tmp, "state", "reviews", "ws1", "r-old.json"), "utf8")).comments[0].replies[0].shown_in).toEqual(["sid-7"]);
 });

@@ -1,5 +1,4 @@
 import { closeReview, closedLine, submitReview } from "./submit";
-import * as tmux from "./tmux";
 
 // The sidebar's submit and close: the pane is in line mode while these run.
 const anyKey = () => new Promise<void>((resolve) => {
@@ -14,12 +13,10 @@ function takeOver(): void {
   process.stdout.write("\x1b[H\x1b[2J");
 }
 
-// Submits (prompting for the message here), then closes the review window. False when submit failed.
+// Submits (prompting for the message here); submit pauses on a key, then kills the review window. False when submit failed.
 export async function submitInPane(name: string): Promise<boolean> {
   takeOver();
-  try { await submitReview(name); } catch (e) { console.log((e as Error).message); await anyKey(); return false; }
-  await anyKey();
-  tmux.killSession(tmux.sessionName(name));
+  try { await submitReview(name, { beforeKill: anyKey }); } catch (e) { console.log((e as Error).message); await anyKey(); return false; }
   return true;
 }
 

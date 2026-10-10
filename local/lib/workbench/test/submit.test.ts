@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { openReview, loadReview, loadLock } from "../src/review";
 import { savePointer } from "../src/session";
 import { closeReview, submitReview, type ReviewFile } from "../src/submit";
+import { drainRecorded } from "../src/spawn";
 import { addMember, createWorkset, saveWorkset } from "../src/workset";
 
 const GIT_ENV = {
@@ -235,4 +236,51 @@ test("a corrupt notes snapshot or pointer file is warned about and cannot abort 
   expect(warns.join("\n")).toContain(`unreadable notes snapshot for ${id}`);
   expect(warns.join("\n")).toContain("unreadable session pointer claude-bad");
   expect(loadLock("ws1")).toBeNull();
+});
+
+const notesDir = () => join(tmp, "state", "reviews", "ws1", "notes");
+const seedNotes = (memberId: string) => {
+  mkdirSync(notesDir(), { recursive: true });
+  writeFileSync(notesPath(memberId), JSON.stringify(JSON.parse(fixture).comments));
+};
+
+test("submit kills the review window when it exists, after the pause, and records nothing when it does not", async () => {
+  workset([{ branch: "feat", worktree: worktree("feat") }]);
+  openReview("ws1", { allowDirty: false });
+  drainRecorded();
+  process.env.WORKBENCH_DRY_RUN_TMUX = JSON.stringify({ sessions: { "wb-ws1": { panes: [] } } });
+  const order: string[] = [];
+  await submitReview("ws1", { message: "m", log, beforeKill: async () => { order.push(`pause with lock ${loadLock("ws1") ? "held" : "released"}`); } });
+  const cmds = drainRecorded();
+  expect(cmds).toContain("tmux kill-session -t =wb-ws1");
+  expect(order).toEqual(["pause with lock released"]);
+
+  openReview("ws1", { allowDirty: false });
+  drainRecorded();
+  process.env.WORKBENCH_DRY_RUN_TMUX = JSON.stringify({ sessions: {} });
+  await submitReview("ws1", { message: "m", log });
+  expect(drainRecorded().some((c) => c.includes("kill-session"))).toBe(false);
+});
+
+test("submit removes the notes snapshots, so the next review does not resend old comments", async () => {
+  const a = worktree("feat");
+  workset([{ branch: "feat", worktree: a }]);
+  openReview("ws1", { allowDirty: false });
+  seedNotes(`${repo}#feat`);
+  const first = await submitReview("ws1", { message: "m", log });
+  expect(first.comments).toHaveLength(2);
+  expect(existsSync(notesDir())).toBe(false);
+  expect(existsSync(join(tmp, "state", "reviews", "ws1", `${first.id}.json`))).toBe(true); // the archive stays
+
+  openReview("ws1", { allowDirty: false });
+  const second = await submitReview("ws1", { message: "m", log });
+  expect(second.comments).toEqual([]);
+});
+
+test("close keeps the notes snapshots for the next review", () => {
+  workset([{ branch: "feat", worktree: worktree("feat") }]);
+  openReview("ws1", { allowDirty: false });
+  seedNotes(`${repo}#feat`);
+  closeReview("ws1");
+  expect(JSON.parse(readFileSync(notesPath(`${repo}#feat`), "utf8"))).toHaveLength(3);
 });

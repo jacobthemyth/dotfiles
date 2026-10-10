@@ -24,7 +24,7 @@ Glossary: [CONTEXT.md](CONTEXT.md). Design: [docs/superpowers/specs/2026-10-10-w
 | `workbench workset prune <id> [--yes]` | Remove a merged or gone branch and its worktree (dry run without `--yes`). |
 | `workbench scan [--json]` | Derive branches, worktrees and PRs; list claimed, unclaimed and prunable. |
 | `workbench open <workset> [--allow-dirty] [--no-attach]` | Open a review: lock the work worktrees, build the `wb-<workset>` tmux session. |
-| `workbench submit <workset> [-m\|--message <m>]` | Commit your edits, deliver the review to bound sessions' inboxes, release the lock. |
+| `workbench submit <workset> [-m\|--message <m>]` | Commit your edits, deliver the review to bound sessions' inboxes, release the lock, kill the review window. |
 | `workbench close <workset>` | Release the lock without submitting; notes are kept. |
 | `workbench inbox list \| show [id] \| wait [--timeout <s>] [--session <key>]` | Read a session's inbox (`show` marks the review read). |
 | `workbench reply --review <id> --comment <id> --text <t> [--session <key>]` | An agent's reply to one comment. |
@@ -39,7 +39,7 @@ Inside Claude Code the session key comes from `CLAUDE_CODE_SESSION_ID` (`claude-
 2. Select a member in the sidebar (`⏎`) to show its diff (working tree against the merge base with its diff base).
 3. Comment in hunk with `c`, text, `Ctrl-S`: `? ` makes a question, `// ` a note, anything else a change request.
 4. Edit with hunk's `e`: neovim on the real file; the diff refreshes when you quit.
-5. Submit (`s` in the sidebar, or `workbench submit`): one commit per touched member, authored by you, with `Workset:` and `Review:` trailers; the review goes to every open bound session's inbox.
+5. Submit (`s` in the sidebar, or `workbench submit`): one commit per touched member, authored by you, with `Workset:` and `Review:` trailers; the review goes to every open bound session's inbox, the notes snapshots are cleared and the review window is killed.
 6. The agent wakes, runs `workbench inbox show`, works through it and answers with `workbench reply`; the replies show in hunk the next time the window opens on that member.
 
 ## Sidebar keys
@@ -75,16 +75,14 @@ ls ~/.local/state/workbench/inbox/claude-<id>/        # the review file
 Within a few seconds the agent shows "Stop hook feedback" and runs `workbench inbox show`; it commits the change request and runs `workbench reply` for each comment. Then:
 
 ```sh
-tmux kill-session -t wb-spike   # only if you submitted from the shell; the sidebar's s already does this
-workbench open spike            # replies appear as agent comments on the commented lines (toggle agent notes in hunk if hidden)
-workbench close spike           # release the lock when done reading
+workbench open spike    # replies appear as agent comments on the commented lines (toggle agent notes in hunk if hidden)
+workbench close spike   # release the lock when done reading
 ```
 
 ## Known limitations
 
 - hunk 0.23 refuses `session reload --source` across worktrees, so showing a member in another worktree restarts hunk in the pane.
-- hunk user notes live only in the TUI's memory and die with it; the sidebar and submit snapshot them to `~/.local/state/workbench/reviews/<workset>/notes/`.
+- hunk user notes live only in the TUI's memory and die with it; the sidebar, `close` and `submit` snapshot them to `~/.local/state/workbench/reviews/<workset>/notes/`. Submit clears that directory once the review is delivered; close keeps it.
 - The lock is enforced by hooks. The Bash heuristic (write-like commands naming or running in a locked path) has false negatives; the prompt-submit context tells the agent about the lock as a backstop.
 - No GitHub posting: comments stay between you and the agents.
-- `workbench submit` from the shell leaves the review window running; kill it before the next `open` (see the spec's open questions).
 - The sidebar is 44 columns wide, so long member ids and session lines are cut off.

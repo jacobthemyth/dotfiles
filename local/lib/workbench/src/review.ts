@@ -1,4 +1,4 @@
-import { existsSync, realpathSync } from "node:fs";
+import { existsSync, realpathSync, rmSync } from "node:fs";
 import { userInfo } from "node:os";
 import { join } from "node:path";
 import { loadConfig, type Config } from "./config";
@@ -30,6 +30,14 @@ export const archiveFile = (ws: string, id: string) => join(sub("reviews"), ws, 
 export const loadReview = (ws: string) => readJson<Review>(reviewFile(ws));
 export const loadLock = (ws: string) => readJson<Lock>(lockFile(ws));
 export const loadNotes = (ws: string, memberId: string) => readJson<hunk.RawNote[]>(notesFile(ws, memberId)) ?? [];
+// Submit delivered the notes: drop every member's snapshot so the next review starts empty. Close keeps them.
+export const clearNotes = (ws: string) => rmSync(join(sub("reviews"), ws, "notes"), { recursive: true, force: true });
+
+// The review window has no use once a review is submitted; a later open builds a fresh one.
+export function killWindow(ws: string): void {
+  const session = tmux.sessionName(ws);
+  if (tmux.hasSession(session)) tmux.killSession(session);
+}
 
 // Commands recorded by a dry run so far are appended to the review before it is written.
 export function saveReview(r: Review): void {
@@ -97,6 +105,19 @@ export function repoint(r: Review, ws: Workset, to: Member, base: string): boole
   return ok;
 }
 
+// A window left up by an earlier review: take over its live hunk (session id by pane), snapshot its notes
+// for the member it shows, and show the replies it has not shown yet.
+function adoptHunk(r: Review, ws: Workset, pane: string, fallback: Member): void {
+  const cwd = tmux.paneCwd(pane);
+  const m = (cwd && ws.members.find((x) => hasWorktree(x) && real(x.worktree!) === real(cwd))) || fallback;
+  r.hunkPaneId = pane;
+  r.hunkPaneCwd = m.worktree;
+  r.current = m.id;
+  r.hunkSessionId = hunk.waitForSession(pane);
+  snapshotNotes(r, m);
+  rehydrateReplies(r, m);
+}
+
 // Builds the review window, or repairs an existing one: a dead or missing hunk pane, a missing sidebar.
 function openWindow(r: Review, ws: Workset, first: Member, cfg: Config): void {
   const session = tmux.sessionName(r.workset), wt = first.worktree!;
@@ -109,15 +130,14 @@ function openWindow(r: Review, ws: Workset, first: Member, cfg: Config): void {
   const live = ws.members.find((m) => m.id === r.current && hasWorktree(m)) ?? first;
   const panes = tmux.listPanes(session);
   const sidebar = panes.find((p) => p.start.includes(SIDEBAR(r.workset)));
-  const hunkPane = panes.find((p) => p.id === r.hunkPaneId) ?? panes.find((p) => p.start.includes("hunk diff"));
+  const hunkPane = panes.find((p) => p.id === r.hunkPaneId) ?? panes.find((p) => p.start.includes("hunk diff") || p.command === "hunk");
   if (!hunkPane) {
     const pane = tmux.splitRight((sidebar ?? panes[0])?.id ?? session, live.worktree!);
     if (!startHunk(r, live, diffBase(live, cfg), pane)) throw new Error(`workbench: could not start hunk in ${pane}`);
     if (sidebar) tmux.resizeWidth(sidebar.id, 44);
-  } else {
-    r.hunkPaneId = hunkPane.id;
-    if (hunkPane.dead && !startHunk(r, live, diffBase(live, cfg), hunkPane.id)) throw new Error(`workbench: could not restart hunk in ${hunkPane.id}`);
-  }
+  } else if (hunkPane.dead) {
+    if (!startHunk(r, live, diffBase(live, cfg), hunkPane.id)) throw new Error(`workbench: could not restart hunk in ${hunkPane.id}`);
+  } else if (hunkPane.id !== r.hunkPaneId || !r.hunkSessionId) adoptHunk(r, ws, hunkPane.id, live);
   if (sidebar?.dead) tmux.respawn(sidebar.id, wt, ["workbench", "sidebar", r.workset]);
   else if (!sidebar) tmux.splitSidebar(r.hunkPaneId!, wt, SIDEBAR(r.workset));
 }

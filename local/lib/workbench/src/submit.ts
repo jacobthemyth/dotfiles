@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { normaliseNotes, type Comment } from "./comments";
 import * as git from "./git";
 import { sub } from "./paths";
-import { archiveFile, hasWorktree, loadNotes, loadReview, releaseReview, snapshotNotes, type Review } from "./review";
+import { archiveFile, clearNotes, hasWorktree, killWindow, loadNotes, loadReview, releaseReview, snapshotNotes, type Review } from "./review";
 import { loadPointer } from "./session";
 import { now, writeJson } from "./store";
 import { loadWorkset, type Member, type Workset } from "./workset";
@@ -14,7 +14,11 @@ export type ReviewFile = {
   id: string; workset: string; submitted: string; message: string | null;
   comments: Comment[]; edits: EditCommit[]; failed: FailedEdit[]; sessions: string[];
 };
-export type SubmitOptions = { message?: string; prompt?: () => Promise<string>; log?: (line: string) => void; warn?: (line: string) => void };
+// beforeKill runs after delivery and release, just before the review window is killed (the sidebar's pause).
+export type SubmitOptions = {
+  message?: string; prompt?: () => Promise<string>; log?: (line: string) => void; warn?: (line: string) => void;
+  beforeKill?: () => Promise<void>;
+};
 
 export const DEFAULT_MESSAGE = "Review edits (workbench)";
 export const inboxFile = (key: string, id: string) => join(sub("inbox"), key, `${id}.json`);
@@ -101,10 +105,13 @@ export async function submitReview(name: string, opts: SubmitOptions = {}): Prom
   const file: ReviewFile = { id: review.id, workset: name, submitted: now(), message, comments, edits, failed, sessions };
   for (const k of sessions) writeJson(inboxFile(k, review.id), { ...file, read: false });
   writeJson(archiveFile(name, review.id), file);
+  clearNotes(name); // delivered: the next review must not send them again
 
-  // 5. Release: the lock goes last.
+  // 5. Release: the lock goes last. Then the window, which may be the pane running this.
   releaseReview(name);
   log(summary(file));
+  await opts.beforeKill?.();
+  killWindow(name);
   return file;
 }
 
