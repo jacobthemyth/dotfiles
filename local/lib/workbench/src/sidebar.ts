@@ -12,7 +12,7 @@ export async function runSidebar(name: string): Promise<number> {
   if (!process.stdin.isTTY) { console.error("workbench: the sidebar needs a terminal"); return 1; }
   const cfg = config();
   let unclaimed: Found[] | null = null;
-  let showThrowaway = false, sel = 0, top = 0, status = "", rows: Row[] = [];
+  let showThrowaway = false, sel = 0, top = 0, status = "", rows: Row[] = [], done = false;
 
   const workset = (): Workset => {
     const ws = loadWorkset(name);
@@ -20,7 +20,7 @@ export async function runSidebar(name: string): Promise<number> {
     return ws;
   };
 
-  const render = () => {
+  const draw = () => {
     const ws = workset();
     const review = loadReview(name);
     const sessions = listPointers().filter((p) => p.workset === name);
@@ -37,6 +37,11 @@ export async function runSidebar(name: string): Promise<number> {
     });
     out.push("", fit(status), `\x1b[2m${fit(KEYS)}\x1b[0m`);
     process.stdout.write("\x1b[H\x1b[2J" + out.join("\r\n"));
+  };
+  // Every paint goes through here: nothing after quit, and an error becomes the status line, not a crash.
+  const render = () => {
+    if (done) return;
+    try { draw(); } catch (e) { process.stdout.write(`\x1b[H\x1b[2J${(e as Error).message}\r\n`); }
   };
 
   // derive runs gh and git; do it in a child process so keys and paints are not held up.
@@ -74,9 +79,12 @@ export async function runSidebar(name: string): Promise<number> {
 
   return await new Promise<number>((resolve) => {
     const timer = setInterval(render, 5000);
+    const restore = () => { try { process.stdin.setRawMode(false); } catch {} };
+    process.on("exit", restore);
     const quit = () => {
+      done = true;
       clearInterval(timer);
-      process.stdin.setRawMode(false);
+      restore();
       process.stdin.pause();
       process.stdout.write("\x1b[H\x1b[2J");
       resolve(0);
@@ -101,7 +109,7 @@ export async function runSidebar(name: string): Promise<number> {
     process.stdin.setEncoding("utf8");
     process.stdin.on("data", (chunk: string) => {
       try {
-        for (const key of chunk.match(/\x1b\[[A-D]|[\s\S]/g) ?? []) onKey(key);
+        for (const key of chunk.match(/\x1b\[[A-D]|[\s\S]/g) ?? []) if (!done) onKey(key);
       } catch (e) { status = (e as Error).message; render(); }
     });
     render();

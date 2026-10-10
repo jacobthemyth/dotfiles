@@ -70,3 +70,5 @@ export function dirtyFiles(path: string): string[] | null {
     return out;
   } catch { return null; }
 }
+
+export const mergeBase = (cwd: string, a: string, b: string) => git(cwd, "merge-base", a, b);

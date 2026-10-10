@@ -1,4 +1,3 @@
-import { realpathSync } from "node:fs";
 import { dryRun, run } from "./spawn";
 import * as tmux from "./tmux";
 
@@ -13,41 +12,33 @@ export type AgentNote = { file: string; newLine?: number; oldLine?: number; summ
 export type Target = { id: string | null; path: string };
 
 const address = (t: Target) => (t.id ? [t.id] : ["--repo", t.path]);
-const range = (base: string, branch: string) => `${base}...${branch}`;
-const real = (p: string) => { try { return realpathSync(p); } catch { return p; } };
 
-export function start(pane: string, worktree: string, base: string, branch: string): void {
-  tmux.respawn(pane, worktree, ["hunk", "diff", range(base, branch), "--watch"]);
+// ref is a single revision (the merge base, so the working tree shows) or a `<base>...<branch>` range.
+export function start(pane: string, worktree: string, ref: string): boolean {
+  return tmux.respawn(pane, worktree, ["hunk", "diff", ref, "--watch"]);
 }
 
-type Listed = { sessionId: string; repoRoot: string; cwd: string; terminal?: { locations?: { source: string; paneId?: string }[] } };
+type Listed = { sessionId: string; terminal?: { locations?: { source: string; paneId?: string }[] } };
 export function sessions(): Listed[] {
   const r = run(["hunk", "session", "list", "--json"]);
   try { return r.code === 0 ? (JSON.parse(r.stdout).sessions ?? []) : []; } catch { return []; }
 }
 
-// The tmux pane a live session's TUI runs in.
-export function paneOf(id: string): string | null {
-  const s = sessions().find((x) => x.sessionId === id);
-  return s?.terminal?.locations?.find((l) => l.source === "tmux")?.paneId ?? null;
-}
-
-// Polls until a session rooted at the worktree registers (the TUI does that itself) or timeoutMs passes.
-export function waitForSession(worktree: string, timeoutMs = 5000): string | null {
-  const want = real(worktree);
+// Polls until the TUI in this tmux pane registers its session, or timeoutMs passes.
+export function waitForSession(pane: string, timeoutMs = 5000): string | null {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
-    const hit = sessions().find((s) => real(s.repoRoot) === want || real(s.cwd) === want);
+    const hit = sessions().find((s) => s.terminal?.locations?.some((l) => l.source === "tmux" && l.paneId === pane));
     if (hit) return hit.sessionId;
     if (dryRun() || Date.now() >= deadline) return null;
     Bun.sleepSync(250);
   }
 }
 
-// hunk 0.23 refuses a --source outside the session's initial root, so this only re-points within one worktree.
-export function reload(t: Target, worktree: string, base: string, branch: string): boolean {
+// hunk 0.23 refuses a --source outside the session's initial root: this only re-points within one worktree.
+export function reload(t: Target, worktree: string, ref: string): boolean {
   const who = t.id ? [t.id] : ["--session-path", t.path];
-  return run(["hunk", "session", "reload", ...who, "--source", worktree, "--json", "--", "diff", range(base, branch)]).code === 0;
+  return run(["hunk", "session", "reload", ...who, "--source", worktree, "--json", "--", "diff", ref]).code === 0;
 }
 
 export function userComments(t: Target): RawNote[] {

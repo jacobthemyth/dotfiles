@@ -17,7 +17,7 @@ function sh(cwd: string, ...args: string[]) {
 }
 
 let tmp: string, repo: string;
-const KEYS = ["WORKBENCH_CONFIG", "WORKBENCH_STATE_DIR", "WORKBENCH_DRY_RUN"] as const;
+const KEYS = ["WORKBENCH_CONFIG", "WORKBENCH_STATE_DIR", "WORKBENCH_DRY_RUN", "WORKBENCH_DRY_RUN_TMUX", "WORKBENCH_DRY_RUN_FAIL"] as const;
 const saved = Object.fromEntries(KEYS.map((k) => [k, process.env[k]]));
 beforeEach(() => {
   tmp = realpathSync(mkdtempSync(join(tmpdir(), "wb-open-")));
@@ -108,31 +108,104 @@ test("open refuses a workset with no work member that has a worktree", () => {
   expect(loadReview("ws1")).toBeNull();
 });
 
-test("dry run records new-session, hunk diff and split-window in order", () => {
+test("dry run records new-session, hunk diff against the merge base, then split-window", () => {
   const wt = worktree("feat");
   workset([{ branch: "feat", worktree: wt }]);
-  const cmds = openReview("ws1", { allowDirty: false }).commands!;
+  const r = openReview("ws1", { allowDirty: false });
+  const cmds = r.commands!;
+  const mb = sh(wt, "merge-base", "main", "feat");
   const at = (s: string) => cmds.findIndex((c) => c.startsWith(s));
-  const ns = at("tmux new-session"), hd = cmds.findIndex((c) => c.includes("hunk diff main...feat --watch")), sw = at("tmux split-window");
-  expect(cmds[ns]).toContain(`-d -s wb-ws1 -c ${wt} -x 220 -y 60`);
-  expect(cmds[sw]).toContain(`-h -b -l 44 -c ${wt}`);
-  expect(cmds[sw]).toEndWith("workbench sidebar ws1");
+  const ns = at("tmux new-session"), hd = at("tmux respawn-pane"), sw = at("tmux split-window");
+  expect(cmds[ns]).toBe(`tmux new-session -d -s wb-ws1 -c ${wt} -x 220 -y 60 -P -F #{pane_id}`);
+  expect(cmds[hd]).toBe(`tmux respawn-pane -k -t %1 -c ${wt} hunk diff ${mb} --watch`);
+  expect(cmds[sw]).toBe(`tmux split-window -h -b -l 44 -c ${wt} -t %1 workbench sidebar ws1`);
   expect(ns).toBeGreaterThanOrEqual(0);
   expect(hd).toBeGreaterThan(ns);
   expect(sw).toBeGreaterThan(hd);
+  expect(r.hunkPaneId).toBe("%1");
 });
 
-test("re-pointing snapshots the live member's notes, reloads hunk on the other worktree and moves current", () => {
+test("open refuses when git status fails in a work worktree", () => {
+  const notGit = join(tmp, "not-a-repo");
+  mkdirSync(notGit);
+  workset([{ branch: "feat", worktree: notGit }]);
+  expect(() => openReview("ws1", { allowDirty: true })).toThrow(`cannot read git status in ${notGit}`);
+  expect(loadLock("ws1")).toBeNull();
+});
+
+const panes = (list: { id: string; dead?: boolean; start: string }[]) =>
+  JSON.stringify({ sessions: { "wb-ws1": { panes: list } } });
+const SIDEBAR = { id: "%2", start: '"workbench sidebar ws1"' };
+function reopen(stub: string): string[] {
+  const before = loadReview("ws1")!.commands!.length;
+  process.env.WORKBENCH_DRY_RUN_TMUX = stub;
+  return openReview("ws1", { allowDirty: false }).commands!.slice(before);
+}
+const acts = (cmds: string[]) => cmds.filter((c) => /new-session|split-window|respawn-pane|resize-pane/.test(c));
+
+test("reopen leaves a healthy window untouched", () => {
+  workset([{ branch: "feat", worktree: worktree("feat") }]);
+  openReview("ws1", { allowDirty: false });
+  expect(acts(reopen(panes([SIDEBAR, { id: "%1", start: '"hunk diff abc --watch"' }])))).toEqual([]);
+});
+
+test("reopen respawns a dead hunk pane", () => {
+  const wt = worktree("feat");
+  workset([{ branch: "feat", worktree: wt }]);
+  openReview("ws1", { allowDirty: false });
+  const mb = sh(wt, "merge-base", "main", "feat");
+  expect(acts(reopen(panes([SIDEBAR, { id: "%1", dead: true, start: "" }])))).toEqual([`tmux respawn-pane -k -t %1 -c ${wt} hunk diff ${mb} --watch`]);
+});
+
+test("reopen replaces a hunk pane that is gone and re-splits a missing sidebar", () => {
+  const wt = worktree("feat");
+  workset([{ branch: "feat", worktree: wt }]);
+  openReview("ws1", { allowDirty: false });
+  const mb = sh(wt, "merge-base", "main", "feat");
+  expect(acts(reopen(panes([SIDEBAR])))).toEqual([
+    `tmux split-window -h -t %2 -c ${wt} -P -F #{pane_id}`,
+    `tmux respawn-pane -k -t %3 -c ${wt} hunk diff ${mb} --watch`,
+    "tmux resize-pane -t %2 -x 44",
+  ]);
+  expect(loadReview("ws1")!.hunkPaneId).toBe("%3");
+  expect(acts(reopen(panes([{ id: "%5", start: '"hunk diff x --watch"' }])))).toEqual([
+    `tmux split-window -h -b -l 44 -c ${wt} -t %5 workbench sidebar ws1`,
+  ]);
+});
+
+test("re-pointing to another worktree snapshots notes and respawns hunk there", () => {
   const a = worktree("feat");
   const b = worktree("feat2", "feat");
   const ws = workset([{ branch: "feat", worktree: a }, { branch: "feat2", worktree: b, base: "feat" }]);
   const r = openReview("ws1", { allowDirty: false });
+  const n = r.commands!.length;
   const to = ws.members.find((m) => m.branch === "feat2")!;
   expect(repoint(r, ws, to, "feat")).toBe(true);
   const saved = loadReview("ws1")!;
   expect(saved.current).toBe(to.id);
-  expect(saved.commands!.at(-1)).toBe(`hunk session reload --session-path ${a} --source ${b} --json -- diff feat...feat2`);
+  expect(saved.hunkPaneCwd).toBe(b);
+  const cmds = saved.commands!.slice(n);
+  expect(cmds.some((c) => c.startsWith("hunk session reload"))).toBe(false);
+  expect(cmds).toContain(`tmux respawn-pane -k -t %1 -c ${b} hunk diff ${sh(b, "merge-base", "feat", "feat2")} --watch`);
   const notes = join(tmp, "state", "reviews", "ws1", "notes", `${repo.replace(/[/#]/g, "_")}_feat.json`);
   expect(existsSync(notes)).toBe(true);
   expect(loadNotes("ws1", `${repo}#feat`)).toEqual([]);
+});
+
+test("re-pointing within the hunk worktree reloads, and falls back to a respawn when reload fails", () => {
+  const a = worktree("feat");
+  const ws = workset([{ branch: "feat", worktree: a }]);
+  const r = openReview("ws1", { allowDirty: false });
+  const m = ws.members[0];
+  const mb = sh(a, "merge-base", "main", "feat");
+  let n = r.commands!.length;
+  expect(repoint(r, ws, m, "main")).toBe(true);
+  expect(loadReview("ws1")!.commands!.slice(n)).toContain(`hunk session reload --session-path ${a} --source ${a} --json -- diff ${mb}`);
+  process.env.WORKBENCH_DRY_RUN_FAIL = "hunk session reload";
+  n = loadReview("ws1")!.commands!.length;
+  expect(repoint(r, ws, m, "main")).toBe(true);
+  const cmds = loadReview("ws1")!.commands!.slice(n);
+  expect(cmds.findIndex((c) => c.startsWith("hunk session reload"))).toBeLessThan(cmds.findIndex((c) => c.startsWith("tmux respawn-pane")));
+  process.env.WORKBENCH_DRY_RUN_FAIL = "hunk session reload,tmux respawn-pane";
+  expect(repoint(r, ws, m, "main")).toBe(false);
 });
