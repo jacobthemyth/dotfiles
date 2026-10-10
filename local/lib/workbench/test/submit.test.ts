@@ -182,9 +182,9 @@ test("close releases the lock and keeps the review file for rehydration", () => 
 });
 
 test("submit refuses without an open review or workset", async () => {
-  expect(submitReview("nope", { log })).rejects.toThrow(/no workset "nope"/);
+  await expect(submitReview("nope", { log })).rejects.toThrow(/no workset "nope"/);
   workset([{ branch: "feat", worktree: worktree("feat") }]);
-  expect(submitReview("ws1", { log })).rejects.toThrow(/no open review/);
+  await expect(submitReview("ws1", { log })).rejects.toThrow(/no open review/);
 });
 
 test("a failed commit is reported, the member skipped and submit carries on", async () => {
@@ -194,9 +194,14 @@ test("a failed commit is reported, the member skipped and submit carries on", as
   openReview("ws1", { allowDirty: false });
   writeFileSync(join(repo, ".git", "hooks", "pre-commit"), "#!/bin/sh\nexit 1\n", { mode: 0o755 });
   writeFileSync(join(a, "f.txt"), "edited\n");
+  writeFileSync(join(a, "new.txt"), "new\n");
   const out = await submitReview("ws1", { message: "m", log });
   expect(out.edits).toEqual([]);
-  expect(logs.join("\n")).toContain(`commit failed for ${repo}#feat`);
+  expect(out.failed).toHaveLength(1);
+  expect(out.failed[0]).toMatchObject({ repo, branch: "feat", files: ["f.txt", "new.txt"], error: expect.any(String) });
+  expect(sh(a, "status", "--porcelain").split("\n").sort()).toEqual(["?? new.txt", "M f.txt"]); // unstaged (sh trims)
+  expect(sh(a, "diff", "--cached", "--name-only")).toBe("");
+  expect(logs.join("\n")).toContain(`commit failed for ${repo}#feat; 2 files left unstaged in ${a}`);
   expect(out.sessions).toEqual(["claude-one"]);
   expect(loadLock("ws1")).toBeNull();
 });
@@ -206,5 +211,28 @@ test("close still releases the lock when the workset file is gone", () => {
   openReview("ws1", { allowDirty: false });
   rmSync(join(tmp, "state", "worksets", "ws1.json"));
   closeReview("ws1");
+  expect(loadLock("ws1")).toBeNull();
+});
+
+test("a corrupt notes snapshot or pointer file is warned about and cannot abort delivery", async () => {
+  const a = worktree("feat");
+  const b = worktree("feat2", "feat");
+  workset([{ branch: "feat", worktree: a }, { branch: "feat2", worktree: b, base: "feat" }], ["claude-one", "claude-bad"]);
+  pointer("claude-one");
+  writeFileSync(join(tmp, "state", "sessions", "claude-bad.json"), "{not json");
+  const r = openReview("ws1", { allowDirty: false });
+  const id = `${repo}#feat2`;
+  mkdirSync(join(notesPath(id), ".."), { recursive: true });
+  writeFileSync(notesPath(id), "[{truncated");
+  writeFileSync(join(b, "f.txt"), "edited\n");
+  const warns: string[] = [];
+  const out = await submitReview("ws1", { message: "m", log, warn: (s) => { warns.push(s); } });
+  expect(out.edits.map((e) => e.branch)).toEqual(["feat2"]);
+  expect(sh(b, "log", "-1", "--format=%s")).toBe("m");
+  expect(out.comments).toEqual([]);
+  expect(out.sessions).toEqual(["claude-one"]);
+  expect(existsSync(join(tmp, "state", "inbox", "claude-one", `${r.id}.json`))).toBe(true);
+  expect(warns.join("\n")).toContain(`unreadable notes snapshot for ${id}`);
+  expect(warns.join("\n")).toContain("unreadable session pointer claude-bad");
   expect(loadLock("ws1")).toBeNull();
 });

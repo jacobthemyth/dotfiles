@@ -1,8 +1,12 @@
-function git(cwd: string, ...args: string[]): string | null {
+function exec(cwd: string, args: string[]): { ok: boolean; out: string; err: string } {
   try {
     const r = Bun.spawnSync(["git", ...args], { cwd, env: process.env, stdout: "pipe", stderr: "pipe" });
-    return r.exitCode === 0 ? r.stdout.toString().trim() : null;
-  } catch { return null; }
+    return { ok: r.exitCode === 0, out: r.stdout.toString().trim(), err: r.stderr.toString().trim() };
+  } catch (e) { return { ok: false, out: "", err: (e as Error).message }; }
+}
+function git(cwd: string, ...args: string[]): string | null {
+  const r = exec(cwd, args);
+  return r.ok ? r.out : null;
 }
 
 export const repoRoot = (cwd: string) => git(cwd, "rev-parse", "--show-toplevel") || null;
@@ -77,8 +81,12 @@ const zList = (out: string | null) => (out === null ? null : out.split("\0").fil
 // Tracked paths that differ from HEAD (staged or not, deletions included); null on failure.
 export const diffNames = (path: string) => zList(git(path, "diff", "--name-only", "-z", "HEAD"));
 export const untracked = (path: string) => zList(git(path, "ls-files", "--others", "--exclude-standard", "-z"));
-export const add = (path: string, files: string[]) => git(path, "add", "--", ...files) !== null;
+// add and commit return null on success, else git's error text.
+const errOf = (r: { ok: boolean; err: string }, what: string) => (r.ok ? null : r.err || `git ${what} failed`);
+export const add = (path: string, files: string[]) => errOf(exec(path, ["add", "--", ...files]), "add");
 // Commits exactly `files` (--only semantics: anything else already staged stays staged and out).
-export function commit(path: string, message: string, trailers: string[], files: string[]): boolean {
-  return git(path, "commit", "-q", "-m", message, ...trailers.flatMap((t) => ["--trailer", t]), "--", ...files) !== null;
+export function commit(path: string, message: string, trailers: string[], files: string[]): string | null {
+  return errOf(exec(path, ["commit", "-q", "-m", message, ...trailers.flatMap((t) => ["--trailer", t]), "--", ...files]), "commit");
 }
+// Takes `files` back out of the index; no commit is touched.
+export const unstage = (path: string, files: string[]) => git(path, "restore", "--staged", "--", ...files) !== null;
