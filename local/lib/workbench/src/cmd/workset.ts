@@ -1,9 +1,10 @@
 import { parseArgs } from "node:util";
 import { expandHome } from "../paths";
-import { loadConfig } from "../config";
+import { loadConfig, type Config } from "../config";
 import { derive, foundId, prunable, unclaimed } from "../derive";
 import { pruneWorktreeAndBranch } from "../git";
 import { bindSession, loadPointer } from "../session";
+import { baseSource, diffBase, orderMembers } from "../stack";
 import { addMember, createWorkset, listWorksets, loadWorkset, removeMember, saveWorkset, type Member, type Role, type Workset } from "../workset";
 
 const USAGE = `usage: workbench workset <subcommand>
@@ -37,10 +38,13 @@ function table(rows: string[][]): string {
 function show(ws: Workset): void {
   console.log(ws.name);
   if (ws.members.length === 0) { console.log("(no members)"); return; }
-  const rows = ws.members.map((m) => [
+  let config: Config;
+  try { config = loadConfig(); } catch { config = { default_branch: "main" } as Config; }
+  const rows = orderMembers(ws.members).map((m) => [
     m.order === null ? "-" : String(m.order), m.role, `${m.slug ?? m.repo}#${m.branch}`, m.worktree ?? "-", prCell(m),
+    diffBase(m, config), baseSource(m),
   ]);
-  console.log(table([["order", "role", "member", "worktree", "pr"], ...rows]));
+  console.log(table([["order", "role", "member", "worktree", "pr", "base", "source"], ...rows]));
 }
 
 export async function run(args: string[]): Promise<number> {
@@ -83,7 +87,7 @@ export async function run(args: string[]): Promise<number> {
         const m = addMember(ws, {
           repo: expandHome(values.repo), branch: values.branch, added_by: "hand",
           worktree: values.worktree ? expandHome(values.worktree) : undefined,
-          base: values.base, order, role: values.role as Role | undefined,
+          base: values.base, base_source: values.base ? "declared" : undefined, order, role: values.role as Role | undefined,
         });
         saveWorkset(ws);
         console.log(m.id);
@@ -120,7 +124,7 @@ export async function run(args: string[]): Promise<number> {
         if (!item) return fail(`workbench: nothing found with id "${positionals[1]}"`);
         const ws = loadWorkset(positionals[0]) ?? createWorkset(positionals[0], "hand");
         const m = addMember(ws, {
-          repo: item.repo, slug: item.slug, branch: item.branch, worktree: item.worktree, pr: item.pr, base: item.base,
+          repo: item.repo, slug: item.slug, branch: item.branch, worktree: item.worktree, pr: item.pr, base: item.base, base_source: item.base ? "pr" : undefined,
           role: values.role as Role | undefined, added_by: "hand",
         });
         saveWorkset(ws);

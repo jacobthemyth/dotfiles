@@ -2,11 +2,12 @@ import { join } from "node:path";
 import { sub } from "./paths";
 import { readJson, writeJson, listJson, now, removeFile } from "./store";
 
+export type BaseSource = "pr" | "declared" | "default";
 export type Role = "work" | "throwaway";
 export type Pr = { number: number; url: string; draft: boolean; state: string };
 export type Member = {
   id: string; repo: string; slug: string | null; branch: string; worktree: string | null;
-  base: string | null; pr: Pr | null; order: number | null; role: Role; added_by: string; added_at: string;
+  base: string | null; base_source: BaseSource | null; pr: Pr | null; order: number | null; role: Role; added_by: string; added_at: string;
 };
 export type Workset = { name: string; created: string; members: Member[]; sessions: string[]; ignored: string[] };
 
@@ -36,7 +37,7 @@ export function addMember(ws: Workset, input: MemberInput): Member {
     return existing;
   }
   const m: Member = {
-    id, repo: input.repo, slug, branch: input.branch, worktree: input.worktree ?? null, base: input.base ?? null,
+    id, repo: input.repo, slug, branch: input.branch, worktree: input.worktree ?? null, base: input.base ?? null, base_source: input.base_source ?? null,
     pr: input.pr ?? null, order: input.order ?? null, role: input.role ?? "work", added_by: input.added_by, added_at: now(),
   };
   ws.members.push(m);

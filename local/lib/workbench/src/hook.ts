@@ -47,7 +47,7 @@ export function handle(e: Event): Outcome {
           const branch = repo && git.currentBranch(repo);
           if (!repo || !slug || !branch) continue;
           const found = gh.prForBranch(slug, branch);
-          if (found) addMember(ws, { repo: git.mainWorktree(repo), slug, branch, worktree: e.cwd, pr: found.pr, base: found.base, added_by: key });
+          if (found) addMember(ws, { repo: git.mainWorktree(repo), slug, branch, worktree: e.cwd, pr: found.pr, base: found.base, base_source: found.base ? "pr" : undefined, added_by: key });
         }
       }
       saveWorkset(ws);
