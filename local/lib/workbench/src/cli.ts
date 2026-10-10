@@ -11,6 +11,7 @@ const commands: Record<string, () => Promise<(args: string[]) => Promise<number>
   submit: async () => (await import("./cmd/submit")).run,
   close: async () => (await import("./cmd/close")).run,
   inbox: async () => (await import("./cmd/inbox")).run,
+  reply: async () => (await import("./cmd/reply")).run,
 };
 const load = commands[group ?? ""];
 if (!load) { console.error("usage: workbench <config|workset|hook|scan|open|sidebar|submit|close|inbox|reply> ..."); process.exit(2); }

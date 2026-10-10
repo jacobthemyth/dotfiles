@@ -7,7 +7,8 @@ export type RawNote = {
   newRange?: [number, number]; oldRange?: [number, number]; body: string;
   author?: string; createdAt?: string; editable?: boolean; parentId?: string;
 };
-export type AgentNote = { file: string; newLine?: number; oldLine?: number; summary: string; rationale?: string; author?: string };
+// An agent comment: anchored to a file line, or (replyTo) threaded under an existing note.
+export type AgentNote = { file?: string; newLine?: number; oldLine?: number; replyTo?: string; summary: string; rationale?: string; author?: string };
 // How to address a live hunk session: its id when known, else the path it is rooted at.
 export type Target = { id: string | null; path: string };
 
@@ -19,10 +20,13 @@ export function start(pane: string, worktree: string, ref: string): boolean {
 }
 
 type Listed = { sessionId: string; terminal?: { locations?: { source: string; paneId?: string }[] } };
+// Dry runs read the session list from WORKBENCH_DRY_RUN_HUNK_SESSIONS (the `session list --json` object).
 export function sessions(): Listed[] {
-  const r = run(["hunk", "session", "list", "--json"]);
+  const r = run(["hunk", "session", "list", "--json"], { dryStdout: process.env.WORKBENCH_DRY_RUN_HUNK_SESSIONS });
   try { return r.code === 0 ? (JSON.parse(r.stdout).sessions ?? []) : []; } catch { return []; }
 }
+
+export const hasSession = (id: string): boolean => sessions().some((s) => s.sessionId === id);
 
 // Polls until the TUI in this tmux pane registers its session, or timeoutMs passes.
 export function waitForSession(pane: string, timeoutMs = 5000): string | null {
@@ -47,9 +51,16 @@ export function userComments(t: Target): RawNote[] {
   try { return r.code === 0 ? (JSON.parse(r.stdout).comments ?? []) : []; } catch { return []; }
 }
 
-export function addAgentComment(t: Target, note: AgentNote): string | null {
+// Every note in the session, user and agent. Dry runs read WORKBENCH_DRY_RUN_HUNK_NOTES (the list --json object).
+export function allNotes(t: Target): RawNote[] {
+  const r = run(["hunk", "session", "comment", "list", ...address(t), "--type", "all", "--json"], { dryStdout: process.env.WORKBENCH_DRY_RUN_HUNK_NOTES });
+  try { return r.code === 0 ? (JSON.parse(r.stdout).comments ?? []) : []; } catch { return []; }
+}
+
+// True when hunk accepted the comment.
+export function addAgentComment(t: Target, note: AgentNote): boolean {
   const line = note.newLine !== undefined ? ["--new-line", String(note.newLine)] : ["--old-line", String(note.oldLine ?? 1)];
-  const r = run(["hunk", "session", "comment", "add", ...address(t), "--file", note.file, ...line, "--summary", note.summary,
-    ...(note.rationale ? ["--rationale", note.rationale] : []), ...(note.author ? ["--author", note.author] : []), "--json"]);
-  try { return r.code === 0 ? JSON.parse(r.stdout).result?.commentId ?? null : null; } catch { return null; }
+  const anchor = note.replyTo ? ["--reply-to", note.replyTo] : ["--file", note.file ?? "", ...line];
+  return run(["hunk", "session", "comment", "add", ...address(t), ...anchor, "--summary", note.summary,
+    ...(note.rationale ? ["--rationale", note.rationale] : []), ...(note.author ? ["--author", note.author] : []), "--json"]).code === 0;
 }

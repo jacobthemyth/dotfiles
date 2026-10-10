@@ -5,6 +5,7 @@ import { loadConfig, type Config } from "./config";
 import * as git from "./git";
 import * as hunk from "./hunk";
 import { sub } from "./paths";
+import { rehydrateReplies } from "./reply";
 import { dryRun, drainRecorded } from "./spawn";
 import { diffBase, orderMembers } from "./stack";
 import { readJson, writeJson, now, removeFile } from "./store";
@@ -71,13 +72,15 @@ const SIDEBAR = (ws: string) => `workbench sidebar ${ws}`;
 // Working tree against the merge base, so uncommitted edits show; the plain range when merge-base fails.
 export const diffRef = (wt: string, base: string, branch: string) => git.mergeBase(wt, base, branch) ?? `${base}...${branch}`;
 
-// Runs hunk for `m` in `pane` (default: the recorded hunk pane), then looks for the session it registers.
+// Runs hunk for `m` in `pane` (default: the recorded hunk pane), then looks for the session it registers
+// and shows it the agent replies to `m`'s comments (a fresh hunk holds no notes).
 function startHunk(r: Review, m: Member, base: string, pane = r.hunkPaneId): boolean {
   if (!pane || !hunk.start(pane, m.worktree!, diffRef(m.worktree!, base, m.branch))) return false;
   r.hunkPaneId = pane;
   r.hunkPaneCwd = m.worktree;
   r.current = m.id;
   r.hunkSessionId = hunk.waitForSession(pane);
+  rehydrateReplies(r, m);
   return true;
 }
 
@@ -88,7 +91,7 @@ export function repoint(r: Review, ws: Workset, to: Member, base: string): boole
   if (live && hasWorktree(live)) snapshotNotes(r, live);
   const same = !!r.hunkPaneCwd && real(r.hunkPaneCwd) === real(to.worktree!);
   let ok = same && hunk.reload(hunkTarget(r, to), to.worktree!, diffRef(to.worktree!, base, to.branch));
-  if (ok) r.current = to.id;
+  if (ok) { r.current = to.id; rehydrateReplies(r, to); }
   else ok = startHunk(r, to, base);
   saveReview(r);
   return ok;
