@@ -3,6 +3,7 @@ import { expandHome } from "../paths";
 import { loadConfig, type Config } from "../config";
 import { derive, foundId, prunable, unclaimed } from "../derive";
 import { pruneWorktreeAndBranch } from "../git";
+import { sessionKeyFromEnv } from "../session-key";
 import { bindSession, loadPointer } from "../session";
 import { baseSource, diffBase, orderMembers } from "../stack";
 import { addMember, createWorkset, listWorksets, loadWorkset, removeMember, saveWorkset, type Member, type Role, type Workset } from "../workset";
@@ -17,12 +18,6 @@ const USAGE = `usage: workbench workset <subcommand>
   adopt <name> <id> [--role work|throwaway]
   ignore <name> <id>
   prune <id> [--yes]`;
-
-export function sessionKeyFromEnv(flags: { session?: string }): string | null {
-  if (process.env.WORKBENCH_SESSION) return process.env.WORKBENCH_SESSION;
-  if (process.env.CLAUDE_CODE_SESSION_ID) return `claude-${process.env.CLAUDE_CODE_SESSION_ID}`;
-  return flags.session ?? null;
-}
 
 const fail = (msg: string, code = 1) => { console.error(msg); return code; };
 

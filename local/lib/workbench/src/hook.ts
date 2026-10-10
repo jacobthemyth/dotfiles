@@ -72,6 +72,8 @@ export function handle(e: Event): Outcome {
       if (locks.length === 0) return {};
       return { context: locks.map((l) => `workbench: review open on workset ${l.workset}; worktrees ${l.paths.join(", ")} are locked until submit or close. Do not edit there.`).join("\n") };
     }
+    // The watcher restart is the hook entry's job (cmd/hook.ts --watch), not handle's.
+    case "turnEnded": return {};
     default: return {};
   }
 }
