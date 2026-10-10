@@ -98,6 +98,17 @@ else
   echo "  SKIP: uv not installed"
 fi
 
+echo "==> workbench tests + typecheck"
+if command -v bun >/dev/null 2>&1; then
+  (
+    cd local/lib/workbench &&
+    bun test &&
+    bun x tsc --noEmit
+  ) || fail=1
+else
+  echo "  SKIP: bun not installed"
+fi
+
 if [ "$fail" -ne 0 ]; then
   echo
   echo "FAIL"

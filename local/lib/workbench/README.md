@@ -25,7 +25,7 @@ Glossary: [CONTEXT.md](CONTEXT.md). Design: [docs/superpowers/specs/2026-10-10-w
 | `workbench scan [--json]` | Derive branches, worktrees and PRs; list claimed, unclaimed and prunable. |
 | `workbench open <workset> [--allow-dirty] [--no-attach]` | Open a review: lock the work worktrees, build the `wb-<workset>` tmux session. |
 | `workbench submit <workset> [-m\|--message <m>]` | Commit your edits, deliver the review to bound sessions' inboxes, release the lock, kill the review window. |
-| `workbench close <workset>` | Release the lock without submitting; notes are kept. |
+| `workbench close <workset>` | Release the lock without submitting; notes are kept. Also clears a lock left behind by an `open` that failed part-way. |
 | `workbench inbox list \| show [id] \| wait [--timeout <s>] [--session <key>]` | Read a session's inbox (`show` marks the review read). |
 | `workbench reply --review <id> --comment <id> --text <t> [--session <key>]` | An agent's reply to one comment. |
 | `workbench hook claude [--watch]` | Hook entry point (reads hook JSON on stdin). |
@@ -35,12 +35,18 @@ Inside Claude Code the session key comes from `CLAUDE_CODE_SESSION_ID` (`claude-
 
 ## Review flow
 
-1. `workbench open <workset>`: the work worktrees are locked and the review window opens (sidebar left, hunk right).
+1. `workbench open <workset>`: the work worktrees are locked and the review window opens (sidebar left, hunk right). Each work member's worktree must have that member's branch checked out; `open` refuses otherwise, because submit commits on the branch the worktree has checked out. If `open` fails after taking the lock, `workbench close <workset>` releases it.
 2. Select a member in the sidebar (`⏎`) to show its diff (working tree against the merge base with its diff base).
 3. Comment in hunk with `c`, text, `Ctrl-S`: `? ` makes a question, `// ` a note, anything else a change request.
 4. Edit with hunk's `e`: neovim on the real file; the diff refreshes when you quit.
 5. Submit (`s` in the sidebar, or `workbench submit`): one commit per touched member, authored by you, with `Workset:` and `Review:` trailers; the review goes to every open bound session's inbox, the notes snapshots are cleared and the review window is killed.
 6. The agent wakes, runs `workbench inbox show`, works through it and answers with `workbench reply`; the replies show in hunk the next time the window opens on that member.
+
+Submit commits and delivers only for the members the review opened on. A member recorded after `open` is skipped (`skipping <id>: joined after open`), and so is one whose worktree has since switched branch. The review goes to sessions whose pointer is bound to the workset now; `workbench workset use` moves a session out of its previous workset.
+
+The watcher that wakes an idle agent gives up after 2 hours (the hook timeout). A review that arrives later is not lost: the next prompt in that session adds a line saying how many unread reviews wait in its inbox.
+
+When hunk restarts for a member (showing a member in another worktree, or reopening the window), your earlier comments on that member come back as agent comments by `you` (`you: <text>`). They are for reading only; submit delivers the snapshotted originals once.
 
 ## Sidebar keys
 
