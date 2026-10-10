@@ -55,6 +55,8 @@ export function splitSidebar(pane: string, cwd: string, cmd: string): void {
 
 export const resizeWidth = (pane: string, cols: number) => run(["tmux", "resize-pane", "-t", pane, "-x", String(cols)]).code === 0;
 
+export const killSession = (session: string) => run(["tmux", "kill-session", "-t", `=${session}`]).code === 0;
+
 export function switchOrAttach(session: string): number {
   return process.env.TMUX
     ? run(["tmux", "switch-client", "-t", session]).code

@@ -1,6 +1,6 @@
 function git(cwd: string, ...args: string[]): string | null {
   try {
-    const r = Bun.spawnSync(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe" });
+    const r = Bun.spawnSync(["git", ...args], { cwd, env: process.env, stdout: "pipe", stderr: "pipe" });
     return r.exitCode === 0 ? r.stdout.toString().trim() : null;
   } catch { return null; }
 }
@@ -72,3 +72,13 @@ export function dirtyFiles(path: string): string[] | null {
 }
 
 export const mergeBase = (cwd: string, a: string, b: string) => git(cwd, "merge-base", a, b);
+
+const zList = (out: string | null) => (out === null ? null : out.split("\0").filter(Boolean));
+// Tracked paths that differ from HEAD (staged or not, deletions included); null on failure.
+export const diffNames = (path: string) => zList(git(path, "diff", "--name-only", "-z", "HEAD"));
+export const untracked = (path: string) => zList(git(path, "ls-files", "--others", "--exclude-standard", "-z"));
+export const add = (path: string, files: string[]) => git(path, "add", "--", ...files) !== null;
+// Commits exactly `files` (--only semantics: anything else already staged stays staged and out).
+export function commit(path: string, message: string, trailers: string[], files: string[]): boolean {
+  return git(path, "commit", "-q", "-m", message, ...trailers.flatMap((t) => ["--trailer", t]), "--", ...files) !== null;
+}

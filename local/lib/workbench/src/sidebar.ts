@@ -1,6 +1,7 @@
 import { foundId, type Found } from "./derive";
 import { config, loadReview, repoint } from "./review";
 import { listPointers } from "./session";
+import { closeInPane, submitInPane } from "./sidebar-review";
 import { buildRows, clamp, move, scroll, type Row } from "./sidebar-model";
 import { diffBase } from "./stack";
 import { addMember, loadWorkset, saveWorkset, type Workset } from "./workset";
@@ -12,7 +13,7 @@ export async function runSidebar(name: string): Promise<number> {
   if (!process.stdin.isTTY) { console.error("workbench: the sidebar needs a terminal"); return 1; }
   const cfg = config();
   let unclaimed: Found[] | null = null;
-  let showThrowaway = false, sel = 0, top = 0, status = "", rows: Row[] = [], done = false;
+  let showThrowaway = false, sel = 0, top = 0, status = "", rows: Row[] = [], done = false, busy = false;
 
   const workset = (): Workset => {
     const ws = loadWorkset(name);
@@ -40,7 +41,7 @@ export async function runSidebar(name: string): Promise<number> {
   };
   // Every paint goes through here: nothing after quit, and an error becomes the status line, not a crash.
   const render = () => {
-    if (done) return;
+    if (done || busy) return;
     try { draw(); } catch (e) { process.stdout.write(`\x1b[H\x1b[2J${(e as Error).message}\r\n`); }
   };
 
@@ -89,6 +90,19 @@ export async function runSidebar(name: string): Promise<number> {
       process.stdout.write("\x1b[H\x1b[2J");
       resolve(0);
     };
+    // Submit and close take over the pane in line mode; keys reaching the sidebar meanwhile are dropped.
+    const reviewAction = async (key: "s" | "c") => {
+      busy = true;
+      try {
+        if (key === "c") await closeInPane(name);
+        else if (await submitInPane(name)) return quit();
+      } catch (e) { status = (e as Error).message; }
+      busy = false;
+      if (done) return;
+      process.stdin.setRawMode(true);
+      process.stdin.resume();
+      render();
+    };
     const onKey = (key: string) => {
       const row = rows[sel];
       switch (key) {
@@ -100,7 +114,7 @@ export async function runSidebar(name: string): Promise<number> {
         case "i": if (row) claim(row, "ignore"); break;
         case "r": status = "rescanning…"; rescan(); break;
         case "t": showThrowaway = !showThrowaway; break;
-        case "s": case "c": status = "submit/close arrive in a later task"; break;
+        case "s": case "c": void reviewAction(key); return;
         default: return;
       }
       render();
@@ -109,7 +123,7 @@ export async function runSidebar(name: string): Promise<number> {
     process.stdin.setEncoding("utf8");
     process.stdin.on("data", (chunk: string) => {
       try {
-        for (const key of chunk.match(/\x1b\[[A-D]|[\s\S]/g) ?? []) if (!done) onKey(key);
+        for (const key of chunk.match(/\x1b\[[A-D]|[\s\S]/g) ?? []) if (!done && !busy) onKey(key);
       } catch (e) { status = (e as Error).message; render(); }
     });
     render();

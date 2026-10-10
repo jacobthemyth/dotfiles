@@ -8,6 +8,8 @@ const commands: Record<string, () => Promise<(args: string[]) => Promise<number>
   hook: async () => (await import("./cmd/hook")).run,
   open: async () => (await import("./cmd/open")).run,
   sidebar: async () => (await import("./cmd/sidebar")).run,
+  submit: async () => (await import("./cmd/submit")).run,
+  close: async () => (await import("./cmd/close")).run,
 };
 const load = commands[group ?? ""];
 if (!load) { console.error("usage: workbench <config|workset|hook|scan|open|sidebar|submit|close|inbox|reply> ..."); process.exit(2); }

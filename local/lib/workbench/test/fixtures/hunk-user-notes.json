@@ -1,0 +1,37 @@
+{
+  "comments": [
+    {
+      "noteId": "user:1791644120301-1",
+      "source": "user",
+      "filePath": "f.txt",
+      "hunkIndex": 0,
+      "newRange": [2, 2],
+      "body": "user note text",
+      "author": "user",
+      "createdAt": "2026-10-10T14:55:20.301Z",
+      "editable": true
+    },
+    {
+      "noteId": "user:1791644131877-2",
+      "source": "user",
+      "filePath": "src/old.ts",
+      "hunkIndex": 1,
+      "oldRange": [4, 6],
+      "body": "? why was this removed",
+      "author": "user",
+      "createdAt": "2026-10-10T14:55:31.877Z",
+      "editable": true
+    },
+    {
+      "noteId": "mcp:1791644140112-3",
+      "source": "agent",
+      "filePath": "f.txt",
+      "hunkIndex": 0,
+      "newRange": [1, 1],
+      "body": "agent summary",
+      "author": "claude",
+      "createdAt": "2026-10-10T14:55:40.112Z",
+      "editable": false
+    }
+  ]
+}

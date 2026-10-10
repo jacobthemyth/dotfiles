@@ -7,7 +7,7 @@ import * as hunk from "./hunk";
 import { sub } from "./paths";
 import { dryRun, drainRecorded } from "./spawn";
 import { diffBase, orderMembers } from "./stack";
-import { readJson, writeJson, now } from "./store";
+import { readJson, writeJson, now, removeFile } from "./store";
 import * as tmux from "./tmux";
 import { loadWorkset, type Member, type Workset } from "./workset";
 
@@ -24,6 +24,8 @@ const reviewFile = (ws: string) => join(sub("reviews"), `${ws}.json`);
 const lockFile = (ws: string) => join(sub("locks"), `${ws}.json`);
 const notesFile = (ws: string, memberId: string) => join(sub("reviews"), ws, "notes", `${memberId.replace(/[/#]/g, "_")}.json`);
 
+export const archiveFile = (ws: string, id: string) => join(sub("reviews"), ws, `${id}.json`);
+
 export const loadReview = (ws: string) => readJson<Review>(reviewFile(ws));
 export const loadLock = (ws: string) => readJson<Lock>(lockFile(ws));
 export const loadNotes = (ws: string, memberId: string) => readJson<hunk.RawNote[]>(notesFile(ws, memberId)) ?? [];
@@ -38,7 +40,13 @@ export function config(): Config {
   try { return loadConfig(); } catch { return { default_branch: "main" } as Config; }
 }
 
-const hasWorktree = (m: Member) => !!m.worktree && existsSync(m.worktree);
+// Ends the open review: the review file goes first and the lock last, so agents stay held until nothing is pending.
+export function releaseReview(ws: string): void {
+  removeFile(reviewFile(ws));
+  removeFile(lockFile(ws));
+}
+
+export const hasWorktree = (m: Member) => !!m.worktree && existsSync(m.worktree);
 export const hunkTarget = (r: Review, m: Member): hunk.Target => ({ id: r.hunkSessionId, path: r.hunkPaneCwd ?? m.worktree! });
 
 function reviewId(): string {
