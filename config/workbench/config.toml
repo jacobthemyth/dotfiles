@@ -1,0 +1,7 @@
+# Workbench: what agents produced, reviewed in one place. See ~/.local/lib/workbench/CONTEXT.md.
+repo_roots = ["~/Code/abridgeai/*", "~/.dotfiles"]
+worktree_dirs = [".worktrees", "/tmp/worktrees", "~/.claude/worktrees"]
+exclude_repos = ["~/Code/abridgeai/kp-production-readiness"]
+github_user = "@me"
+harnesses = ["claude"]
+default_branch = "main"

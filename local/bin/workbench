@@ -1,0 +1,2 @@
+#!/bin/sh
+exec bun run "$HOME/.local/lib/workbench/src/cli.ts" "$@"
