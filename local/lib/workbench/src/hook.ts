@@ -5,6 +5,8 @@ import { createWorkset, loadWorkset, deleteWorkset, saveWorkset, addMember } fro
 import { recognise } from "./record";
 import * as git from "./git";
 import * as gh from "./gh";
+import { activeLocks, commandTouches, denyMessage, lockFor, looksLikeWrite } from "./lock";
+import { isAbsolute, resolve } from "node:path";
 
 export function handle(e: Event): Outcome {
   switch (e.kind) {
@@ -52,6 +54,23 @@ export function handle(e: Event): Outcome {
       }
       saveWorkset(ws);
       return {};
+    }
+    case "beforeWrite": {
+      const lock = lockFor(isAbsolute(e.path) ? e.path : resolve(e.cwd, e.path));
+      return lock ? { deny: denyMessage(lock, lock.matched) } : {};
+    }
+    case "beforeCommand": {
+      if (!looksLikeWrite(e.command)) return {};
+      for (const lock of activeLocks()) {
+        const hit = commandTouches(e.command, e.cwd, lock.paths);
+        if (hit) return { deny: denyMessage(lock, hit) };
+      }
+      return {};
+    }
+    case "promptSubmitted": {
+      const locks = activeLocks();
+      if (locks.length === 0) return {};
+      return { context: locks.map((l) => `workbench: review open on workset ${l.workset}; worktrees ${l.paths.join(", ")} are locked until submit or close. Do not edit there.`).join("\n") };
     }
     default: return {};
   }
