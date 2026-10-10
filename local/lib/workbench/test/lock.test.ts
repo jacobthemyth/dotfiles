@@ -94,3 +94,16 @@ test("looksLikeWrite basics", () => {
   expect(looksLikeWrite("git push origin x")).toBe(true);
   expect(looksLikeWrite("echo a >> f")).toBe(true);
 });
+
+test("read-only commands inside a lock are allowed", () => {
+  for (const c of ["git diff src/rm.ts", "git log --format=%cp", "npm run cp-assets", "grep -rn 'tee' src", "ls -la src/cp",
+    "awk '$1 >= 3' f", "grep '>' f", "jq '.[] | select(.n > 1)' f", "git stash list"]) {
+    expect({ c, out: cmd(c, locked) }).toEqual({ c, out: {} });
+  }
+});
+test("write commands inside a lock are still denied", () => {
+  for (const c of ["FOO=1 rm -rf x", "sudo chmod +x f", "xargs rm", "git -C . commit -m x", "git stash", "git stash pop",
+    "sed -n 1p f > out", `echo "a > b" > out`]) {
+    expect({ c, denied: cmd(c, locked).deny !== undefined }).toEqual({ c, denied: true });
+  }
+});

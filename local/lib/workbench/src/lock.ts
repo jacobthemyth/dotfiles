@@ -38,19 +38,40 @@ export function denyMessage(lock: Lock, path: string): string {
   return `workbench: ${path} is locked by review ${lock.review} of workset ${lock.workset} (held by ${lock.holder}); it is released on submit or close. Work elsewhere until then.`;
 }
 
-const GIT_OPTS = String.raw`(?:\s+-[Cc]\s+\S+|\s+--[\w-]+(?:=\S+)?|\s+-\w)*`;
-const WRITE_RES = [
-  new RegExp(String.raw`\bgit${GIT_OPTS}\s+(commit|rebase|reset|checkout|switch|merge|cherry-pick|stash|apply|am|push|mv|rm|clean|restore)\b`),
-  /\bsed\s+(-[a-zA-Z]*i|--in-place)/,
-  /\b(rm|mv|cp|tee|truncate|chmod|chown)\b/,
-  /\bterraform\s+(apply|state|import)\b/,
-];
+const PREFIXES = new Set(["sudo", "env", "command", "exec", "time", "nice", "nohup", "xargs"]);
+const VERBS = new Set(["rm", "mv", "cp", "tee", "truncate", "chmod", "chown", "dd", "rsync"]);
+const GIT_WRITES = new Set(["commit", "rebase", "reset", "checkout", "switch", "merge", "cherry-pick", "apply", "am", "push", "mv", "rm", "clean", "restore", "worktree", "branch", "tag"]);
+const STASH_WRITES = new Set(["push", "pop", "apply", "drop", "clear", "save"]);
+
+function gitWrites(rest: string[]): boolean {
+  let i = 0;
+  while (i < rest.length && rest[i].startsWith("-")) i += rest[i] === "-C" || rest[i] === "-c" ? 2 : 1;
+  const sub = rest[i];
+  if (sub === undefined) return false;
+  if (sub === "stash") return rest[i + 1] === undefined || STASH_WRITES.has(rest[i + 1]);
+  return GIT_WRITES.has(sub);
+}
+function segmentWrites(seg: string): boolean {
+  const toks = seg.trim().split(/\s+/).filter(Boolean);
+  let i = 0;
+  while (i < toks.length && (PREFIXES.has(toks[i]) || /^[A-Za-z_]\w*=/.test(toks[i]) || (i > 0 && toks[i].startsWith("-")))) i++;
+  const head = toks[i];
+  if (head === undefined) return false;
+  const rest = toks.slice(i + 1);
+  if (VERBS.has(head)) return true;
+  if (head === "sed") return rest.some((t) => /^-[a-zA-Z]*i/.test(t) || t.startsWith("--in-place"));
+  if (head === "git") return gitWrites(rest);
+  if (head === "terraform") return ["apply", "state", "import"].includes(rest[0]);
+  return false;
+}
 export function looksLikeWrite(command: string): boolean {
-  const stripped = command
-    .replace(/\d*>&\d*-?/g, " ")             // 2>&1
-    .replace(/(?:&|\d*)>>?\s*\/dev\/null\b/g, " "); // > /dev/null, 2>/dev/null, &>/dev/null
-  if (/(^|[^<=-])>/.test(stripped)) return true;
-  return WRITE_RES.some((re) => re.test(command));
+  const bare = command.replace(/"(?:[^"\\]|\\.)*"|'[^']*'/g, '""');
+  const noRedir = bare
+    .replace(/\d*>&\d*-?/g, " ")
+    .replace(/(?:&|\d*)>>?\s*\/dev\/null\b/g, " ")
+    .replace(/->|=>|<>|>=/g, " ");
+  if (/(^|[^<])>/.test(noRedir)) return true;
+  return bare.split(/&&|\|\||;|\||\n/).some(segmentWrites);
 }
 
 const unquote = (t: string) => t.replace(/^["']+|["']+$/g, "");
