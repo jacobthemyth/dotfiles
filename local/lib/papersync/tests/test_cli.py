@@ -12,7 +12,6 @@ from tests.things_fixture import make_db
 
 def _env(tmp_path: Path) -> dict[str, str]:
     cfg = tmp_path / "cfg"
-    state = tmp_path / "state"
     cfg.mkdir()
     (cfg / "papersync").mkdir()
     (cfg / "papersync" / "config.toml").write_text(
@@ -20,7 +19,6 @@ def _env(tmp_path: Path) -> dict[str, str]:
     )
     return {
         "XDG_CONFIG_HOME": str(cfg),
-        "XDG_STATE_HOME": str(state),
         "PAPERSYNC_THINGS_DB": str(make_db(tmp_path / "main.sqlite")),
         "PAPERSYNC_OPENER": "none",
     }
@@ -39,7 +37,7 @@ def test_things_export_json(tmp_path: Path) -> None:
     assert [d["title"] for d in data] == ["FOO"] and data[0]["source"] == "things"
 
 
-def test_render_from_stdin_and_ledger(tmp_path: Path) -> None:
+def test_render_from_stdin(tmp_path: Path) -> None:
     env = _env(tmp_path)
     items = json.dumps([{"source": "things", "ref": "T1", "title": "FOO", "notes": ""}])
     r = CliRunner().invoke(main, ["render", "-", "--boxes", "A,B"], input=items, env=env)
@@ -53,78 +51,13 @@ def test_render_from_stdin_and_ledger(tmp_path: Path) -> None:
         main, ["render", "-", "--boxes", "A,B", "--no-tag"], input=items, env=env
     )
     assert r2.exit_code == 0 and "things:///update?" not in r2.output
-    ledger = (tmp_path / "state" / "papersync" / "prints.jsonl").read_text()
-    assert '"event":"render"' in ledger and '"ref":"T1"' in ledger
     boxsets = (tmp_path / "cfg" / "papersync" / "boxsets.toml").read_text()
     assert 'labels = ["A", "B"]' in boxsets
 
 
-def test_print_then_status(tmp_path: Path) -> None:
-    env = _env(tmp_path)
-    r = CliRunner().invoke(main, ["print", "next"], env=env)
+def test_print_next(tmp_path: Path) -> None:
+    r = CliRunner().invoke(main, ["print", "next"], env=_env(tmp_path))
     assert r.exit_code == 0, r.output
-    s = CliRunner().invoke(main, ["status"], env=env)
-    assert s.exit_code == 0 and "BAR" in s.output and "Dated" in s.output
-
-
-def _record(tmp_path: Path, source: str, ref: str, ts: datetime) -> None:
-    from papersync.ledger import Ledger, LedgerEntry
-
-    Ledger(tmp_path / "state" / "papersync" / "prints.jsonl").record(
-        LedgerEntry(ts=ts, event="render", source=source, ref=ref, title=ref)
-    )
-
-
-def test_status_never_looks_up_an_obsidian_ref_in_things(tmp_path: Path) -> None:
-    """An Obsidian ref has no Things row, and none should ever be sought for one.
-
-    ``PAPERSYNC_THINGS_DB`` points at a path that doesn't exist, so if status
-    tried to open the Things database at all -- even just to look up an
-    Obsidian ref -- this would fail loudly instead of silently passing.
-    """
-    env = {**_env(tmp_path), "PAPERSYNC_THINGS_DB": str(tmp_path / "no-such.sqlite")}
-    _record(tmp_path, "obsidian", "Notes/Alpha", datetime(2026, 9, 1))
-    s = CliRunner().invoke(main, ["status"], env=env)
-    assert s.exit_code == 0, s.output
-    assert "outstanding" in s.output
-    assert "done in Things" not in s.output
-
-
-def test_forget_clears_an_unambiguous_ref_regardless_of_source(tmp_path: Path) -> None:
-    env = _env(tmp_path)
-    _record(tmp_path, "obsidian", "Notes/Alpha", datetime(2026, 9, 1))
-    f = CliRunner().invoke(main, ["status", "--forget", "Notes/Alpha"], env=env)
-    assert f.exit_code == 0, f.output
-    assert "obsidian" in f.output
-    s = CliRunner().invoke(main, ["status"], env=env)
-    assert "Notes/Alpha" not in s.output
-
-
-def test_forget_an_unknown_ref_is_rejected(tmp_path: Path) -> None:
-    env = _env(tmp_path)
-    f = CliRunner().invoke(main, ["status", "--forget", "nope"], env=env)
-    assert f.exit_code != 0
-    assert "no outstanding card" in f.output
-
-
-def test_forget_a_ref_outstanding_in_two_sources_needs_source_to_disambiguate(
-    tmp_path: Path,
-) -> None:
-    env = _env(tmp_path)
-    _record(tmp_path, "things", "T1", datetime(2026, 9, 1))
-    _record(tmp_path, "obsidian", "T1", datetime(2026, 9, 2))
-
-    ambiguous = CliRunner().invoke(main, ["status", "--forget", "T1"], env=env)
-    assert ambiguous.exit_code != 0
-    assert "more than one source" in ambiguous.output
-
-    resolved = CliRunner().invoke(
-        main, ["status", "--forget", "T1", "--source", "obsidian"], env=env
-    )
-    assert resolved.exit_code == 0, resolved.output
-    s = CliRunner().invoke(main, ["status"], env=env)
-    # The things-sourced T1 is still outstanding; only the obsidian one was forgotten.
-    assert s.output.count("T1") == 1
 
 
 def test_render_overflow_fail_exits_nonzero(tmp_path: Path) -> None:
@@ -135,7 +68,7 @@ def test_render_overflow_fail_exits_nonzero(tmp_path: Path) -> None:
     assert r.exit_code != 0 and "does not fit" in r.output
 
 
-def test_apply_requires_yes_and_records(tmp_path: Path) -> None:
+def test_apply_requires_yes(tmp_path: Path) -> None:
     env = _env(tmp_path)
     plan = Plan(
         created=datetime.now(),
@@ -152,7 +85,6 @@ def test_apply_requires_yes_and_records(tmp_path: Path) -> None:
     r = CliRunner().invoke(main, ["apply", str(p), "--no-verify"], input="yes\n", env=env)
     assert r.exit_code == 0, r.output
     assert "things:///update?" in r.output  # opener "none" prints URLs instead of opening them
-    assert '"event":"apply"' in (tmp_path / "state" / "papersync" / "prints.jsonl").read_text()
 
 
 def test_apply_auto_approve_refuses_errors(tmp_path: Path) -> None:
@@ -448,20 +380,6 @@ def test_apply_from_stdin_with_auto_approve_succeeds(tmp_path: Path) -> None:
     assert "things:///update?" in r.output
 
 
-def test_record_applied_skips_unmet_changes(tmp_path: Path) -> None:
-    from papersync.cli import _record_applied
-    from papersync.ledger import Ledger
-
-    ledger = Ledger(tmp_path / "prints.jsonl")
-    changes = [
-        Change(kind="update", source="things", ref="T1", title="FOO", pages=[1]),
-        Change(kind="update", source="things", ref="T2", title="BAR", pages=[2]),
-    ]
-    assert _record_applied(ledger, changes, ["FOO: not completed"]) == 1
-    written = (tmp_path / "prints.jsonl").read_text()
-    assert '"ref":"T2"' in written and '"ref":"T1"' not in written
-
-
 def test_render_new_card_qr(tmp_path: Path) -> None:
     import pymupdf
     import zxingcpp
@@ -613,7 +531,6 @@ def test_obsidian_print_writes_a_directory_of_pdfs(monkeypatch, tmp_path) -> Non
     config.mkdir(parents=True)
     (config / "config.toml").write_text('[obsidian]\nvault = "Notes"\n[render]\nopen = false\n')
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
-    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
 
     class FakeSource:
         name = "obsidian"
@@ -670,21 +587,14 @@ def test_obsidian_print_writes_a_directory_of_pdfs(monkeypatch, tmp_path) -> Non
     assert pdfs == ["001-alpha.pdf"]
     manifest = json.loads((directories[0] / "manifest.json").read_text())
     assert manifest["documents"][0]["pages"] == 2
-    # property:set needs the live path...
+    # property:set needs the live path, not the durable id.
     assert tagged == [["Notes/Alpha.md"]]
-    # ...but the ledger must record the durable id, so a rename cannot orphan it.
-    ledger_lines = (tmp_path / "state" / "papersync" / "prints.jsonl").read_text().splitlines()
-    ledger_entries = [json.loads(line) for line in ledger_lines]
-    assert ledger_entries[0]["ref"] == "k7m2q9xr4tb8"
 
 
 def test_tag_printed_sends_addresses_to_the_sink(monkeypatch, tmp_path) -> None:
     """_tag_printed sends item.address (the live path), not item.ref, to the sink.
 
-    property:set needs a path to write to. The other half of the invariant --
-    that the ledger records the durable ref, not the path -- is asserted in
-    test_obsidian_print_writes_a_directory_of_pdfs, which is the test that
-    actually writes a ledger entry.
+    property:set needs a path to write to.
     """
     from typing import ClassVar
 
@@ -727,7 +637,6 @@ def _obsidian_print_env(monkeypatch, tmp_path, fake_render) -> None:  # type: ig
     config.mkdir(parents=True)
     (config / "config.toml").write_text('[obsidian]\nvault = "Notes"\n[render]\nopen = false\n')
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
-    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
 
     class FakeSource:
         name = "obsidian"

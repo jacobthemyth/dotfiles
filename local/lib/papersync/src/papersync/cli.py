@@ -13,7 +13,7 @@ import click
 
 from papersync import __version__
 from papersync.boxsets import BoxSetRegistry
-from papersync.config import Config, config_dir, load_config, state_dir
+from papersync.config import Config, config_dir, load_config
 from papersync.display import format_plan
 from papersync.integrations.obsidian import documents as odocs
 from papersync.integrations.obsidian.bridge import install, installed_version, require_bridge
@@ -25,7 +25,6 @@ from papersync.integrations.things import auth as things_auth
 from papersync.integrations.things.db import ThingsDb, ThingsDbNotFound, find_db_path
 from papersync.integrations.things.sink import ThingsSink, automation_problem
 from papersync.integrations.things.source import ThingsSource
-from papersync.ledger import Ledger, LedgerEntry
 from papersync.model import Change, Item, Plan
 from papersync.recognize.assemble import recognize_pages
 from papersync.recognize.ocr import OcrmacBackend
@@ -70,10 +69,6 @@ def _obsidian(cfg: Config) -> ObsidianCli:
             'no Obsidian vault configured; set [obsidian] vault = "<name>" in config.toml'
         )
     return ObsidianCli(cfg.obsidian.vault)
-
-
-def _ledger() -> Ledger:
-    return Ledger(state_dir() / "prints.jsonl")
 
 
 def _registry() -> BoxSetRegistry:
@@ -212,21 +207,6 @@ def _do_render(
         return []
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     paths = engine.write_outputs(rendered, out, stamp)
-    ledger = _ledger()
-    for r in rendered:
-        if r.item is not None:
-            ledger.record(
-                LedgerEntry(
-                    ts=datetime.now(),
-                    event="render",
-                    source=r.item.source,
-                    ref=r.item.ref,
-                    title=r.item.title,
-                    size=r.size,
-                    boxes=opts.boxes_id,
-                    file=str(next(p for p in paths if p.name.endswith(f"-{r.size}.pdf"))),
-                )
-            )
     for p in paths:
         _err(f"wrote {p}")
         if open_pdf:
@@ -395,21 +375,6 @@ def recognize(scans: tuple[str, ...], review: str | None) -> None:
     click.echo(plan.to_json())
 
 
-def _record_applied(ledger: Ledger, changes: list[Change], unmet: list[str]) -> int:
-    """Append an apply event for every change that verification did not report."""
-    recorded = 0
-    for ch in changes:
-        if not ch.ref or any(line.startswith(f"{ch.title}:") for line in unmet):
-            continue
-        ledger.record(
-            LedgerEntry(
-                ts=datetime.now(), event="apply", source=ch.source, ref=ch.ref, title=ch.title
-            )
-        )
-        recorded += 1
-    return recorded
-
-
 def _open_tty() -> TextIO:
     return open("/dev/tty")
 
@@ -460,9 +425,6 @@ def _apply(
         unmet = sink.verify(plan.changes)
         for line in unmet:
             _err(f"NOT APPLIED: {line}")
-    # After verification: a change that did not land is not an applied change,
-    # and recording it would hide the card from ``status``.
-    _record_applied(_ledger(), plan.changes, unmet)
     if unmet:
         raise click.ClickException(f"{len(unmet)} change(s) did not land")
     _err(f"applied {len(plan.changes)} change(s)")
@@ -491,49 +453,6 @@ def apply(plan_file: str, auto_approve: bool, verify: bool) -> None:
 def scan(scans: tuple[str, ...], review: str | None, auto_approve: bool, verify: bool) -> None:
     """recognize | apply in one step."""
     _apply(load_config(), _recognize(scans, review), auto_approve, verify)
-
-
-@main.command()
-@click.option("--forget", default=None, help="drop one ref from the outstanding list")
-@click.option(
-    "--source",
-    type=click.Choice(["things", "obsidian"]),
-    default=None,
-    help="which source --forget applies to, when a ref is outstanding in more than one",
-)
-def status(forget: str | None, source: str | None) -> None:
-    """List cards that were printed but never scanned back."""
-    ledger = _ledger()
-    if forget:
-        matches = {e.source for e in ledger.outstanding() if e.ref == forget}
-        if source:
-            forget_source = source
-        elif len(matches) == 1:
-            forget_source = next(iter(matches))
-        elif not matches:
-            raise click.ClickException(f"no outstanding card with ref {forget!r}")
-        else:
-            raise click.ClickException(
-                f"ref {forget!r} is outstanding in more than one source "
-                f"({', '.join(sorted(matches))}); pass --source to disambiguate"
-            )
-        ledger.record(
-            LedgerEntry(ts=datetime.now(), event="forget", source=forget_source, ref=forget)
-        )
-        _err(f"forgot {forget} ({forget_source})")
-        return
-    entries = ledger.outstanding()
-    if not entries:
-        click.echo("no outstanding cards")
-        return
-    # Obsidian refs have no importer to look up: there is nothing in the
-    # Things database for them, and looking them up there would always miss.
-    things_refs = [e.ref for e in entries if e.source == "things"]
-    rows = _db().get_many(things_refs) if things_refs else {}
-    for e in entries:
-        row = rows.get(e.ref) if e.source == "things" else None
-        state = "done in Things" if row and row.status != 0 else "outstanding"
-        click.echo(f"{e.ts:%Y-%m-%d}  {e.size:<6} {e.title:<40} {state}")
 
 
 @main.command()
@@ -771,20 +690,6 @@ def obsidian_print(
         docs, Path(output_dir or cfg.render.output_dir), stamp, cfg.obsidian.vault
     )
 
-    ledger = _ledger()
-    for doc, path in zip(docs, paths, strict=True):
-        ledger.record(
-            LedgerEntry(
-                ts=datetime.now(),
-                event="render",
-                source=doc.item.source,
-                ref=doc.item.ref,
-                title=doc.item.title,
-                size=doc.size,
-                boxes=opts.boxes_id,
-                file=str(path),
-            )
-        )
     _err(f"wrote {len(paths)} document(s) to {out_dir}")
     _err(f'print with: for f in "{out_dir}"/*.pdf; do lpr -o sides=two-sided-long-edge "$f"; done')
     should_open = cfg.render.open if open_pdf is None else open_pdf

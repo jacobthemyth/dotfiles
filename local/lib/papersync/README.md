@@ -10,12 +10,11 @@ with `uv run --project ~/.local/lib/papersync papersync`, or use the
 
 ## Round trip
 
-The round trip is four commands:
+The round trip is three steps:
 
 1. `papersync print <selector>` exports Things items and renders cards.
 2. Mark the cards by hand: check boxes, write notes, fill fields.
 3. `papersync scan <files>` recognizes the marks and applies changes.
-4. `papersync status` lists cards that were printed but never scanned back.
 
 `print` tags each exported item `papersync:printed` in Things by default.
 `print` and `things export` skip items that already carry that tag. Pass `--no-skip-printed` to include them.
@@ -120,7 +119,6 @@ When `scan` sees a marked box, it applies the matching named action. See
 
 - The Things URL-scheme auth token lives in the macOS keychain, under the
   service `papersync`. `papersync doctor` reports whether it is set.
-- The print ledger lives at `~/.local/state/papersync/prints.jsonl`.
 - The box set registry lives at `~/.config/papersync/boxsets.toml`. It is
   versioned the same way as `config.toml`, and it grows as new box
   layouts print.

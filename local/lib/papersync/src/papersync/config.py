@@ -48,10 +48,6 @@ def config_dir() -> Path:
     return _xdg("XDG_CONFIG_HOME", ".config")
 
 
-def state_dir() -> Path:
-    return _xdg("XDG_STATE_HOME", ".local/state")
-
-
 def load_config(path: Path | None = None) -> Config:
     path = path or config_dir() / "config.toml"
     if not path.exists():

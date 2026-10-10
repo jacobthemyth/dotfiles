@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from papersync.config import config_dir, load_config, state_dir
+from papersync.config import config_dir, load_config
 
 
 def test_defaults_when_file_missing(tmp_path: Path) -> None:
@@ -21,9 +21,7 @@ def test_parses_actions(tmp_path: Path) -> None:
 
 def test_xdg_dirs(monkeypatch) -> None:  # type: ignore[no-untyped-def]
     monkeypatch.setenv("XDG_CONFIG_HOME", "/x/cfg")
-    monkeypatch.setenv("XDG_STATE_HOME", "/x/state")
     assert config_dir() == Path("/x/cfg/papersync")
-    assert state_dir() == Path("/x/state/papersync")
 
 
 def test_obsidian_config_defaults_and_parsing(tmp_path: Path) -> None:
