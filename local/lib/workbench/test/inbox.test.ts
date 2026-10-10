@@ -70,33 +70,84 @@ test("show marks the review read; list shows unread first", () => {
   expect(JSON.parse(readFileSync(inboxFile("claude-a", "r-old"), "utf8")).read).toBe(true);
 });
 
-test("a second watcher replaces the first via the pid file", async () => {
-  mkdirSync(sub("watch"), { recursive: true });
-  const pidFile = join(sub("watch"), "claude-a.pid");
-  writeFileSync(pidFile, "999999");
-  // dead pid: replaced, no throw
+// A real process whose command line contains "workbench" (the verified-kill path), and one that does not.
+const WB_DIR = join(import.meta.dir, "..");
+const spawnWorkbench = () => Bun.spawn(["bun", "-e", "setInterval(()=>{},1000)", "workbench-fake"], { cwd: WB_DIR });
+const entry = (pid: number, started = Date.now()) => JSON.stringify({ pid, started, token: "t" });
+const pidPath = () => join(sub("watch"), "claude-a.pid");
+const writePid = (pid: number, started?: number) => { mkdirSync(sub("watch"), { recursive: true }); writeFileSync(pidPath(), entry(pid, started)); };
+const settled = (p: { exited: Promise<number> }) => Promise.race([p.exited.then(() => true), sleep(2000).then(() => false)]);
+
+test("a dead pid in the pid file is replaced", async () => {
+  writePid(999999);
   expect(await inbox.wait("claude-a", 100, 30)).toBeNull();
-  // another live pid takes over mid-wait: this watcher gives up
-  const p = inbox.wait("claude-a", 5000, 30);
-  await sleep(100);
+});
+
+test("wait kills a verified previous workbench watcher", async () => {
+  const old = spawnWorkbench(); await sleep(300);
+  writePid(old.pid, Date.now());
+  await inbox.wait("claude-a", 100, 30);
+  expect(await settled(old)).toBe(true);
+});
+
+test("wait does not kill a live non-workbench process named in a stale pid file", async () => {
   const other = Bun.spawn(["sleep", "30"]);
   try {
-    writeFileSync(pidFile, String(other.pid));
-    expect(await p).toBeNull();
-    expect(readFileSync(pidFile, "utf8").trim()).toBe(String(other.pid));
+    writePid(other.pid);
+    expect(await inbox.wait("claude-a", 150, 30)).toBeNull();
+    expect(await settled(other)).toBe(false);
   } finally { other.kill(); }
 });
 
-test("wait kills a live previous watcher", async () => {
-  const old = Bun.spawn(["sleep", "30"]);
-  mkdirSync(sub("watch"), { recursive: true });
-  writeFileSync(join(sub("watch"), "claude-a.pid"), String(old.pid));
-  await inbox.wait("claude-a", 100, 30);
-  await Promise.race([old.exited, sleep(2000)]);
-  expect(old.killed || old.exitCode !== null || old.signalCode !== null).toBe(true);
+test("a pid reused after the file was written is not killed", async () => {
+  const old = spawnWorkbench(); await sleep(300);
+  try {
+    writePid(old.pid, Date.now() - 3600_000);
+    await inbox.wait("claude-a", 100, 30);
+    expect(await settled(old)).toBe(false);
+  } finally { old.kill(); }
+});
+
+test("a watcher gives up when a newer verified watcher takes the pid file", async () => {
+  const p = inbox.wait("claude-a", 5000, 30);
+  await sleep(100);
+  const other = spawnWorkbench(); await sleep(300);
+  try {
+    writePid(other.pid, Date.now());
+    expect(await p).toBeNull();
+  } finally { other.kill(); }
+});
+
+test("stopWatcher kills a verified watcher and removes the pid file", async () => {
+  const w = spawnWorkbench(); await sleep(300);
+  writePid(w.pid, Date.now());
+  inbox.stopWatcher("claude-a");
+  expect(await settled(w)).toBe(true);
+  expect(existsSync(pidPath())).toBe(false);
+});
+
+test("stopWatcher leaves a non-workbench process alone but removes the file", async () => {
+  const other = Bun.spawn(["sleep", "30"]);
+  try {
+    writePid(other.pid);
+    inbox.stopWatcher("claude-a");
+    expect(await settled(other)).toBe(false);
+    expect(existsSync(pidPath())).toBe(false);
+  } finally { other.kill(); }
 });
 
 test("handle turnEnded returns an empty outcome", async () => {
   const { handle } = await import("../src/hook");
   expect(handle({ kind: "turnEnded", harness: "claude", session: "x" })).toEqual({});
+});
+
+test("sessionEnded stops that session's watcher", async () => {
+  const { handle } = await import("../src/hook");
+  const { openPointer } = await import("../src/session");
+  openPointer("claude", "a", "/w");
+  const w = spawnWorkbench(); await sleep(300);
+  writePid(w.pid, Date.now());
+  handle({ kind: "sessionEnded", harness: "claude", session: "a" });
+  expect(await settled(w)).toBe(true);
+  expect(existsSync(pidPath())).toBe(false);
 });

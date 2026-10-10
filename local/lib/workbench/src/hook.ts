@@ -2,6 +2,7 @@ import { realpathSync } from "node:fs";
 import type { Event, Outcome } from "./events";
 import { openPointer, closePointer, pointerKey, currentWorkset } from "./session";
 import { createWorkset, loadWorkset, deleteWorkset, saveWorkset, addMember } from "./workset";
+import { stopWatcher } from "./inbox";
 import { recognise } from "./record";
 import * as git from "./git";
 import * as gh from "./gh";
@@ -19,6 +20,7 @@ export function handle(e: Event): Outcome {
     }
     case "sessionEnded": {
       const p = closePointer(pointerKey(e.harness, e.session));
+      stopWatcher(pointerKey(e.harness, e.session));
       if (p) {
         const ws = loadWorkset(p.key);
         if (ws && ws.members.length === 0) deleteWorkset(p.key);
