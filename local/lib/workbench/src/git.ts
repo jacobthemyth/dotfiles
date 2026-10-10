@@ -37,3 +37,19 @@ export function defaultBranch(repo: string): string {
   for (const b of ["main", "master"]) if (git(repo, "rev-parse", "--verify", "-q", `refs/heads/${b}`)) return b;
   return "main";
 }
+
+export function upstreamGone(repo: string, branch: string): boolean {
+  return git(repo, "for-each-ref", "--format=%(upstream:track)", `refs/heads/${branch}`) === "[gone]";
+}
+
+export function commonDir(path: string): string | null {
+  const d = git(path, "rev-parse", "--path-format=absolute", "--git-common-dir");
+  return d || null;
+}
+
+// The only destructive git command in workbench. Callers must have checked prunable-ness and
+// that nothing claims the item. Removes the worktree (if any), then force-deletes the branch.
+export function pruneWorktreeAndBranch(repo: string, worktree: string | null, branch: string): boolean {
+  if (worktree && git(repo, "worktree", "remove", worktree) === null) return false;
+  return git(repo, "branch", "-D", branch) !== null;
+}

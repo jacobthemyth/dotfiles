@@ -1,5 +1,8 @@
 import { parseArgs } from "node:util";
 import { expandHome } from "../paths";
+import { loadConfig } from "../config";
+import { derive, foundId, prunable, unclaimed } from "../derive";
+import { pruneWorktreeAndBranch } from "../git";
 import { bindSession, loadPointer } from "../session";
 import { addMember, createWorkset, listWorksets, loadWorkset, removeMember, saveWorkset, type Member, type Role, type Workset } from "../workset";
 
@@ -9,7 +12,10 @@ const USAGE = `usage: workbench workset <subcommand>
   create <name>
   add <name> --repo <path> --branch <b> [--worktree <p>] [--base <ref>] [--order <n>] [--role work|throwaway]
   rm <name> <member-id>
-  use <name> [--session <key>]`;
+  use <name> [--session <key>]
+  adopt <name> <id> [--role work|throwaway]
+  ignore <name> <id>
+  prune <id> [--yes]`;
 
 export function sessionKeyFromEnv(flags: { session?: string }): string | null {
   if (process.env.WORKBENCH_SESSION) return process.env.WORKBENCH_SESSION;
@@ -104,6 +110,52 @@ export async function run(args: string[]): Promise<number> {
         if (!ws.sessions.includes(key)) { ws.sessions.push(key); saveWorkset(ws); }
         bindSession(key, name);
         console.log(`${key} -> ${name}`);
+        return 0;
+      }
+      case "adopt": {
+        const { positionals, values } = parseArgs({ args: rest, allowPositionals: true, options: { role: { type: "string" } } });
+        if (positionals.length !== 2) return fail("usage: workbench workset adopt <name> <id> [--role work|throwaway]", 2);
+        if (values.role !== undefined && values.role !== "work" && values.role !== "throwaway") return fail(`workbench: --role must be work or throwaway`);
+        const item = derive(loadConfig()).find((f) => foundId(f) === positionals[1]);
+        if (!item) return fail(`workbench: nothing found with id "${positionals[1]}"`);
+        const ws = loadWorkset(positionals[0]) ?? createWorkset(positionals[0], "hand");
+        const m = addMember(ws, {
+          repo: item.repo, slug: item.slug, branch: item.branch, worktree: item.worktree, pr: item.pr, base: item.base,
+          role: values.role as Role | undefined, added_by: "hand",
+        });
+        saveWorkset(ws);
+        console.log(m.id);
+        return 0;
+      }
+      case "ignore": {
+        const { positionals } = parseArgs({ args: rest, allowPositionals: true, options: {} });
+        if (positionals.length !== 2) return fail("usage: workbench workset ignore <name> <id>", 2);
+        const ws = loadWorkset(positionals[0]);
+        if (!ws) return fail(`workbench: no workset "${positionals[0]}"`);
+        if (!ws.ignored.includes(positionals[1])) { ws.ignored.push(positionals[1]); saveWorkset(ws); }
+        return 0;
+      }
+      case "prune": {
+        const { positionals, values } = parseArgs({ args: rest, allowPositionals: true, options: { yes: { type: "boolean" } } });
+        if (positionals.length !== 1) return fail("usage: workbench workset prune <id> [--yes]", 2);
+        const id = positionals[0];
+        const item = derive(loadConfig()).find((f) => foundId(f) === id);
+        if (!item) return fail(`workbench: nothing found with id "${id}"`);
+        const worksets = listWorksets().map(loadWorkset).filter((w): w is Workset => !!w);
+        if (unclaimed([item], worksets).length === 0) return fail(`workbench: ${id} is claimed or ignored by a workset; not pruning`);
+        const why = prunable([item])[0];
+        if (!why) return fail(`workbench: ${id} is not prunable (${item.main ? "main worktree" : "no merged PR and upstream not gone"})`);
+        const cmds = [
+          ...(item.worktree ? [`git worktree remove ${item.worktree}`] : []),
+          `git branch -D ${item.branch}`,
+        ];
+        if (!values.yes) {
+          console.log(`would run in ${item.repo} (${why.reason}):`);
+          for (const c of cmds) console.log(`  ${c}`);
+          return 0;
+        }
+        if (!pruneWorktreeAndBranch(item.repo, item.worktree, item.branch)) return fail(`workbench: prune of ${id} failed`);
+        console.log(`pruned ${id}`);
         return 0;
       }
       default:
