@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Comment, Reply } from "../src/comments";
 import { run as replyCli } from "../src/cmd/reply";
-import { addReply, rehydrateReplies } from "../src/reply";
+import { addReply, rehydrateReplies, testHooks } from "../src/reply";
 import { archiveFile, openReview, type Review } from "../src/review";
 import { drainRecorded } from "../src/spawn";
 import { readJson, writeJson } from "../src/store";
@@ -25,6 +25,7 @@ beforeEach(() => {
   drainRecorded();
 });
 afterEach(() => {
+  testHooks.beforeShow = undefined;
   rmSync(tmp, { recursive: true, force: true });
   for (const k of KEYS) { if (saved[k] === undefined) delete process.env[k]; else process.env[k] = saved[k]; }
 });
@@ -82,10 +83,10 @@ test("reply records no shown_in and issues no hunk comment without a matching, l
     () => { putOpen(openFile()); liveSessions("sess-other"); }, // the hunk session is gone
     () => putOpen(openFile({ hunkSessionId: null })),           // no session was ever registered
   ];
-  for (const setup of cases) {
+  for (const [i, setup] of cases.entries()) {
     setup();
     drainRecorded();
-    expect(addReply(KEY, "rv1", "user:1", "noted").shown).toBe(false);
+    expect(addReply(KEY, "rv1", "user:1", `noted ${i}`).shown).toBe(false);
     expect(adds()).toEqual([]);
   }
   for (const f of [inboxCopy("rv1"), archiveCopy("rv1")]) {
@@ -136,6 +137,36 @@ test("rehydrate anchors to the comment's file and line when the user note is not
     `hunk session comment add ${SID} --file src/x.ts --old-line 7 --summary ↩ dropped --rationale re: drop it --author ${KEY} --json`,
   ]);
   expect(archiveCopy("rv1").comments.map((c) => c.replies[0].shown_in)).toEqual([[SID], [SID]]);
+});
+
+test("a reply the agent writes while rehydrate is calling hunk survives in both copies", () => {
+  deliver(reviewFile("rv1", [comment("user:1", { replies: [{ at: "t1", by: KEY, text: "first" }] })]));
+  let raced = false;
+  testHooks.beforeShow = () => { if (!raced) { raced = true; addReply(KEY, "rv1", "user:1", "second"); } };
+  rehydrateReplies(openFile(), { id: MEMBER } as Member);
+  expect(raced).toBe(true);
+  for (const f of [archiveCopy("rv1"), inboxCopy("rv1")]) {
+    expect(f.comments[0].replies.map((r) => [r.text, r.shown_in])).toEqual([["first", [SID]], ["second", undefined]]);
+  }
+});
+
+test("a shown_in that rehydrate records while addReply is calling hunk survives in the inbox copy", () => {
+  const first: Reply = { at: "t1", by: KEY, text: "first" };
+  deliver(reviewFile("rv1", [comment("user:1", { replies: [first] })]));
+  putOpen(openFile());
+  liveSessions(SID);
+  testHooks.beforeShow = () => {
+    testHooks.beforeShow = undefined;
+    for (const p of [inboxFile(KEY, "rv1"), archiveFile("ws1", "rv1")]) {
+      const f = readJson<ReviewFile>(p)!;
+      f.comments[0].replies[0].shown_in = ["sess-0"];
+      writeJson(p, f);
+    }
+  };
+  expect(addReply(KEY, "rv1", "user:1", "second").shown).toBe(true);
+  for (const f of [archiveCopy("rv1"), inboxCopy("rv1")]) {
+    expect(f.comments[0].replies.map((r) => [r.text, r.shown_in])).toEqual([["first", ["sess-0"]], ["second", [SID]]]);
+  }
 });
 
 test("opening a review rehydrates replies once the hunk session registers", () => {
