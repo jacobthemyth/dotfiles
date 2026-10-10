@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { handle } from "../src/hook";
 import { bindSession, loadPointer, pointerKey } from "../src/session";
-import { loadWorkset } from "../src/workset";
+import { addMember, createWorkset, loadWorkset, saveWorkset } from "../src/workset";
 
 beforeEach(() => {
   process.env.WORKBENCH_STATE_DIR = mkdtempSync(join(tmpdir(), "wb-"));
@@ -42,4 +42,24 @@ test("workset use binds the session, creating the workset", async () => {
   expect(loadWorkset("spike")!.sessions).toContain(key);
   const err = console.error; console.error = () => {};
   try { expect(await run(["use", "spike", "--session", "claude-nope"])).toBe(1); } finally { console.error = err; }
+});
+
+const start = () => handle({ kind: "sessionStarted", harness: "claude", session: "abc", cwd: "/w", resumed: false });
+const end = () => handle({ kind: "sessionEnded", harness: "claude", session: "abc" });
+
+test("rebound session: empty default workset is deleted on end, bound workset survives", () => {
+  start();
+  bindSession(pointerKey("claude", "abc"), "spike");
+  const spike = createWorkset("spike", "claude-abc");
+  end();
+  expect(loadWorkset("claude-abc")).toBeNull();
+  expect(loadWorkset(spike.name)).not.toBeNull();
+});
+test("default workset with a member survives session end", () => {
+  start();
+  const ws = loadWorkset("claude-abc")!;
+  addMember(ws, { repo: "/r", branch: "b", added_by: "claude-abc" });
+  saveWorkset(ws);
+  end();
+  expect(loadWorkset("claude-abc")).not.toBeNull();
 });

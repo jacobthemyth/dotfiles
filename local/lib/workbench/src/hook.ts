@@ -13,9 +13,9 @@ export function handle(e: Event): Outcome {
     }
     case "sessionEnded": {
       const p = closePointer(pointerKey(e.harness, e.session));
-      if (p && p.workset === p.key) {
-        const ws = loadWorkset(p.workset);
-        if (ws && ws.members.length === 0) deleteWorkset(p.workset);
+      if (p) {
+        const ws = loadWorkset(p.key);
+        if (ws && ws.members.length === 0) deleteWorkset(p.key);
       }
       return {};
     }
