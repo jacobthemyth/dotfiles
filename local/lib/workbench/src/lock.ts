@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
-import { join, resolve, sep } from "node:path";
+import { basename, dirname, join, resolve, sep } from "node:path";
 import { sub } from "./paths";
 import type { Lock } from "./review";
 
@@ -20,7 +20,13 @@ export function activeLocks(): Lock[] {
   return out;
 }
 
-const real = (p: string): string => { try { return realpathSync(p); } catch { return resolve(p); } };
+// Realpath of the nearest existing ancestor plus the rest, so a new file under a symlinked path still resolves.
+const real = (p: string): string => {
+  const abs = resolve(p);
+  try { return realpathSync(abs); } catch { /* not there yet */ }
+  const parent = dirname(abs);
+  return parent === abs ? abs : join(real(parent), basename(abs));
+};
 const under = (p: string, base: string): boolean => p === base || p.startsWith(base.endsWith(sep) ? base : base + sep);
 // Match on realpath when it exists, else on the normalised string; accept either side matching.
 const within = (p: string, lockPath: string): boolean => {
@@ -40,8 +46,27 @@ export function denyMessage(lock: Lock, path: string): string {
 
 const PREFIXES = new Set(["sudo", "env", "command", "exec", "time", "nice", "nohup", "xargs"]);
 const VERBS = new Set(["rm", "mv", "cp", "tee", "truncate", "chmod", "chown", "dd", "rsync"]);
-const GIT_WRITES = new Set(["commit", "rebase", "reset", "checkout", "switch", "merge", "cherry-pick", "apply", "am", "push", "mv", "rm", "clean", "restore", "worktree", "branch", "tag"]);
+const GIT_WRITES = new Set(["commit", "rebase", "reset", "checkout", "switch", "merge", "cherry-pick", "apply", "am", "push", "mv", "rm", "clean", "restore", "pull", "revert", "bisect"]);
 const STASH_WRITES = new Set(["push", "pop", "apply", "drop", "clear", "save"]);
+const WORKTREE_WRITES = new Set(["add", "remove", "move", "prune", "lock", "unlock", "repair"]);
+// branch and tag write only in these forms or with a positional name; --list takes patterns, not names.
+const BRANCH_WRITE_FLAGS = new Set(["-d", "-D", "-m", "-M", "-c", "-C", "-f", "--delete", "--move", "--copy", "--force", "-u", "--set-upstream-to", "--unset-upstream", "--edit-description"]);
+const TAG_WRITE_FLAGS = new Set(["-a", "-d", "-f", "-s", "-m", "--annotate", "--delete", "--force", "--sign", "--message"]);
+const VALUE_FLAGS = new Set(["--format", "--sort", "--contains", "--no-contains", "--merged", "--no-merged", "--points-at", "--column"]);
+
+function refWrites(args: string[], writeFlags: Set<string>): boolean {
+  if (args.some((t) => t === "-l" || t === "--list") && !args.some((t) => writeFlags.has(t.split("=")[0]))) return false;
+  for (let i = 0; i < args.length; i++) {
+    const t = args[i];
+    if (t.startsWith("-")) {
+      if (writeFlags.has(t.split("=")[0])) return true;
+      if (VALUE_FLAGS.has(t) && args[i + 1] !== undefined && !args[i + 1].startsWith("-")) i++;
+      continue;
+    }
+    if (!/[<>]/.test(t)) return true; // a positional name, not a redirect
+  }
+  return false;
+}
 
 function gitWrites(rest: string[]): boolean {
   let i = 0;
@@ -49,6 +74,9 @@ function gitWrites(rest: string[]): boolean {
   const sub = rest[i];
   if (sub === undefined) return false;
   if (sub === "stash") return rest[i + 1] === undefined || STASH_WRITES.has(rest[i + 1]);
+  if (sub === "worktree") return WORKTREE_WRITES.has(rest[i + 1]);
+  if (sub === "branch") return refWrites(rest.slice(i + 1), BRANCH_WRITE_FLAGS);
+  if (sub === "tag") return refWrites(rest.slice(i + 1), TAG_WRITE_FLAGS);
   return GIT_WRITES.has(sub);
 }
 function segmentWrites(seg: string): boolean {

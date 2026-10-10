@@ -1,5 +1,5 @@
 import { test, expect, beforeEach } from "bun:test";
-import { mkdtempSync, mkdirSync, realpathSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { handle } from "../src/hook";
@@ -106,4 +106,33 @@ test("write commands inside a lock are still denied", () => {
     "sed -n 1p f > out", `echo "a > b" > out`]) {
     expect({ c, denied: cmd(c, locked).deny !== undefined }).toEqual({ c, denied: true });
   }
+});
+
+test("git pull, revert and bisect inside a lock are denied", () => {
+  for (const c of ["git pull", "git pull --rebase", "git revert HEAD", "git bisect start"]) {
+    expect({ c, denied: cmd(c, locked).deny !== undefined }).toEqual({ c, denied: true });
+  }
+});
+test("read forms of git branch, tag and worktree inside a lock are allowed", () => {
+  for (const c of ["git branch", "git branch --show-current", "git branch -a", "git branch -vv", "git branch --list 'feat*'",
+    "git branch --merged main", "git branch 2>/dev/null", "git tag", "git tag -l", "git tag -l 'v*'", "git worktree list", "git worktree list --porcelain"]) {
+    expect({ c, out: cmd(c, locked) }).toEqual({ c, out: {} });
+  }
+});
+test("write forms of git branch, tag and worktree inside a lock are denied", () => {
+  for (const c of ["git branch new", "git branch -d old", "git branch -D old", "git branch -m new", "git branch -M a b", "git branch -c a b",
+    "git branch -C a b", "git branch --delete old", "git branch --move a b", "git branch --copy a b", "git branch --force x HEAD",
+    "git tag v1", "git tag -a v1 -m x", "git tag -d v1", "git tag -f v1", "git tag -s v1", "git tag -m msg",
+    "git worktree add ../x", "git worktree remove x", "git worktree move a b", "git worktree prune", "git worktree lock x",
+    "git worktree unlock x", "git worktree repair"]) {
+    expect({ c, denied: cmd(c, locked).deny !== undefined }).toEqual({ c, denied: true });
+  }
+});
+test("a new file reached through a symlink to a locked worktree is denied", () => {
+  const link = join(root, "link");
+  symlinkSync(join(root, "a"), link);
+  expect(write(join(link, "b", "brand-new.txt"), other, "Write").deny).toContain("locked by review r1");
+  expect(write(join(link, "b", "new-dir", "deep.txt"), other, "Write").deny).toContain("locked by review r1");
+  expect(cmd(`echo x > ${join(link, "b", "brand-new.txt")}`).deny).toContain("locked by review r1");
+  expect(write(join(link, "bc", "new.txt"), other, "Write")).toEqual({});
 });
