@@ -1,5 +1,6 @@
 import { foundId, type Found } from "./derive";
 import { config, loadReview, repoint } from "./review";
+import * as inbox from "./inbox";
 import { listPointers } from "./session";
 import { closeInPane, submitInPane } from "./sidebar-review";
 import { buildRows, clamp, move, scroll, type Row } from "./sidebar-model";
@@ -24,7 +25,7 @@ export async function runSidebar(name: string): Promise<number> {
   const draw = () => {
     const ws = workset();
     const review = loadReview(name);
-    const sessions = listPointers().filter((p) => p.workset === name);
+    const sessions = listPointers().filter((p) => p.workset === name).map((pointer) => ({ pointer, reviews: inbox.list(pointer.key) }));
     rows = buildRows(ws, cfg, { showThrowaway, unclaimed, sessions, current: review?.current ?? null });
     sel = clamp(rows, sel);
     const width = process.stdout.columns || 44;

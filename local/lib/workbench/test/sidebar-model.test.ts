@@ -2,7 +2,7 @@ import { test, expect } from "bun:test";
 import type { Config } from "../src/config";
 import type { Found } from "../src/derive";
 import type { Pointer } from "../src/session";
-import { buildRows, clamp, move, scroll } from "../src/sidebar-model";
+import { buildRows, clamp, move, scroll, sessionLine, type SessionView } from "../src/sidebar-model";
 import { addMember, type Workset } from "../src/workset";
 
 const cfg = { default_branch: "main" } as Config;
@@ -15,9 +15,15 @@ function ws(): Workset {
 }
 const found: Found = { repo: "/s", slug: "o/s", branch: "x", worktree: "/wx", pr: null, base: null, main: false };
 const ptr = (key: string, closed: string | null): Pointer => ({ key, harness: "claude", session: key, workset: "w", cwd: "/", opened: "", closed });
+const reply = { at: "t", by: "claude", text: "ok" };
+// One review per entry: read flag and, per comment, its reply count.
+const sv = (key: string, closed: string | null, reviews: [boolean, number[]][] = []): SessionView => ({
+  pointer: ptr(key, closed),
+  reviews: reviews.map(([read, cs]) => ({ read, comments: cs.map((n) => ({ replies: Array(n).fill(reply) })) })),
+});
 
 test("rows: ordered work members, a whole-stack row, unclaimed and sessions; throwaways hidden", () => {
-  const rows = buildRows(ws(), cfg, { showThrowaway: false, unclaimed: [found], sessions: [ptr("claude-1", null), ptr("claude-2", "t")], current: "o/r#b" });
+  const rows = buildRows(ws(), cfg, { showThrowaway: false, unclaimed: [found], sessions: [sv("claude-1", null, [[false, [1, 0, 2]], [true, [0, 1]]]), sv("claude-2", "t")], current: "o/r#b" });
   expect(rows.map((r) => r.text)).toEqual([
     "members",
     " [work] o/r#a  PR #3 draft  (main → a)",
@@ -26,8 +32,8 @@ test("rows: ordered work members, a whole-stack row, unclaimed and sessions; thr
     "unclaimed (1)",
     "  o/s#x  -",
     "sessions",
-    "  claude-1  open",
-    "  claude-2  closed",
+    "  claude-1  open  inbox: 1 unread  replies 3/5",
+    "  claude-2  closed  inbox: 0 unread  replies 0/0",
   ]);
 });
 
@@ -38,7 +44,7 @@ test("rows: t shows throwaways; unclaimed shows scanning before derive returns",
 });
 
 test("selection skips headers and sessions and wraps at both ends", () => {
-  const rows = buildRows(ws(), cfg, { showThrowaway: false, unclaimed: [found], sessions: [ptr("claude-1", null)], current: null });
+  const rows = buildRows(ws(), cfg, { showThrowaway: false, unclaimed: [found], sessions: [sv("claude-1", null)], current: null });
   const first = clamp(rows, 0);
   expect(first).toBe(1);
   expect(move(rows, first, 1)).toBe(2);
@@ -53,4 +59,11 @@ test("scroll keeps the selection inside the window", () => {
   expect(scroll(0, 7, 5)).toBe(3);
   expect(scroll(4, 2, 5)).toBe(2);
   expect(scroll(4, -1, 5)).toBe(0);
+});
+
+test("session line: unread reviews, comments with at least one reply over all comments", () => {
+  expect(sessionLine(sv("claude-abc", null, [[false, [1, 1, 0, 0, 0]]]))).toBe("claude-abc  open  inbox: 1 unread  replies 2/5");
+  expect(sessionLine(sv("claude-x", "t", [[false, [0]], [false, []], [true, [3]]]))).toBe("claude-x  closed  inbox: 2 unread  replies 1/2");
+  // A comment from an older file without a replies field counts as unanswered.
+  expect(sessionLine({ pointer: ptr("k", null), reviews: [{ read: true, comments: [{}] }] })).toBe("k  open  inbox: 0 unread  replies 0/1");
 });

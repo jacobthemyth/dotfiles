@@ -85,6 +85,24 @@ Each line is a settled answer from the design session.
 - How the sidebar should show a session's state without a harness API: start with pointer open/closed plus inbox read/unread, add turn state later via the Stop and UserPromptSubmit hooks.
 - Which `tmux-agent-sidebar` behaviours are worth absorbing (to be listed when that migration starts).
 
+### Observed in the end-to-end check (2026-10-10)
+
+Run against a scratch repo (`main` plus a `feat` worktree), a workset `wb-e2e` in the real state dir and a scratch Claude Code session in tmux. Deviations from the decisions above:
+
+- **Re-pointing (8):** hunk 0.23 refuses `session reload --source` across worktrees, so the pane restarts hunk for a member in another worktree; reload is used only within one worktree.
+- **Comments (11, 14):** user notes live only in the hunk TUI and die with it, so the sidebar, `close` and `submit` snapshot them to `reviews/<workset>/notes/`; "comments kept in hunk's daemon" holds only while that hunk runs.
+- **Diff (8):** the diff is the working tree against the merge base, not `<base>...<branch>`, so uncommitted edits (yours from `e`, or the agent's) show.
+- **Skill path (16):** the skill lives at `agents/skills/workbench-review/SKILL.md` (linked to `~/.agents/skills`), not `claude/skills/`. Until `rcup` runs it is not installed; the scratch agent reported it could not find the skill and followed the arrival line instead (it still replied to all three comments correctly).
+- **Session key (5):** the key is `claude-$CLAUDE_CODE_SESSION_ID`, read from the environment; `--session` is a fallback.
+- **Editing (9):** `e` on a note's line opened neovim at line 1, not at the commented line. The diff did refresh on return and the notes survived.
+- **Delivery (19):** worked. The Stop-hook watcher replaced the SessionStart one, and the agent woke within 5 s of submit ("Stop hook feedback").
+- **Agent protocol (21):** without the skill the agent also replied to the note; the skill says to do so only when it changes something.
+- **Submit from the shell (13):** `workbench submit` leaves the `wb-<workset>` window and its hunk running (only the sidebar's `s` kills it). A later `open` adopts the live hunk pane without recording its session id, so it neither rehydrates replies nor shows new ones live, and the previous review's notes are still in that hunk. Killing the window before `open` works: the fresh hunk showed all three replies as agent comments (they appear once agent notes are toggled visible in hunk).
+- **Notes carry over (13):** `reviews/<workset>/notes/` is keyed by member, not by review, and submit does not clear it, so the next review of the same workset would deliver the previous review's comments again.
+- **Session end (5):** after `/exit` in the scratch session the pointer stayed open (`closed: null`) and its default workset was not deleted; the SessionEnd hook did not appear to run. Not investigated further.
+- **Sidebar width:** the 44-column sidebar cuts off member ids and the session line (`... replies 3…`).
+- **Watchers:** a superseded watcher of another session (pid not in any pid file) was still running 23 minutes later; `wait` should have stopped it when its successor registered.
+
 ## Future directions
 
 - A second harness adapter (Codex) once the generic events hold up.

@@ -11,7 +11,17 @@ export type Row =
   | { kind: "unclaimed"; text: string; found: Found }
   | { kind: "session"; text: string };
 
-export type View = { showThrowaway: boolean; unclaimed: Found[] | null; sessions: Pointer[]; current: string | null };
+// A bound session and the inbox reviews it holds (only the fields the session line counts).
+export type SessionView = { pointer: Pointer; reviews: { read: boolean; comments: { replies?: unknown[] }[] }[] };
+export type View = { showThrowaway: boolean; unclaimed: Found[] | null; sessions: SessionView[]; current: string | null };
+
+// `<key>  open|closed  inbox: <unread> unread  replies <answered>/<comments>`
+export function sessionLine(s: SessionView): string {
+  const unread = s.reviews.filter((r) => !r.read).length;
+  const comments = s.reviews.flatMap((r) => r.comments);
+  const answered = comments.filter((c) => (c.replies?.length ?? 0) > 0).length;
+  return `${s.pointer.key}  ${s.pointer.closed ? "closed" : "open"}  inbox: ${unread} unread  replies ${answered}/${comments.length}`;
+}
 
 export function prLabel(pr: Member["pr"]): string {
   if (!pr) return "-";
@@ -32,7 +42,7 @@ export function buildRows(ws: Workset, config: Config, view: View): Row[] {
   rows.push({ kind: "header", text: view.unclaimed ? `unclaimed (${view.unclaimed.length})` : "unclaimed (scanning…)" });
   for (const f of view.unclaimed ?? []) rows.push({ kind: "unclaimed", found: f, text: `  ${foundId(f)}  ${prLabel(f.pr)}` });
   rows.push({ kind: "header", text: "sessions" });
-  for (const p of view.sessions) rows.push({ kind: "session", text: `  ${p.key}  ${p.closed ? "closed" : "open"}` });
+  for (const s of view.sessions) rows.push({ kind: "session", text: `  ${sessionLine(s)}` });
   return rows;
 }
 
