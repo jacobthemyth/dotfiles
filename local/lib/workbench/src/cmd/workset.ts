@@ -1,5 +1,6 @@
 import { parseArgs } from "node:util";
 import { expandHome } from "../paths";
+import { bindSession, loadPointer } from "../session";
 import { addMember, createWorkset, listWorksets, loadWorkset, removeMember, saveWorkset, type Member, type Role, type Workset } from "../workset";
 
 const USAGE = `usage: workbench workset <subcommand>
@@ -97,7 +98,13 @@ export async function run(args: string[]): Promise<number> {
         if (positionals.length !== 1) return fail("usage: workbench workset use <name> [--session <key>]", 2);
         const key = sessionKeyFromEnv(values);
         if (!key) return fail("workbench: no session key; set WORKBENCH_SESSION or pass --session <key>", 2);
-        return fail("workbench: workset use is wired in a later task");
+        if (!loadPointer(key)) return fail(`workbench: no session ${key}`);
+        const name = positionals[0];
+        const ws = loadWorkset(name) ?? createWorkset(name, key);
+        if (!ws.sessions.includes(key)) { ws.sessions.push(key); saveWorkset(ws); }
+        bindSession(key, name);
+        console.log(`${key} -> ${name}`);
+        return 0;
       }
       default:
         return fail(USAGE, 2);
