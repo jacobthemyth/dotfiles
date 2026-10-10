@@ -55,3 +55,25 @@ test("unrelated members or a single member yield no node", () => {
   expect(stackNodes([mk("a"), mk("b")], config)).toEqual([]);
   expect(stackNodes([mk("a", { base: "main" })], config)).toEqual([]);
 });
+
+test("two unrelated chains in one repo give two nodes", () => {
+  const a = mk("a", { base: "main" }), b = mk("b", { base: "a" });
+  const x = mk("x", { base: "dev" }), y = mk("y", { base: "x" });
+  const nodes = stackNodes([a, b, x, y], config);
+  expect(nodes.map((n) => [n.bottomBase, n.top.branch])).toEqual([["main", "b"], ["dev", "y"]]);
+});
+
+test("explicit order changes which member is top", () => {
+  const a = mk("a", { base: "main", order: 1 }), b = mk("b", { base: "a", order: 0 });
+  const [n] = stackNodes([a, b], config);
+  expect(n.top.branch).toBe("a");
+  expect(n.bottomBase).toBe("a");
+});
+
+test("a base naming a branch in another repo does not link", () => {
+  expect(stackNodes([mk("a"), mk("b", { repo: "/s", base: "a" })], config)).toEqual([]);
+});
+
+test("a cycle terminates with one node", () => {
+  expect(stackNodes([mk("a", { base: "b" }), mk("b", { base: "a" })], config)).toHaveLength(1);
+});

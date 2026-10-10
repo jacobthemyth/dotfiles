@@ -41,16 +41,25 @@ export function orderMembers(members: Member[]): Member[] {
 
 export type StackNode = { repo: string; slug: string | null; bottomBase: string; top: Member };
 
+// One node per connected component of base links within a repo. A fork (a->b, a->c) is one
+// component: its members are ordered, not branched, so the top is the last in that order.
 export function stackNodes(members: Member[], config: Config): StackNode[] {
   const nodes: StackNode[] = [];
   for (const [repo, group] of byRepo(members)) {
-    if (group.length < 2) continue;
-    const d = depths(group);
-    const linked = group.filter((m) => d.get(m)! > 0 || group.some((o) => o !== m && o.base === m.branch));
-    if (linked.length < 2) continue;
-    const sorted = [...linked].sort((a, b) => d.get(a)! - d.get(b)! || (a.branch < b.branch ? -1 : 1));
-    const bottom = sorted[0], top = sorted[sorted.length - 1];
-    nodes.push({ repo, slug: top.slug, bottomBase: diffBase(bottom, config), top });
+    const parent = new Map(group.map((m) => [m, m]));
+    const find = (m: Member): Member => { while (parent.get(m) !== m) m = parent.get(m)!; return m; };
+    for (const m of group) {
+      const target = m.base ? group.find((o) => o !== m && o.branch === m.base) : undefined;
+      if (target) parent.set(find(m), find(target));
+    }
+    const comps = new Map<Member, Member[]>();
+    for (const m of group) comps.set(find(m), [...(comps.get(find(m)) ?? []), m]);
+    for (const comp of comps.values()) {
+      if (comp.length < 2) continue;
+      const ordered = orderMembers(comp);
+      const top = ordered[ordered.length - 1];
+      nodes.push({ repo, slug: top.slug, bottomBase: diffBase(ordered[0], config), top });
+    }
   }
   return nodes;
 }
