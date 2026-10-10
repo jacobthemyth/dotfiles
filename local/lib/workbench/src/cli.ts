@@ -6,7 +6,9 @@ const commands: Record<string, () => Promise<(args: string[]) => Promise<number>
   workset: async () => (await import("./cmd/workset")).run,
   scan: async () => (await import("./cmd/scan")).run,
   hook: async () => (await import("./cmd/hook")).run,
+  open: async () => (await import("./cmd/open")).run,
+  sidebar: async () => (await import("./cmd/sidebar")).run,
 };
 const load = commands[group ?? ""];
-if (!load) { console.error("usage: workbench <config|workset|hook|scan|open|submit|close|inbox|reply> ..."); process.exit(2); }
+if (!load) { console.error("usage: workbench <config|workset|hook|scan|open|sidebar|submit|close|inbox|reply> ..."); process.exit(2); }
 process.exit(await (await load())(rest));

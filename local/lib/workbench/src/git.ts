@@ -53,3 +53,20 @@ export function pruneWorktreeAndBranch(repo: string, worktree: string | null, br
   if (worktree && git(repo, "worktree", "remove", worktree) === null) return false;
   return git(repo, "branch", "-D", branch) !== null;
 }
+
+// Paths (relative to the worktree) with uncommitted changes, untracked included; null on failure.
+export function dirtyFiles(path: string): string[] | null {
+  try {
+    const r = Bun.spawnSync(["git", "status", "--porcelain", "-z", "--untracked-files=all"], { cwd: path, stdout: "pipe", stderr: "pipe" });
+    if (r.exitCode !== 0) return null;
+    const out: string[] = [];
+    const parts = r.stdout.toString().split("\0");
+    for (let i = 0; i < parts.length; i++) {
+      const e = parts[i];
+      if (e.length < 4) continue;
+      out.push(e.slice(3));
+      if (e[0] === "R" || e[0] === "C") i++; // the next field is the rename/copy source
+    }
+    return out;
+  } catch { return null; }
+}
