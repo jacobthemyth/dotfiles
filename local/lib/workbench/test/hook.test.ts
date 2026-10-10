@@ -57,3 +57,7 @@ test("no pointer for the session returns {} and creates nothing", () => {
   expect(handle({ kind: "afterCommand", harness: "claude", session: "nope", cwd: repo, command: `git worktree add ${wt} -b feat/x`, output: "" })).toEqual({});
   expect(listWorksets()).toEqual(before);
 });
+test("a failed git worktree add records nothing", () => {
+  after(`git worktree add ${join(repo, "..", "never-created")} -b feat/y`, repo);
+  expect(loadWorkset("claude-s1")!.members).toEqual([]);
+});

@@ -1,3 +1,4 @@
+import { realpathSync } from "node:fs";
 import type { Event, Outcome } from "./events";
 import { openPointer, closePointer, pointerKey, currentWorkset } from "./session";
 import { createWorkset, loadWorkset, deleteWorkset, saveWorkset, addMember } from "./workset";
@@ -31,7 +32,11 @@ export function handle(e: Event): Outcome {
       const ws = loadWorkset(name) ?? createWorkset(name, key);
       for (const r of recorded) {
         if (r.kind === "worktree") {
-          const repo = git.repoRoot(r.path) ?? git.repoRoot(e.cwd); if (!repo) continue;
+          const repo = git.repoRoot(e.cwd); if (!repo) continue;
+          // PostToolUse fires on failures too: only record a path git lists as a worktree.
+          const real = (p: string) => { try { return realpathSync(p); } catch { return null; } };
+          const want = real(r.path);
+          if (!want || !git.worktrees(repo).some((w) => real(w.path) === want)) continue;
           addMember(ws, { repo: git.mainWorktree(repo), slug: git.remoteSlug(repo), branch: r.branch ?? git.currentBranch(r.path) ?? "HEAD", worktree: r.path, added_by: key });
         } else if (r.kind === "push") {
           const repo = git.repoRoot(e.cwd); if (!repo) continue;
