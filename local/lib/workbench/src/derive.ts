@@ -49,19 +49,27 @@ function extraWorktrees(repo: string, config: Config): string[] {
   return out;
 }
 
+// Several PRs can share a head branch; prefer open over merged over closed.
+const STATE_RANK = (s: string) => (s === "OPEN" ? 0 : s === "MERGED" ? 1 : 2);
+
 export function derive(config: Config, deps: Deps = {}): Found[] {
   const myPrs = deps.myPrs ?? gh.myPrs;
   const found: Found[] = [];
+  const prCache = new Map<string, gh.PrWithBranch[]>();
+  const prsFor = (slug: string) => {
+    if (!prCache.has(slug)) prCache.set(slug, myPrs(slug));
+    return prCache.get(slug)!;
+  };
   for (const repo of repoDirs(config.repo_roots)) {
     const slug = git.remoteSlug(repo);
     if (excluded(repo, slug, config)) continue;
     const wts = git.worktrees(repo);
-    const mainPath = wts[0]?.path ?? repo;
+    const mainPath = safeReal(wts[0]?.path ?? repo);
     const def = git.defaultBranch(repo);
-    const prs = slug ? myPrs(slug) : [];
+    const prs = slug ? prsFor(slug) : [];
     const seen = new Set<string>();
     const entries = [
-      ...wts,
+      ...wts.map((w) => ({ path: safeReal(w.path), branch: w.branch })),
       ...extraWorktrees(repo, config).map((path) => ({ path, branch: git.currentBranch(path) })),
     ];
     for (const e of entries) {
@@ -69,7 +77,8 @@ export function derive(config: Config, deps: Deps = {}): Found[] {
       seen.add(e.path);
       const isMain = e.path === mainPath;
       if (isMain && e.branch === def) continue;
-      const hit = prs.find((p) => p.branch === e.branch);
+      const hit = prs.filter((p) => p.branch === e.branch)
+        .sort((a, b) => STATE_RANK(a.pr.state) - STATE_RANK(b.pr.state))[0];
       found.push({
         repo, slug, branch: e.branch, worktree: e.path, pr: hit?.pr ?? null, base: hit?.base ?? null, main: isMain,
       });

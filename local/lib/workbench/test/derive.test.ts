@@ -1,5 +1,5 @@
 import { test, expect, beforeEach, afterEach } from "bun:test";
-import { mkdtempSync, mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { symlinkSync, mkdtempSync, mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { remoteSlug } from "../src/git";
@@ -88,6 +88,40 @@ test("derive attaches PRs by head branch, one lookup per repo", () => {
   expect(calls).toBe(1);
   expect(found.find((f) => f.branch === "feat/a")).toMatchObject({ slug: "o/a", pr, base: "feat/b" });
   expect(found.find((f) => f.branch === "feat/b")?.pr).toBeNull();
+});
+
+test("derive prefers an open PR over a merged one on the same branch, and caches per slug across clones", () => {
+  const a = mkRepo("a"), b = mkRepo("b");
+  sh(a, "worktree", "add", "-q", "-b", "feat/a", join(a, ".worktrees", "feat-a"));
+  sh(a, "remote", "set-url", "origin", "git@github.com:o/same.git");
+  sh(b, "remote", "set-url", "origin", "git@github.com:o/same.git");
+  let calls = 0;
+  const mk = (number: number, state: string) => ({ pr: { number, url: "", draft: false, state }, branch: "feat/a", base: "main" });
+  const found = derive(cfg(), { myPrs: () => { calls++; return [mk(1, "MERGED"), mk(2, "OPEN"), mk(3, "CLOSED")]; } });
+  expect(calls).toBe(1);
+  expect(found.find((x) => x.branch === "feat/a")?.pr?.number).toBe(2);
+  const only = derive(cfg(), { myPrs: () => [mk(1, "CLOSED"), mk(4, "MERGED")] });
+  expect(prunable(only).map((x) => [x.found.branch, x.reason])).toEqual([["feat/a", "merged"]]);
+});
+
+test("derive collapses symlinked paths: each worktree once, main flagged", () => {
+  const a = mkRepo("a");
+  const link = join(tmp, "link");
+  symlinkSync(a, link);
+  sh(link, "worktree", "add", "-q", "-b", "feat/a", join(link, ".worktrees", "feat-a"));
+  sh(link, "checkout", "-q", "-b", "side");
+  const found = derive(cfg({ repo_roots: [link] }), none);
+  expect(found.map((x) => [x.branch, x.main]).sort()).toEqual([["feat/a", false], ["side", true]]);
+});
+
+test("derive only takes worktrees of the same repo from a shared absolute worktree dir", () => {
+  const a = mkRepo("a", false), b = mkRepo("b", false);
+  const wd = join(tmp, "shared");
+  sh(a, "worktree", "add", "-q", "-b", "feat/a", join(wd, "wa"));
+  sh(b, "worktree", "add", "-q", "-b", "feat/b", join(wd, "wb"));
+  const found = derive(cfg({ worktree_dirs: [wd] }), none);
+  expect(found.filter((x) => x.repo === a).map((x) => x.branch)).toEqual(["feat/a"]);
+  expect(found.filter((x) => x.repo === b).map((x) => x.branch)).toEqual(["feat/b"]);
 });
 
 const f = (branch: string): Found => ({ repo: "/r", slug: "o/r", branch, worktree: null, pr: null, base: null, main: false });

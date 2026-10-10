@@ -35,7 +35,7 @@ export function prBase(slug: string, number: number): string {
 
 export function myPrs(slug: string): PrWithBranch[] {
   const s = stub<PrWithBranch[]>("myPrs"); if (s) return s.value ?? [];
-  const r = gh("pr", "list", "--repo", slug, "--author", loadConfig().github_user, "--state", "open",
+  const r = gh("pr", "list", "--repo", slug, "--author", loadConfig().github_user, "--state", "all", "--limit", "100",
     "--json", "number,url,isDraft,state,headRefName,baseRefName") as Raw[] | null;
   return (r ?? []).map((x) => ({ pr: toPr(x), branch: x.headRefName!, base: x.baseRefName }));
 }
