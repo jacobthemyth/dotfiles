@@ -4,7 +4,7 @@ import { normaliseNotes, type Comment } from "./comments";
 import * as git from "./git";
 import { sub } from "./paths";
 import { archiveFile, clearNotes, hasWorktree, killWindow, loadNotes, loadReview, releaseReview, snapshotNotes, type Review } from "./review";
-import { loadPointer } from "./session";
+import { loadPointer, pointerKeys } from "./session";
 import { now, writeJson } from "./store";
 import { loadWorkset, type Member, type Workset } from "./workset";
 
@@ -52,6 +52,8 @@ type Outcome = { edit: EditCommit } | { failed: FailedEdit } | null;
 // are taken back out of the index, so the agent's index is as it was.
 function commitEdits(m: Member, review: Review, message: string, log: (s: string) => void): Outcome {
   const wt = m.worktree!;
+  const on = git.currentBranch(wt);
+  if (on !== m.branch) { log(`  skipping ${m.id}: ${wt} has ${on ?? "a detached HEAD"} checked out, not ${m.branch}`); return null; }
   const names = git.diffNames(wt), extra = git.untracked(wt);
   if (names === null || extra === null) { log(`  skipping ${m.id}: cannot read git status in ${wt}`); return null; }
   const before = new Set(review.snapshot[m.id]?.dirty ?? []);
@@ -76,14 +78,20 @@ export async function submitReview(name: string, opts: SubmitOptions = {}): Prom
 
   // 1. Read every state file first: once a commit exists, nothing may throw before delivery.
   snapshotCurrent(ws, review, warn);
-  const work = ws.members.filter((m) => m.role === "work");
+  // Only the members this review opened on and locked: one recorded since was never reviewed or locked.
+  const reviewed = (m: Member) => !!review.snapshot[m.id] && !!m.worktree && review.locked.includes(m.worktree);
+  const work: Member[] = [];
+  for (const m of ws.members.filter((x) => x.role === "work")) {
+    if (reviewed(m)) work.push(m); else log(`  skipping ${m.id}: joined after open`);
+  }
   const notes = new Map(work.map((m) => [m.id, normaliseNotes(
     tolerant(`notes snapshot for ${m.id}`, () => loadNotes(name, m.id), [], warn),
     { member: m.id, repo: m.repo, slug: m.slug, branch: m.branch, sha: "" },
   )]));
-  const sessions = [...new Set(ws.sessions)].filter((k) => {
+  // Pointers say who is bound now; ws.sessions is only the history of who ever joined.
+  const sessions = pointerKeys().filter((k) => {
     const p = tolerant(`session pointer ${k}`, () => loadPointer(k), null, warn);
-    return !!p && p.closed === null;
+    return !!p && p.workset === name && p.closed === null;
   });
 
   // 2. Edit commits: nothing reaches an inbox before they exist.

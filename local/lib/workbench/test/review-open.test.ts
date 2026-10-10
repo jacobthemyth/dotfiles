@@ -235,3 +235,12 @@ test("a new review on a window left up adopts its hunk pane and session, snapsho
   expect(existsSync(join(tmp, "state", "reviews", "ws1", "notes", `${id.replace(/[/#]/g, "_")}.json`))).toBe(true);
   expect(JSON.parse(readFileSync(join(tmp, "state", "reviews", "ws1", "r-old.json"), "utf8")).comments[0].replies[0].shown_in).toEqual(["sid-7"]);
 });
+
+test("open refuses a work worktree that does not have the member's branch checked out", () => {
+  const wt = worktree("feat");
+  workset([{ branch: "feat", worktree: wt }]);
+  sh(wt, "switch", "-q", "-c", "elsewhere");
+  expect(() => openReview("ws1", { allowDirty: false })).toThrow(`workbench: worktree ${wt} has elsewhere checked out, not feat (${repo}#feat); refusing to open`);
+  expect(loadReview("ws1")).toBeNull();
+  expect(loadLock("ws1")).toBeNull();
+});

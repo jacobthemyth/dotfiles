@@ -164,6 +164,9 @@ export function openReview(name: string, opts: { allowDirty: boolean }): Review 
   for (const m of members) {
     const status = hasWorktree(m) ? git.dirtyFiles(m.worktree!) : [];
     if (status === null && m.role === "work") throw new Error(`workbench: cannot read git status in ${m.worktree} (${m.id}); refusing to open`);
+    // Submit commits on whatever the worktree has checked out: it must be the member's branch.
+    const on = m.role === "work" && hasWorktree(m) ? git.currentBranch(m.worktree!) : m.branch;
+    if (on !== m.branch) throw new Error(`workbench: worktree ${m.worktree} has ${on ?? "a detached HEAD"} checked out, not ${m.branch} (${m.id}); refusing to open`);
     const dirty = status ?? [];
     if (m.role === "work") blocking.push(...dirty.map((f) => join(m.worktree!, f)));
     const tip = hasWorktree(m) ? git.revParse(m.worktree!, "HEAD") : git.revParse(m.repo, `refs/heads/${m.branch}`);

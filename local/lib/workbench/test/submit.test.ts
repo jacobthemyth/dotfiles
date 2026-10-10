@@ -284,3 +284,47 @@ test("close keeps the notes snapshots for the next review", () => {
   closeReview("ws1");
   expect(JSON.parse(readFileSync(notesPath(`${repo}#feat`), "utf8"))).toHaveLength(3);
 });
+
+test("submit skips a work member recorded after open: its uncommitted files are not committed", async () => {
+  const a = worktree("feat");
+  const b = worktree("feat2", "feat");
+  workset([{ branch: "feat", worktree: a }]);
+  openReview("ws1", { allowDirty: false });
+  // The agent's hook records a new worktree into the workset mid-review.
+  const ws = JSON.parse(readFileSync(join(tmp, "state", "worksets", "ws1.json"), "utf8"));
+  addMember(ws, { repo, branch: "feat2", worktree: b, base: "feat", added_by: "claude-x" });
+  saveWorkset(ws);
+  const bTip = sh(b, "rev-parse", "HEAD");
+  writeFileSync(join(b, "agent-wip.txt"), "wip\n");
+  writeFileSync(join(a, "f.txt"), "edited\n");
+  const out = await submitReview("ws1", { message: "m", log });
+  expect(sh(b, "rev-parse", "HEAD")).toBe(bTip);
+  expect(sh(b, "status", "--porcelain")).toBe("?? agent-wip.txt");
+  expect(out.edits.map((e) => e.branch)).toEqual(["feat"]);
+  expect(logs.join("\n")).toContain(`skipping ${repo}#feat2: joined after open`);
+});
+
+test("submit skips a member whose worktree switched branch since open", async () => {
+  const a = worktree("feat");
+  workset([{ branch: "feat", worktree: a }]);
+  openReview("ws1", { allowDirty: false });
+  sh(a, "switch", "-q", "-c", "elsewhere");
+  const tip = sh(a, "rev-parse", "HEAD");
+  writeFileSync(join(a, "f.txt"), "edited\n");
+  const out = await submitReview("ws1", { message: "m", log });
+  expect(sh(a, "rev-parse", "HEAD")).toBe(tip);
+  expect(out.edits).toEqual([]);
+  expect(logs.join("\n")).toContain(`skipping ${repo}#feat: ${a} has elsewhere checked out, not feat`);
+});
+
+test("submit delivers only to sessions whose pointer is still bound to the workset", async () => {
+  const a = worktree("feat");
+  workset([{ branch: "feat", worktree: a }], ["claude-one", "claude-moved"]);
+  pointer("claude-one");
+  savePointer({ key: "claude-moved", harness: "claude", session: "moved", workset: "other", cwd: tmp, opened: "t", closed: null });
+  pointer("claude-late"); // bound to ws1 by pointer, never listed in ws.sessions
+  const r = openReview("ws1", { allowDirty: false });
+  const out = await submitReview("ws1", { message: "m", log });
+  expect(out.sessions).toEqual(["claude-late", "claude-one"]);
+  expect(existsSync(join(tmp, "state", "inbox", "claude-moved", `${r.id}.json`))).toBe(false);
+});

@@ -4,7 +4,7 @@ import { loadConfig, type Config } from "../config";
 import { derive, foundId, prunable, unclaimed } from "../derive";
 import { pruneWorktreeAndBranch } from "../git";
 import { sessionKeyFromEnv } from "../session-key";
-import { bindSession, loadPointer } from "../session";
+import { loadPointer, useWorkset } from "../session";
 import { baseSource, diffBase, orderMembers } from "../stack";
 import { addMember, createWorkset, listWorksets, loadWorkset, removeMember, saveWorkset, type Member, type Role, type Workset } from "../workset";
 
@@ -105,9 +105,7 @@ export async function run(args: string[]): Promise<number> {
         if (!key) return fail("workbench: no session key; set WORKBENCH_SESSION or pass --session <key>", 2);
         if (!loadPointer(key)) return fail(`workbench: no session ${key}`);
         const name = positionals[0];
-        const ws = loadWorkset(name) ?? createWorkset(name, key);
-        if (!ws.sessions.includes(key)) { ws.sessions.push(key); saveWorkset(ws); }
-        bindSession(key, name);
+        useWorkset(key, name);
         console.log(`${key} -> ${name}`);
         return 0;
       }

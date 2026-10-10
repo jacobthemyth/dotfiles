@@ -1,6 +1,6 @@
 import { realpathSync } from "node:fs";
 import type { Event, Outcome } from "./events";
-import { openPointer, closePointer, pointerKey, currentWorkset } from "./session";
+import { openPointer, closePointer, pointerKey, currentWorkset, joinWorkset } from "./session";
 import { createWorkset, loadWorkset, deleteWorkset, saveWorkset, addMember } from "./workset";
 import { stopWatcher } from "./inbox";
 import { recognise } from "./record";
@@ -13,9 +13,7 @@ export function handle(e: Event): Outcome {
   switch (e.kind) {
     case "sessionStarted": {
       const p = openPointer(e.harness, e.session, e.cwd);
-      let ws = loadWorkset(p.workset);
-      if (!ws) ws = createWorkset(p.workset, p.key);
-      if (!ws.sessions.includes(p.key)) { ws.sessions.push(p.key); saveWorkset(ws); }
+      joinWorkset(p.key, p.workset);
       return { context: `workbench: this session is "${p.key}", bound to workset "${p.workset}". Change it with \`workbench workset use <name>\`.` };
     }
     case "sessionEnded": {

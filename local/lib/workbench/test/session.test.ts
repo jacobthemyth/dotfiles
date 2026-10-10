@@ -63,3 +63,15 @@ test("default workset with a member survives session end", () => {
   end();
   expect(loadWorkset("claude-abc")).not.toBeNull();
 });
+
+test("workset use leaves the previous workset's sessions", async () => {
+  const { run } = await import("../src/cmd/workset");
+  const key = pointerKey("claude", "abc");
+  start();
+  expect(await run(["use", "spike", "--session", key])).toBe(0);
+  expect(await run(["use", "other", "--session", key])).toBe(0);
+  expect(loadWorkset("spike")!.sessions).not.toContain(key);
+  expect(loadWorkset("claude-abc")!.sessions).not.toContain(key);
+  expect(loadWorkset("other")!.sessions).toEqual([key]);
+  expect(loadPointer(key)!.workset).toBe("other");
+});
