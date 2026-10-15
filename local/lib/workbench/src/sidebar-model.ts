@@ -67,3 +67,21 @@ export function scroll(top: number, sel: number, height: number): number {
   if (sel >= top + height) return sel - height + 1;
   return top;
 }
+
+// Splits terminal input into keys: plain characters and the arrow keys (as `\x1b[A`..`\x1b[D`). Every other escape
+// sequence is dropped whole. hunk queries the outer terminal's palette through tmux passthrough, and tmux hands the
+// reply (`\x1b]11;rgb:1c1c/…\x1b\\`) to the active pane, the sidebar; read char by char, its `c` would close the review.
+// rest is an escape sequence cut off at the end of buf: prepend it to the next chunk.
+const SEQ = /\x1b(?:\[([0-?]*[ -/]*[@-~])|O([@-~])|[\]P_^X][\s\S]*?(?:\x07|\x1b\\)|[^\]P_^X\[O])|[^\x1b]/y;
+export function splitKeys(buf: string): { keys: string[]; rest: string } {
+  const keys: string[] = [];
+  let at = 0;
+  for (let m: RegExpExecArray | null; (SEQ.lastIndex = at), (m = SEQ.exec(buf)); at = SEQ.lastIndex) {
+    const final = m[1] ?? m[2];
+    if (m[0][0] !== "\x1b") keys.push(m[0]);
+    else if (final && /^[A-D]$/.test(final)) keys.push(`\x1b[${final}`);
+  }
+  // A lone Esc keypress is not the start of a reply; a runaway fragment is not worth holding.
+  const rest = buf.slice(at);
+  return { keys, rest: rest === "\x1b" || rest.length > 256 ? "" : rest };
+}

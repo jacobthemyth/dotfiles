@@ -2,7 +2,7 @@ import { test, expect } from "bun:test";
 import type { Config } from "../src/config";
 import type { Found } from "../src/derive";
 import type { Pointer } from "../src/session";
-import { buildRows, clamp, move, scroll, sessionLine, type SessionView } from "../src/sidebar-model";
+import { buildRows, clamp, move, scroll, sessionLine, splitKeys, type SessionView } from "../src/sidebar-model";
 import { addMember, type Workset } from "../src/workset";
 
 const cfg = { default_branch: "main" } as Config;
@@ -66,4 +66,25 @@ test("session line: unread reviews, comments with at least one reply over all co
   expect(sessionLine(sv("claude-x", "t", [[false, [0]], [false, []], [true, [3]]]))).toBe("claude-x  closed  inbox: 2 unread  replies 1/2");
   // A comment from an older file without a replies field counts as unanswered.
   expect(sessionLine({ pointer: ptr("k", null), reviews: [{ read: true, comments: [{}] }] })).toBe("k  open  inbox: 0 unread  replies 0/1");
+});
+
+test("splitKeys passes plain keys and arrows through", () => {
+  expect(splitKeys("jk\r\x1b[A\x1b[B\x1bOC")).toEqual({ keys: ["j", "k", "\r", "\x1b[A", "\x1b[B", "\x1b[C"], rest: "" });
+});
+
+test("splitKeys drops terminal replies whole, so their letters never act as keys", () => {
+  // OSC palette replies (BEL and ST terminated), a DA1 reply, a focus event, a DCS reply.
+  const replies = "\x1b]11;rgb:1c1c/acac/2e2e\x07\x1b]4;1;rgb:cccc/0000/0000\x1b\\\x1b[?62;22c\x1b[I\x1bP>|tmux 3.8\x1b\\";
+  expect(splitKeys(`\r${replies}j`)).toEqual({ keys: ["\r", "j"], rest: "" });
+});
+
+test("splitKeys holds a reply cut off at the chunk end for the next chunk", () => {
+  const first = splitKeys("j\x1b]11;rgb:1c1c/");
+  expect(first).toEqual({ keys: ["j"], rest: "\x1b]11;rgb:1c1c/" });
+  expect(splitKeys(first.rest + "acac/2e2e\x1b\\k")).toEqual({ keys: ["k"], rest: "" });
+  expect(splitKeys("\x1b[?62;").rest).toBe("\x1b[?62;");
+});
+
+test("splitKeys drops a lone Esc instead of holding it", () => {
+  expect(splitKeys("\x1b")).toEqual({ keys: [], rest: "" });
 });

@@ -3,7 +3,7 @@ import { config, loadReview, repoint } from "./review";
 import * as inbox from "./inbox";
 import { listPointers } from "./session";
 import { closeInPane, submitInPane } from "./sidebar-review";
-import { buildRows, clamp, move, scroll, type Row } from "./sidebar-model";
+import { buildRows, clamp, move, scroll, splitKeys, type Row } from "./sidebar-model";
 import { diffBase } from "./stack";
 import { addMember, loadWorkset, saveWorkset, type Workset } from "./workset";
 
@@ -122,9 +122,12 @@ export async function runSidebar(name: string): Promise<number> {
     };
     process.stdin.setRawMode(true);
     process.stdin.setEncoding("utf8");
+    let pending = "";
     process.stdin.on("data", (chunk: string) => {
       try {
-        for (const key of chunk.match(/\x1b\[[A-D]|[\s\S]/g) ?? []) if (!done && !busy) onKey(key);
+        const { keys, rest } = splitKeys(pending + chunk);
+        pending = rest;
+        for (const key of keys) if (!done && !busy) onKey(key);
       } catch (e) { status = (e as Error).message; render(); }
     });
     render();
