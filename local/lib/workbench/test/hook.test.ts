@@ -34,6 +34,11 @@ test("git push -u records the branch at the cwd", () => {
   after("git push -u origin feat/x", wt);
   expect(loadWorkset("claude-s1")!.members[0]).toMatchObject({ repo, branch: "feat/x", worktree: wt });
 });
+test("a push of a branch that does not exist locally records nothing", () => {
+  after(`python3 - <<'X'\ns.replace("git push -u origin feat/x", wt)\nX`, wt);
+  after("git push -u origin no/such-branch", wt);
+  expect(loadWorkset("claude-s1")!.members).toEqual([]);
+});
 test("gh pr create records the PR using the gh stub", () => {
   const stub = join(process.env.WORKBENCH_STATE_DIR!, "gh.json");
   const pr = { number: 12, url: "https://github.com/o/r/pull/12", draft: true, state: "OPEN" };

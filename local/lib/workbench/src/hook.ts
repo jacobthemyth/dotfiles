@@ -35,7 +35,8 @@ export function handle(e: Event): Outcome {
       if (snap) applyChanges(ws, snap, key);
       for (const r of recorded) {
         if (r.kind === "push") {
-          const repo = git.repoRoot(e.cwd); if (!repo) continue;
+          // Text recognition matches push commands quoted in heredocs and strings: keep only a real local branch.
+          const repo = git.repoRoot(e.cwd); if (!repo || !git.revParse(repo, `refs/heads/${r.branch}`)) continue;
           addMember(ws, { repo: git.mainWorktree(repo), slug: git.remoteSlug(repo), branch: r.branch, worktree: e.cwd, added_by: key });
         } else {
           const repo = git.repoRoot(e.cwd);
