@@ -8,7 +8,7 @@ import { diffBase } from "./stack";
 import { addMember, loadWorkset, saveWorkset, type Workset } from "./workset";
 
 const CLI = new URL("./cli.ts", import.meta.url).pathname;
-const KEYS = "j/k move  ⏎ show  a adopt  i ignore  r rescan  t throwaways  s submit  c close  q quit";
+const KEYS = "j/k move  ⏎ show  a adopt  i ignore  r rescan  t throwaways  s submit  c close (asks for yes)  q quit";
 
 export async function runSidebar(name: string): Promise<number> {
   if (!process.stdin.isTTY) { console.error("workbench: the sidebar needs a terminal"); return 1; }

@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openReview, loadReview, loadLock } from "../src/review";
 import { savePointer } from "../src/session";
+import { CLOSE_WARNING, confirmClose } from "../src/sidebar-review";
 import { closeReview, submitReview, type ReviewFile } from "../src/submit";
 import { drainRecorded } from "../src/spawn";
 import { addMember, createWorkset, saveWorkset } from "../src/workset";
@@ -180,6 +181,36 @@ test("close releases the lock and keeps the review file for rehydration", () => 
   expect(readdirSync(join(tmp, "state", "reviews", "ws1"))).toContain("notes");
   expect(sh(a, "status", "--porcelain")).toBe("M f.txt"); // close commits nothing
   expect(() => closeReview("ws1")).toThrow(/no open review/);
+});
+
+test("the sidebar's close asks first and closes only on yes", async () => {
+  workset([{ branch: "feat", worktree: worktree("feat") }]);
+  const r = openReview("ws1", { allowDirty: false });
+  let pauses = 0;
+  const pause = async () => { pauses++; };
+  for (const answer of ["", "no", "y", "yes please"]) {
+    logs = [];
+    expect(await confirmClose("ws1", { ask: async () => answer, log, pause })).toBe(false);
+    expect(logs).toEqual([CLOSE_WARNING, "close cancelled"]);
+    expect(loadLock("ws1")).not.toBeNull();
+    expect(loadReview("ws1")?.id).toBe(r.id);
+  }
+  // A prompt that dies (EOF, Ctrl-C) cancels too.
+  expect(await confirmClose("ws1", { ask: async () => { throw new Error("closed"); }, log, pause })).toBe(false);
+  expect(loadLock("ws1")).not.toBeNull();
+  logs = [];
+  expect(await confirmClose("ws1", { ask: async () => "  YES\n", log, pause })).toBe(true);
+  expect(logs).toEqual([CLOSE_WARNING, `closed ${r.id} for ws1: lock released, comments kept`]);
+  expect(loadLock("ws1")).toBeNull();
+  expect(loadReview("ws1")).toBeNull();
+  expect(pauses).toBe(6); // every outcome waits for a key before the sidebar returns
+});
+
+test("the sidebar's close reports a review that is already gone", async () => {
+  workset([{ branch: "feat", worktree: worktree("feat") }]);
+  logs = [];
+  expect(await confirmClose("ws1", { ask: async () => "yes", log, pause: async () => {} })).toBe(false);
+  expect(logs[1]).toMatch(/no open review for "ws1"/);
 });
 
 test("submit refuses without an open review or workset", async () => {

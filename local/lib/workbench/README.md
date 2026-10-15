@@ -62,7 +62,7 @@ When hunk restarts for a member (showing a member in another worktree, or reopen
 
 ## Sidebar keys
 
-`j`/`k` move, `⏎` show the selection in hunk, `a` adopt and `i` ignore an unclaimed item, `r` rescan, `t` show throwaways, `s` submit (prompts for the message, then closes the window), `c` close (keeps the window), `q` quit.
+`j`/`k` move, `⏎` show the selection in hunk, `a` adopt and `i` ignore an unclaimed item, `r` rescan, `t` show throwaways, `s` submit (prompts for the message, then closes the window), `c` close (asks for yes; keeps the window), `q` quit.
 
 Each bound session has a line: `<key>  open|closed  inbox: <n> unread  replies <r>/<c>`, where `c` counts the comments in that session's inbox reviews and `r` those with at least one reply.
 
