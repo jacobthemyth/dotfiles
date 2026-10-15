@@ -26,14 +26,8 @@ beforeEach(() => {
 });
 const after = (command: string, cwd: string, output = "") => handle({ kind: "afterCommand", harness: "claude", session: "s1", cwd, command, output });
 
-test("git worktree add records the worktree as a member of the main repo", () => {
-  after(`git worktree add ${wt} -b feat/x`, repo);
-  const m = loadWorkset("claude-s1")!.members;
-  expect(m).toHaveLength(1);
-  expect(m[0]).toMatchObject({ repo, slug: "o/r", branch: "feat/x", worktree: wt, added_by: "claude-s1" });
-});
 test("rtk-prefixed commands are recorded too", () => {
-  after(`rtk git worktree add ${wt} -b feat/x`, repo);
+  after("rtk git push -u origin feat/x", wt);
   expect(loadWorkset("claude-s1")!.members).toHaveLength(1);
 });
 test("git push -u records the branch at the cwd", () => {
@@ -54,10 +48,6 @@ test("unrecognised commands change nothing", () => {
 });
 test("no pointer for the session returns {} and creates nothing", () => {
   const before = listWorksets();
-  expect(handle({ kind: "afterCommand", harness: "claude", session: "nope", cwd: repo, command: `git worktree add ${wt} -b feat/x`, output: "" })).toEqual({});
+  expect(handle({ kind: "afterCommand", harness: "claude", session: "nope", cwd: wt, command: "git push -u origin feat/x", output: "" })).toEqual({});
   expect(listWorksets()).toEqual(before);
-});
-test("a failed git worktree add records nothing", () => {
-  after(`git worktree add ${join(repo, "..", "never-created")} -b feat/y`, repo);
-  expect(loadWorkset("claude-s1")!.members).toEqual([]);
 });

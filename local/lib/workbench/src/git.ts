@@ -31,6 +31,24 @@ export function worktrees(repo: string): { path: string; branch: string | null }
   return list;
 }
 
+// Every local branch and its tip; null when `repo` is not a repository.
+export function heads(repo: string): Record<string, string> | null {
+  const out = git(repo, "for-each-ref", "--format=%(objectname) %(refname)", "refs/heads");
+  if (out === null) return null;
+  const map: Record<string, string> = {};
+  for (const line of out.split("\n").filter(Boolean)) {
+    const [sha, ref] = line.split(" ");
+    map[ref.replace(/^refs\/heads\//, "")] = sha;
+  }
+  return map;
+}
+
+// Local branches whose tips are `rev` or its ancestors.
+export function mergedInto(repo: string, rev: string): string[] {
+  const out = git(repo, "for-each-ref", `--merged=${rev}`, "--format=%(refname)", "refs/heads");
+  return out ? out.split("\n").filter(Boolean).map((r) => r.replace(/^refs\/heads\//, "")) : [];
+}
+
 export function mainWorktree(repo: string): string {
   return worktrees(repo)[0]?.path ?? repo;
 }

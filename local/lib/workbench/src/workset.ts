@@ -2,7 +2,7 @@ import { join } from "node:path";
 import { sub } from "./paths";
 import { readJson, writeJson, listJson, now, removeFile } from "./store";
 
-export type BaseSource = "pr" | "declared" | "default";
+export type BaseSource = "pr" | "declared" | "inferred" | "default";
 export type Role = "work" | "throwaway";
 export type Pr = { number: number; url: string; draft: boolean; state: string };
 export type Member = {
@@ -27,11 +27,16 @@ export function createWorkset(name: string, by: string): Workset {
   saveWorkset(ws);
   return ws;
 }
+// The same branch of the same checkout is one member, whether it was declared by path or recorded by slug.
+export function findMember(ws: Workset, m: { slug: string | null; repo: string; branch: string }): Member | undefined {
+  const id = memberId(m);
+  return ws.members.find((x) => x.id === id || (x.repo === m.repo && x.branch === m.branch));
+}
 export type MemberInput = Partial<Omit<Member, "id" | "added_at">> & Pick<Member, "repo" | "branch" | "added_by">;
 export function addMember(ws: Workset, input: MemberInput): Member {
   const slug = input.slug ?? null;
   const id = memberId({ slug, repo: input.repo, branch: input.branch });
-  const existing = ws.members.find((m) => m.id === id);
+  const existing = findMember(ws, { slug, repo: input.repo, branch: input.branch });
   if (existing) {
     Object.assign(existing, Object.fromEntries(Object.entries(input).filter(([, v]) => v !== undefined && v !== null)));
     return existing;

@@ -26,6 +26,14 @@ test("adding the same branch twice updates instead of duplicating", () => {
   expect(ws.members[0].worktree).toBe("/r/.worktrees/b");
 });
 
+test("a branch declared by path and recorded by slug is one member", () => {
+  const ws = createWorkset("spike", "hand");
+  addMember(ws, { repo: "/r", slug: null, branch: "b", added_by: "hand" });
+  addMember(ws, { repo: "/r", slug: "o/r", branch: "b", worktree: "/r/.worktrees/b", added_by: "claude-1" });
+  expect(ws.members).toHaveLength(1);
+  expect(ws.members[0]).toMatchObject({ id: "/r#b", worktree: "/r/.worktrees/b" });
+});
+
 test("remove member", () => {
   const ws = createWorkset("spike", "hand");
   const m = addMember(ws, { repo: "/r", slug: null, branch: "b", worktree: null, added_by: "hand" });

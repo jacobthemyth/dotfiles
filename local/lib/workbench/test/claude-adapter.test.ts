@@ -11,6 +11,12 @@ test("PreToolUse Bash becomes beforeCommand", () => {
   const e = parseClaudeHook({ ...base, hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command: "git status" } });
   expect(e?.kind).toBe("beforeCommand");
 });
+test("Bash events on both sides carry the tool use id that pairs them", () => {
+  const pre = parseClaudeHook({ ...base, hook_event_name: "PreToolUse", tool_name: "Bash", tool_use_id: "toolu_1", tool_input: { command: "ls" } });
+  const post = parseClaudeHook({ ...base, hook_event_name: "PostToolUse", tool_name: "Bash", tool_use_id: "toolu_1", tool_input: { command: "ls" }, tool_response: { stdout: "" } });
+  expect(pre).toMatchObject({ kind: "beforeCommand", toolUseId: "toolu_1" });
+  expect(post).toMatchObject({ kind: "afterCommand", toolUseId: "toolu_1" });
+});
 test("PostToolUse Bash carries output", () => {
   const e = parseClaudeHook({ ...base, hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command: "gh pr create" }, tool_response: { stdout: "https://github.com/o/r/pull/7\n" } });
   expect(e).toMatchObject({ kind: "afterCommand", output: expect.stringContaining("pull/7") });

@@ -1,9 +1,9 @@
-import { realpathSync } from "node:fs";
 import type { Event, Outcome } from "./events";
 import { openPointer, closePointer, pointerKey, currentWorkset, joinWorkset } from "./session";
 import { createWorkset, loadWorkset, deleteWorkset, saveWorkset, addMember } from "./workset";
 import { stopWatcher, unreadCount } from "./inbox";
 import { recognise } from "./record";
+import { applyChanges, saveSnapshot, snapshot, takeSnapshot } from "./observe";
 import * as git from "./git";
 import * as gh from "./gh";
 import { activeLocks, commandTouches, denyMessage, lockFor, looksLikeWrite } from "./lock";
@@ -26,21 +26,15 @@ export function handle(e: Event): Outcome {
       return {};
     }
     case "afterCommand": {
-      const recorded = recognise(e.command, e.output, e.cwd);
-      if (recorded.length === 0) return {};
       const key = pointerKey(e.harness, e.session);
+      const snap = e.toolUseId ? takeSnapshot(key, e.toolUseId) : null;
+      const recorded = recognise(e.command, e.output);
       const name = currentWorkset(key);
-      if (!name) return {};
+      if (!name || (!snap && recorded.length === 0)) return {};
       const ws = loadWorkset(name) ?? createWorkset(name, key);
+      if (snap) applyChanges(ws, snap, key);
       for (const r of recorded) {
-        if (r.kind === "worktree") {
-          const repo = git.repoRoot(e.cwd); if (!repo) continue;
-          // PostToolUse fires on failures too: only record a path git lists as a worktree.
-          const real = (p: string) => { try { return realpathSync(p); } catch { return null; } };
-          const want = real(r.path);
-          if (!want || !git.worktrees(repo).some((w) => real(w.path) === want)) continue;
-          addMember(ws, { repo: git.mainWorktree(repo), slug: git.remoteSlug(repo), branch: r.branch ?? git.currentBranch(r.path) ?? "HEAD", worktree: r.path, added_by: key });
-        } else if (r.kind === "push") {
+        if (r.kind === "push") {
           const repo = git.repoRoot(e.cwd); if (!repo) continue;
           addMember(ws, { repo: git.mainWorktree(repo), slug: git.remoteSlug(repo), branch: r.branch, worktree: e.cwd, added_by: key });
         } else {
@@ -60,10 +54,16 @@ export function handle(e: Event): Outcome {
       return lock ? { deny: denyMessage(lock, lock.matched) } : {};
     }
     case "beforeCommand": {
-      if (!looksLikeWrite(e.command)) return {};
-      for (const lock of activeLocks()) {
-        const hit = commandTouches(e.command, e.cwd, lock.paths);
-        if (hit) return { deny: denyMessage(lock, hit) };
+      if (looksLikeWrite(e.command)) {
+        for (const lock of activeLocks()) {
+          const hit = commandTouches(e.command, e.cwd, lock.paths);
+          if (hit) return { deny: denyMessage(lock, hit) };
+        }
+      }
+      const key = pointerKey(e.harness, e.session);
+      // Only a bound session's commands are observed; a failed snapshot must never block the command.
+      if (e.toolUseId && currentWorkset(key)) {
+        try { saveSnapshot(key, e.toolUseId, snapshot(e.command, e.cwd)); } catch (err) { console.error(`workbench hook: ${(err as Error).message}`); }
       }
       return {};
     }

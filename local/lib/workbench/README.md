@@ -33,6 +33,18 @@ Glossary: [CONTEXT.md](CONTEXT.md). Design: [docs/superpowers/specs/2026-10-10-w
 
 Inside Claude Code the session key comes from `CLAUDE_CODE_SESSION_ID` (`claude-<id>`), or from `WORKBENCH_SESSION`; elsewhere pass `--session`.
 
+## How members are recorded
+
+A bound session's members are observed, not parsed. Before each Bash command the hook snapshots the local branches and worktrees of the command's repo, and of any repo whose path the command names (`git -C <repo>`, `cd <repo> && ...`). After the command it compares:
+
+- A branch created or moved, or checked out in a new worktree, joins the workset with its worktree. Loops, variables, scripts and aliases make no difference.
+- Commits on the default branch, detached worktrees, and switching an existing worktree to an existing branch record nothing.
+- A worktree that went away is cleared from its member. A member whose branch and worktree are both gone leaves the workset.
+- A member with no base gets an `inferred` base: the nearest other member its tip descends from. A declared or PR base is never replaced.
+- Ignored ids are never recorded. A branch declared by path (`workset add --repo`) and observed by slug is one member.
+
+`git push -u` and `gh pr create` are still read from the command and its output: they record an existing branch the session published, and the PR it opened. `workbench workset add` remains the explicit form for order, role and declared bases.
+
 ## Review flow
 
 1. `workbench open <workset>`: the work worktrees are locked and the review window opens (sidebar left, hunk right). Each work member's worktree must have that member's branch checked out; `open` refuses otherwise, because submit commits on the branch the worktree has checked out. If `open` fails after taking the lock, `workbench close <workset>` releases it.
@@ -86,6 +98,9 @@ workbench close spike   # release the lock when done reading
 ```
 
 ## Known limitations
+
+- Observation sees only the command's own repo and repos whose paths appear in its text. A script that changes a repo it never names is missed. Another session moving refs in the same repo during the same command is attributed to both sessions.
+- The snapshot costs a few git calls per Bash command: about 35 ms in a repo with 100 branches and 35 worktrees, plus about 150 ms when refs changed and bases are recomputed.
 
 - hunk 0.23 refuses `session reload --source` across worktrees, so showing a member in another worktree restarts hunk in the pane.
 - hunk user notes live only in the TUI's memory and die with it; the sidebar, `close` and `submit` snapshot them to `~/.local/state/workbench/reviews/<workset>/notes/`. Submit clears that directory once the review is delivered; close keeps it.

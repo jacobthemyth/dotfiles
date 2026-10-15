@@ -28,7 +28,7 @@ function repoDirs(roots: string[]): string[] {
   return [...out];
 }
 
-function excluded(repo: string, slug: string | null, config: Config): boolean {
+export function excluded(repo: string, slug: string | null, config: Config): boolean {
   const ex = config.exclude_repos.map((e) => (e.startsWith("/") ? safeReal(e) : e));
   return ex.includes(repo) || ex.includes(basename(repo)) || (slug !== null && ex.includes(slug));
 }
