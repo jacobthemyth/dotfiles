@@ -29,6 +29,7 @@ Personal dotfiles managed with [rcm](https://github.com/thoughtbot/rcm) (RC file
 - `tag-linux/` — Linux-only (Arch). `config/aconfmgr/` declares pacman+AUR state; `config/hypr/` (and siblings) hold Hyprland-stack configs symlinked to `~/.config/`. See `docs/superpowers/specs/2026-05-12-arch-aconfmgr-seeding.md` for how to seed the package manifest.
 - `tag-encrypted/` — git-crypt encrypted files
 - `zsh/configs/*.zsh` — sourced by zshrc; `zsh/functions/` — custom shell functions added to FPATH
+- `agents/skills/<name>/` — personal agent skills, linked to `~/.agents/skills/` (Codex etc.). Claude Code doesn't read that dir, so each skill also needs a committed `claude/skills/<name> -> ../../agents/skills/<name>` symlink, which rcm links into `~/.claude/skills/`. Third-party skills are installed with `npx skills add <repo> -g` and tracked in `~/.agents/.skill-lock.json`, not in this repo. Never replace `~/.claude/skills` itself with a symlink: Claude Code writes `synced/` and `.trash/` there.
 - `local/bin/` — user scripts (symlinked to `~/.local/bin/`)
 - `local/lib/papersync/` — uv project behind `~/.local/bin/papersync` (see docs/superpowers/specs/2026-09-07-papersync-design.md)
 

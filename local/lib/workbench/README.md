@@ -7,7 +7,7 @@ Glossary: [CONTEXT.md](CONTEXT.md). Design: [docs/superpowers/specs/2026-10-10-w
 
 ## Install
 
-1. `RCRC=~/.dotfiles/rcrc rcup`: links `local/lib/workbench` to `~/.local/lib/workbench`, the shim `~/.local/bin/workbench`, `config/workbench/config.toml`, and the `workbench-review` skill (`agents/skills/workbench-review` to `~/.agents/skills/`, which the `claude-skills` post-up hook exposes as `~/.claude/skills`).
+1. `RCRC=~/.dotfiles/rcrc rcup`: links `local/lib/workbench` to `~/.local/lib/workbench`, the shim `~/.local/bin/workbench`, `config/workbench/config.toml`, and the `workbench-review` skill (`agents/skills/workbench-review` to `~/.agents/skills/`, and `claude/skills/workbench-review` to `~/.claude/skills/`).
 2. `brew bundle --global` (`~/.Brewfile` is `tag-mac/Brewfile`): installs `bun` and `hunk`. hunk must be 0.23 or later (`hunk --version`).
 3. The hooks are already in `claude/settings.json`: `workbench hook claude` on PreToolUse (Edit, Write, NotebookEdit, Bash), PostToolUse (Bash), SessionStart, SessionEnd and UserPromptSubmit, and `workbench hook claude --watch` (asyncRewake) on SessionStart and Stop. New Claude sessions pick them up.
 
