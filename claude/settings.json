@@ -43,8 +43,8 @@
           {
             "type": "command",
             "command": "workbench hook claude --watch",
-            "asyncRewake": true,
-            "timeout": 7200
+            "timeout": 7200,
+            "asyncRewake": true
           }
         ]
       }
@@ -77,8 +77,8 @@
           {
             "type": "command",
             "command": "workbench hook claude --watch",
-            "asyncRewake": true,
-            "timeout": 7200
+            "timeout": 7200,
+            "asyncRewake": true
           }
         ]
       }
@@ -165,5 +165,6 @@
   },
   "tui": "fullscreen",
   "theme": "dark",
+  "idleCompaction": false,
   "agentPushNotifEnabled": true
 }
