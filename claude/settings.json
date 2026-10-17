@@ -137,8 +137,8 @@
     },
     "hiroppy": {
       "source": {
-        "source": "directory",
-        "path": "/Users/jake/.local/share/tmux/plugins/tmux-agent-sidebar-e2084067ab62"
+        "source": "github",
+        "repo": "hiroppy/tmux-agent-sidebar"
       }
     },
     "i-have-adhd": {
