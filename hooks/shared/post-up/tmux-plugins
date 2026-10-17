@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+#
+# Install the tmux plugins declared in tmux.conf. `tpack init` in tmux.conf
+# only loads plugins that are already on disk; `tpack install` fetches them.
+# Idempotent: plugins that are already installed are left alone.
+
+set -eo pipefail
+
+if ! command -v tpack >/dev/null 2>&1; then
+  echo "tmux-plugins: tpack not found, skipping"
+  exit 0
+fi
+
+echo "Installing tmux plugins ..."
+tpack install
