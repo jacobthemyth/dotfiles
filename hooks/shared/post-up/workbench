@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+#
+# Install workbench's dependencies (TypeScript and the bun type definitions)
+# so its tests and type check run. --frozen-lockfile installs exactly what
+# bun.lock pins and fails if package.json and bun.lock disagree.
+
+set -eo pipefail
+
+if ! command -v bun >/dev/null 2>&1; then
+  echo "workbench: bun not found, skipping"
+  exit 0
+fi
+
+echo "Installing workbench dependencies ..."
+cd "$HOME/.local/lib/workbench"
+bun install --frozen-lockfile
