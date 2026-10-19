@@ -63,8 +63,14 @@ export function parseBranchResponse(branches: string[], json: unknown): Map<stri
 
 export function prsForBranches(slug: string, branches: string[], deps: { run?: (query: string) => unknown } = {}): Map<string, BranchPr> {
   lastGhError = null;
-  const s = stub<Record<string, BranchPr>>("prsForBranches");
-  if (s) return new Map(Object.entries(s.value ?? {}));
+  const s = stub<Record<string, BranchPr | Record<string, BranchPr>>>("prsForBranches");
+  if (s) {
+    // Keyed by slug then branch; a flat branch map (every value a BranchPr) serves every slug.
+    const v = s.value ?? {};
+    const flat = Object.values(v).every((x) => x && typeof x === "object" && "pr" in x);
+    const map = (flat ? v : v[slug] ?? {}) as Record<string, BranchPr>;
+    return new Map(Object.entries(map));
+  }
   const [owner, repo] = slug.split("/");
   const run = deps.run ?? ((q: string) => gh("api", "graphql", "-f", `query=${q}`));
   const out = new Map<string, BranchPr>();

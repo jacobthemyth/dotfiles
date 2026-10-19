@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 function exec(cwd: string, args: string[]): { ok: boolean; out: string; err: string } {
   try {
     const r = Bun.spawnSync(["git", ...args], { cwd, env: process.env, stdout: "pipe", stderr: "pipe" });
@@ -122,12 +123,13 @@ export function revListCount(repo: string, range: string): number | null {
 }
 export const hasCommit = (repo: string, oid: string) => exec(repo, ["cat-file", "-e", `${oid}^{commit}`]).ok;
 export const isAncestor = (repo: string, ancestor: string, descendant: string) => exec(repo, ["merge-base", "--is-ancestor", ancestor, descendant]).ok;
-// Best effort: brings a PR's head commit into the local object store. Never prompts.
+// Best effort: brings a PR's head commit into the local object store. Never prompts; gives up after 20 s.
 export function fetchPullHead(repo: string, number: number): boolean {
   try {
-    const r = Bun.spawnSync(["git", "fetch", "-q", "origin", `refs/pull/${number}/head`], {
-      cwd: repo, env: { ...process.env, GIT_TERMINAL_PROMPT: "0" }, stdout: "pipe", stderr: "pipe",
+    const r = spawnSync("git", ["fetch", "-q", "origin", `refs/pull/${number}/head`], {
+      cwd: repo, timeout: 20_000, stdio: "ignore",
+      env: { ...process.env, GIT_TERMINAL_PROMPT: "0", GIT_SSH_COMMAND: "ssh -o BatchMode=yes" },
     });
-    return r.exitCode === 0;
+    return r.status === 0;
   } catch { return false; }
 }

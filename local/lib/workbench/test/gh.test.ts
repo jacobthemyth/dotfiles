@@ -19,6 +19,19 @@ test("prsForBranches returns the stub's map", () => {
   expect(m.has("b")).toBe(false);
 });
 
+test("a stub keyed by slug then branch keeps two repos apart", () => {
+  const f = join(mkdtempSync(join(tmpdir(), "wb-gh-")), "stub.json");
+  const pr = (n: number) => ({ number: n, url: "u", draft: false, state: "MERGED" });
+  writeFileSync(f, JSON.stringify({ prsForBranches: {
+    "o/one": { a: { pr: pr(1), base: "main", headRefOid: "one" } },
+    "o/two": { a: { pr: pr(2), base: "main", headRefOid: "two" } },
+  } }));
+  process.env.WORKBENCH_GH_STUB = f;
+  expect(prsForBranches("o/one", ["a"]).get("a")?.pr.number).toBe(1);
+  expect(prsForBranches("o/two", ["a"]).get("a")?.pr.number).toBe(2);
+  expect(prsForBranches("o/three", ["a"]).size).toBe(0);
+});
+
 test("buildQuery aliases by index and escapes names", () => {
   const q = buildBranchQuery("o", "r", ['we"ird/na.me', "x\\y"]);
   expect(q).toContain('b0: pullRequests(headRefName: "we\\"ird/na.me"');
