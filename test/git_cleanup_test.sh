@@ -20,6 +20,7 @@ fake_bin="$fixture/fake_bin"
 mkdir -p "$fake_bin"
 export PATH="$fake_bin:$dotfiles_root/local/bin:$PATH"
 export FAKE_GH_QUERY_LOG="$fixture/query.log"
+export FAKE_GH_REPO="$fixture/repo"
 
 repo="$fixture/repo"
 out="$fixture/out.txt"
@@ -104,7 +105,8 @@ no_gh() {
 }
 
 # gh that answers `auth status` and a batched pullRequests GraphQL query. The PR
-# table is FAKE_GH_PRS="branch=STATE:number ..."; unlisted branches have no PR.
+# table is FAKE_GH_PRS="branch=STATE:number[:oid] ..."; unlisted branches have no
+# PR, and a missing oid means the branch's current local tip.
 use_gh() {
   cat > "$fake_bin/gh" <<'FAKE'
 #!/usr/bin/env bash
@@ -128,7 +130,11 @@ while IFS= read -r m; do
   for w in $FAKE_GH_PRS; do
     if [ "${w%%=*}" = "$name" ]; then
       rest="${w#*=}"
-      nodes="[{\"number\":${rest#*:},\"state\":\"${rest%%:*}\"}]"
+      num="${rest#*:}"
+      oid=""
+      case "$num" in *:*) oid="${num#*:}"; num="${num%%:*}" ;; esac
+      [ -n "$oid" ] || oid="$(git -C "$FAKE_GH_REPO" rev-parse "refs/heads/$name")"
+      nodes="[{\"number\":$num,\"state\":\"${rest%%:*}\",\"headRefOid\":\"$oid\"}]"
     fi
   done
   resp="$resp$sep\"$alias\":{\"nodes\":$nodes}"
@@ -306,6 +312,47 @@ test_gh_escapes_and_batches() {
   assert_line skip pr-open "open PR #13"
 }
 
+# Add <branch> with one commit per remaining argument (worktree under .worktrees).
+add_commits() {
+  local b="$1" c
+  shift
+  git -C "$repo" worktree add -q -b "$b" "$repo/.worktrees/$b" main
+  for c in "$@"; do
+    echo "$c" > "$repo/.worktrees/$b/$c.txt"
+    git -C "$repo/.worktrees/$b" add "$c.txt"
+    git -C "$repo/.worktrees/$b" commit -q -m "$c"
+  done
+}
+
+test_gh_merged_reused_branch_is_kept() {
+  mk_gh_repo
+  add_commits pr-reused first second
+  local first
+  first="$(git -C "$repo" rev-parse pr-reused~1)"
+  FAKE_GH_PRS="pr-reused=MERGED:21:$first" git -C "$repo" cleanup > "$out"
+  assert_line skip pr-reused "unmerged work"
+  FAKE_GH_PRS="pr-reused=MERGED:21:$first" git -C "$repo" cleanup --yes > "$out" || fail "cleanup --yes exited non-zero"
+  assert_branch pr-reused
+  assert_dir pr-reused
+}
+
+test_gh_merged_behind_head_is_deleted() {
+  mk_gh_repo
+  add_commits pr-behind first
+  local first second
+  first="$(git -C "$repo" rev-parse pr-behind)"
+  second="$(git -C "$repo" commit-tree "$first^{tree}" -p "$first" -m second)"
+  FAKE_GH_PRS="pr-behind=MERGED:22:$second" git -C "$repo" cleanup > "$out"
+  assert_line delete pr-behind "PR #22 merged"
+}
+
+test_gh_merged_unknown_oid_falls_through() {
+  mk_gh_repo
+  add_commits pr-unknown first
+  FAKE_GH_PRS="pr-unknown=MERGED:23:0123456789abcdef0123456789abcdef01234567" git -C "$repo" cleanup > "$out"
+  assert_line skip pr-unknown "unmerged work"
+}
+
 test_gh_api_failure_falls_back() {
   mk_gh_repo
   FAKE_GH_FAIL=1 git -C "$repo" cleanup > "$out" || fail "should exit 0 when the gh query fails"
@@ -343,6 +390,9 @@ if command -v jq > /dev/null; then
     test_gh_closed_without_worktree_is_skipped \
     test_gh_yes_closed_keeps_branch \
     test_gh_escapes_and_batches \
+    test_gh_merged_reused_branch_is_kept \
+    test_gh_merged_behind_head_is_deleted \
+    test_gh_merged_unknown_oid_falls_through \
     test_gh_api_failure_falls_back \
     test_gh_unauthenticated_falls_back
 else

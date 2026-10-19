@@ -137,15 +137,17 @@ gh_available() {
 pr_branch=()
 pr_state=()
 pr_number=()
+pr_oid=()
 
 fetch_pr_states() {
-  local slug owner repo q resp parsed key st num idx
+  local slug owner repo q resp parsed key st num oid idx
   slug="$(origin_slug)"
   owner="${slug%%/*}"
   repo="${slug#*/}"
   pr_branch=()
   pr_state=()
   pr_number=()
+  pr_oid=()
   while [ "$#" -gt 0 ]; do
     local batch=("$1")
     shift
@@ -156,35 +158,48 @@ fetch_pr_states() {
     q="$(jq -nr --arg o "$owner" --arg r "$repo" '
       "{ repository(owner: \($o | @json), name: \($r | @json)) { "
       + ([$ARGS.positional | to_entries[]
-          | "b\(.key): pullRequests(headRefName: \(.value | @json), last: 1, orderBy: {field: CREATED_AT, direction: ASC}, states: [OPEN, MERGED, CLOSED]) { nodes { number state } }"]
+          | "b\(.key): pullRequests(headRefName: \(.value | @json), last: 1, orderBy: {field: CREATED_AT, direction: ASC}, states: [OPEN, MERGED, CLOSED]) { nodes { number state headRefOid } }"]
          | join(" "))
       + " } }"' --args "${batch[@]}")" || { gh_ok=0; return 1; }
     resp="$(gh api graphql -f query="$q")" || { gh_ok=0; return 1; }
     parsed="$(printf '%s' "$resp" | jq -r '.data.repository | to_entries[]
       | select(.value.nodes[0] != null)
-      | "\(.key)\t\(.value.nodes[0].state)\t\(.value.nodes[0].number)"')" || { gh_ok=0; return 1; }
-    while IFS=$'\t' read -r key st num; do
+      | "\(.key)\t\(.value.nodes[0].state)\t\(.value.nodes[0].number)\t\(.value.nodes[0].headRefOid)"')" || { gh_ok=0; return 1; }
+    while IFS=$'\t' read -r key st num oid; do
       [ -n "$key" ] || continue
       idx="${key#b}"
       pr_branch+=("${batch[$idx]}")
       pr_state+=("$st")
       pr_number+=("$num")
+      pr_oid+=("$oid")
     done <<< "$parsed"
   done
 }
 
-# Sets pr_found_state and pr_found_number for <branch>; returns 1 without a PR.
+# Sets pr_found_state, pr_found_number and pr_found_oid for <branch>; returns 1 without a PR.
 find_pr() {
   local i=0
   while [ "$i" -lt "${#pr_branch[@]}" ]; do
     if [ "${pr_branch[$i]}" = "$1" ]; then
       pr_found_state="${pr_state[$i]}"
       pr_found_number="${pr_number[$i]}"
+      pr_found_oid="${pr_oid[$i]}"
       return 0
     fi
     i=$((i + 1))
   done
   return 1
+}
+
+# Whether every local commit on <branch> is in the merged PR's head <oid>: the
+# tip is that head, or the head is known locally and contains the tip. A reused
+# branch name or a fork's PR of the same name fails this and is judged by git.
+pr_head_covers() {
+  local tip
+  tip="$(git -C "$main_wt" rev-parse "refs/heads/$1")"
+  [ "$tip" = "$2" ] && return 0
+  git -C "$main_wt" cat-file -e "$2^{commit}" 2> /dev/null &&
+    git -C "$main_wt" merge-base --is-ancestor "$tip" "$2"
 }
 
 emit() {
@@ -205,7 +220,8 @@ classify() {
   elif [ -n "$wt" ] && is_dirty "$wt"; then
     count="$(dirty_count "$wt")"
     emit skip "$branch" "$wt" "dirty, $count file$([ "$count" -eq 1 ] || echo s)"
-  elif [ "$gh_ok" -eq 1 ] && find_pr "$branch" && [ "$pr_found_state" = MERGED ]; then
+  elif [ "$gh_ok" -eq 1 ] && find_pr "$branch" && [ "$pr_found_state" = MERGED ] &&
+    pr_head_covers "$branch" "$pr_found_oid"; then
     emit delete "$branch" "${wt:--}" "PR #$pr_found_number merged"
   elif [ "$gh_ok" -eq 1 ] && find_pr "$branch" && [ "$pr_found_state" = CLOSED ]; then
     if [ "$closed" -eq 1 ]; then
