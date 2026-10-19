@@ -100,6 +100,7 @@ function fixture(): Fix {
   const closedTip = mkBranch(alpha, "closed", true);
   const openTip = mkBranch(alpha, "open", true);
   mkBranch(alpha, "gone-up", true);
+  sh(alpha, "merge", "-q", "--no-ff", "-m", "merge gone-up", "gone-up");
   sh(alpha, "push", "-q", "origin", ":gone-up");
   sh(alpha, "fetch", "-q", "-p");
   mkBranch(alpha, "local-only", false);
@@ -295,4 +296,52 @@ test("refreshStoredPr adopts the PR and its base, and is a no-op the second time
   expect(m.base).toBe("main");
   expect(m.base_source).toBe("pr");
   expect(refreshStoredPr(ws, memberStatuses(ws))).toBe(false);
+});
+
+test("a gone upstream prunes only work that reached the default branch", () => {
+  const repo = mkRepo("gone");
+  mkBranch(repo, "ahead", true);
+  sh(repo, "push", "-q", "origin", ":ahead");
+  sh(repo, "fetch", "-q", "-p");
+  const [s] = memberStatuses(wsOf("w", [mem(repo, "ahead")]));
+  expect(s).toMatchObject({ prunable: false, reason: "remote gone but local commits not in main" });
+});
+
+test("a gone branch does not hide uncommitted files or an open session in its worktree", () => {
+  const repo = mkRepo("orphan");
+  const a = mkWorktree(repo, "a", true), b = mkWorktree(repo, "b", true);
+  for (const x of [a, b]) { sh(x.path, "checkout", "-q", "--detach"); sh(repo, "branch", "-D", x.path.endsWith("/a") ? "a" : "b"); }
+  writeFileSync(join(a.path, "scratch.txt"), "x");
+  pointer("s9", b.path);
+  transcript(b.path, "s9", Date.now());
+  const s = byBranch(memberStatuses(wsOf("w", [mem(repo, "a", { worktree: a.path }), mem(repo, "b", { worktree: b.path })])));
+  expect(s.a).toMatchObject({ branchExists: false, prunable: false, reason: "dirty, 1 file" });
+  expect(s.b).toMatchObject({ branchExists: false, prunable: false, reason: "cwd of open session claude-s9" });
+  const clean = memberStatuses(wsOf("w", [mem(repo, "a", { worktree: null })]))[0];
+  expect(clean).toMatchObject({ prunable: true, reason: "branch gone" });
+});
+
+test("the guard fetches the PR head from origin when it is not a local object", () => {
+  const repo = mkRepo("fetch");
+  const a = mkBranch(repo, "pf", true);
+  sh(repo, "checkout", "-q", "-b", "tmp", "pf");
+  sh(repo, "commit", "-q", "--allow-empty", "-m", "B");
+  const b = sh(repo, "rev-parse", "HEAD");
+  sh(repo, "push", "-q", "origin", "tmp:refs/pull/9/head");
+  sh(repo, "checkout", "-q", "main");
+  sh(repo, "branch", "-D", "tmp");
+  sh(repo, "reflog", "expire", "--expire=now", "--all");
+  sh(repo, "prune", "--expire=now");
+  expect(Bun.spawnSync(["git", "cat-file", "-e", b], { cwd: repo, env: ENV }).exitCode).not.toBe(0);
+  stub({ pf: { pr: pr("MERGED", 9), base: "main", headRefOid: b } });
+  expect(sh(repo, "rev-parse", "pf")).toBe(a);
+  expect(memberStatuses(wsOf("w", [mem(repo, "pf")]))[0]).toMatchObject({ prunable: true, reason: "merged" });
+  expect(sh(repo, "for-each-ref", "refs/pull")).toBe("");
+});
+
+test("an unknown PR head that cannot be fetched blocks pruning", () => {
+  const repo = mkRepo("nofetch");
+  mkBranch(repo, "pf", true);
+  stub({ pf: { pr: pr("MERGED", 9), base: "main", headRefOid: "deadbeef".repeat(5) } });
+  expect(memberStatuses(wsOf("w", [mem(repo, "pf")]))[0]).toMatchObject({ prunable: false, reason: "merged PR but local commits beyond its head" });
 });

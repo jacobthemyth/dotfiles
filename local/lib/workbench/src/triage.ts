@@ -77,25 +77,25 @@ export function memberStatuses(ws: Workset, deps: TriageDeps = {}): MemberStatus
     const done = (rest: Partial<MemberStatus> & Pick<MemberStatus, "prunable" | "reason">): MemberStatus =>
       ({ dirty: 0, unpushed: false, cwdOf: null, ...base, ...rest });
 
-    if (!repoExists) return done({ prunable: true, reason: "repo gone" });
-    if (!branchExists) return done({ prunable: true, reason: "branch gone" });
-
+    // Guards that protect uncommitted work and a live session apply even when the repo or branch is gone.
     const files = worktreeExists ? git.dirtyFiles(m.worktree!) : [];
     const dirty = files === null ? 1 : files.length; // an unreadable status counts as dirty
-    let unpushed = false;
-    if (!git.upstreamGone(m.repo, m.branch)) {
-      const ahead = git.aheadOfUpstream(m.repo, m.branch);
-      unpushed = ahead !== null ? ahead > 0 : (git.revListCount(m.repo, `${diffBase(m, config)}..${m.branch}`) ?? 0) > 0;
-    }
     const wt = worktreeExists ? real(m.worktree!) : null;
     const claimant: Pointer | undefined = wt
       ? open.find((p) => { const c = real(p.cwd); return c === wt || c.startsWith(wt + "/"); })
       : undefined;
     const cwdOf = claimant?.key ?? null;
+    let unpushed = false;
+    if (branchExists && !git.upstreamGone(m.repo, m.branch)) {
+      const ahead = git.aheadOfUpstream(m.repo, m.branch);
+      unpushed = ahead !== null ? ahead > 0 : (git.revListCount(m.repo, `${diffBase(m, config)}..${m.branch}`) ?? 0) > 0;
+    }
     const state = { dirty, unpushed, cwdOf };
 
     if (cwdOf) return done({ ...state, prunable: false, reason: `cwd of open session ${cwdOf}` });
     if (dirty > 0) return done({ ...state, prunable: false, reason: `dirty, ${dirty} ${dirty === 1 ? "file" : "files"}` });
+    if (!repoExists) return done({ ...state, prunable: true, reason: "repo gone" });
+    if (!branchExists) return done({ ...state, prunable: true, reason: "branch gone" });
     if (pr === "merged" && hit) {
       return coveredByPrHead(m.repo, tip, hit.headRefOid, hit.pr.number)
         ? done({ ...state, prunable: true, reason: "merged" })
@@ -103,7 +103,13 @@ export function memberStatuses(ws: Workset, deps: TriageDeps = {}): MemberStatus
     }
     if (pr === "open") return done({ ...state, prunable: false, reason: "open PR" });
     if (pr === "closed") return done({ ...state, prunable: false, reason: "closed PR" });
-    if (git.upstreamGone(m.repo, m.branch)) return done({ ...state, prunable: true, reason: "remote-gone" });
+    if (git.upstreamGone(m.repo, m.branch)) {
+      const def = git.defaultBranch(m.repo);
+      const inDefault = git.isAncestor(m.repo, tip, def) || git.revListCount(m.repo, `${def}..${tip}`) === 0;
+      return inDefault
+        ? done({ ...state, prunable: true, reason: "remote-gone" })
+        : done({ ...state, prunable: false, reason: `remote gone but local commits not in ${def}` });
+    }
     return done({ ...state, prunable: false, reason: "unmerged work" });
   });
 }
