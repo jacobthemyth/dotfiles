@@ -92,13 +92,18 @@ test("pointerState: closed wins regardless of transcript", () => {
   transcript(0);
   expect(pointerState(mkPtr({ closed: "2026-01-01T00:00:00Z" }))).toBe("closed");
 });
-test("pointerState: open for live transcript, stale for old or missing", () => {
+test("pointerState: open for a live transcript, stale only for a transcript older than a day", () => {
   process.env.WORKBENCH_CLAUDE_PROJECTS = mkdtempSync(join(tmpdir(), "wbp-"));
-  expect(pointerState(mkPtr())).toBe("stale");
   transcript(0);
   expect(pointerState(mkPtr())).toBe("open");
   transcript(25 * 3600 * 1000);
   expect(pointerState(mkPtr())).toBe("stale");
+});
+test("pointerState: no transcript found is unknown, which counts as open", () => {
+  process.env.WORKBENCH_CLAUDE_PROJECTS = mkdtempSync(join(tmpdir(), "wbp-"));
+  expect(pointerState(mkPtr())).toBe("open");
+  process.env.WORKBENCH_CLAUDE_PROJECTS = join(tmpdir(), "wbp-none-" + Date.now());
+  expect(pointerState(mkPtr())).toBe("open");
 });
 test("pointerState: unknown harness is open when not closed", () => {
   expect(pointerState(mkPtr({ harness: "other" }))).toBe("open");

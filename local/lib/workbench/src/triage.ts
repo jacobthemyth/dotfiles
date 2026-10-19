@@ -7,7 +7,7 @@ import { unreadCount } from "./inbox";
 import { loadLock } from "./review";
 import { listPointers, pointerState, type Pointer } from "./session";
 import { diffBase } from "./stack";
-import { transcriptPath } from "./harness/claude";
+import { findTranscript } from "./harness/claude";
 import { listWorksets, loadWorkset, type Member, type Pr, type Workset } from "./workset";
 
 export type PrState = "merged" | "closed" | "open" | "nopr";
@@ -127,7 +127,7 @@ function sessionInfo(ws: Workset, nowMs?: number): { counts: WorksetSummary["ses
   for (const p of pointers) {
     counts[pointerState(p, nowMs)]++;
     const times = [p.opened, p.closed].map((t) => (t ? Date.parse(t) : NaN));
-    if (p.harness === "claude") { try { times.push(statSync(transcriptPath(p.cwd, p.session)).mtimeMs); } catch { /* no transcript */ } }
+    if (p.harness === "claude") { const f = findTranscript(p.cwd, p.session); if (f) { try { times.push(statSync(f).mtimeMs); } catch { /* gone */ } } }
     for (const t of times) if (!Number.isNaN(t) && t > last) last = t;
   }
   if (last > -Infinity) counts.last = new Date(last).toISOString();

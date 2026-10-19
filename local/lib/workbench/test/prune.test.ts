@@ -198,7 +198,7 @@ test("pointers: stale is closed, closed and stale are deleted, open keeps the wo
   const cwd = join(tmp, "cwd");
   mkdirSync(cwd);
   pointer("o", cwd); transcript(cwd, "o", Date.now());
-  pointer("s", cwd);                                  // no transcript: stale
+  pointer("s", cwd); transcript(cwd, "s", Date.now() - 2 * 86400_000); // old transcript: stale
   pointer("c", cwd, { closed: "2026-01-02T00:00:00.000Z" });
   const keys = ["claude-o", "claude-s", "claude-c"];
   for (const k of keys.slice(1)) {
@@ -423,7 +423,7 @@ test("a dead member shared with another workset is pruned and removed from that 
 test("a pointer that came back to life before execute is left alone", () => {
   const cwd = join(tmp, "cwd");
   mkdirSync(cwd);
-  pointer("s", cwd);
+  pointer("s", cwd); transcript(cwd, "s", Date.now() - 2 * 86400_000);
   const repo = mkRepo("rev");
   saveWorkset(wsOf(DEFAULT_NAME, [mem(repo, "ghost")], ["claude-s"]));
   const plan = planPrune(loadWorkset(DEFAULT_NAME)!);
@@ -449,7 +449,7 @@ test("execute keeps the workset and every pointer file when a session is open", 
   const cwd = join(tmp, "cwd");
   mkdirSync(cwd);
   pointer("o", cwd); transcript(cwd, "o", Date.now());
-  pointer("s", cwd);
+  pointer("s", cwd); transcript(cwd, "s", Date.now() - 2 * 86400_000);
   pointer("c", cwd, { closed: "2026-01-02T00:00:00.000Z" });
   const repo = mkRepo("op");
   saveWorkset(wsOf(DEFAULT_NAME, [mem(repo, "ghost")], ["claude-o", "claude-s", "claude-c"]));

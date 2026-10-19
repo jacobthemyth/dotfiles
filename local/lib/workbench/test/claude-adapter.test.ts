@@ -62,24 +62,53 @@ function touchTranscript(cwd: string, session: string, ageMs: number, nowMs: num
   const t = (nowMs - ageMs) / 1000; _ut(f, t, t);
 }
 const H = 60 * 60 * 1000;
-test("transcriptPath replaces every slash in cwd with a dash", () => {
+test("transcriptPath replaces every non-alphanumeric character in cwd with a dash", () => {
   process.env.WORKBENCH_CLAUDE_PROJECTS = "/p";
   expect(transcriptPath("/Users/j/Code/x", "abc")).toBe("/p/-Users-j-Code-x/abc.jsonl");
+  expect(transcriptPath("/x/.worktrees/y", "abc")).toBe("/p/-x--worktrees-y/abc.jsonl");
+  expect(transcriptPath("/a/b_c.d e", "abc")).toBe("/p/-a-b-c-d-e/abc.jsonl");
 });
-test("isAlive: fresh and 23h old are alive; 25h old, exactly 24h and missing are not", () => {
+test("transcriptPath defaults to CLAUDE_CONFIG_DIR/projects", () => {
+  const saved = [process.env.WORKBENCH_CLAUDE_PROJECTS, process.env.CLAUDE_CONFIG_DIR];
+  delete process.env.WORKBENCH_CLAUDE_PROJECTS;
+  process.env.CLAUDE_CONFIG_DIR = "/cfg";
+  try { expect(transcriptPath("/w", "s")).toBe("/cfg/projects/-w/s.jsonl"); } finally {
+    if (saved[0] === undefined) delete process.env.WORKBENCH_CLAUDE_PROJECTS; else process.env.WORKBENCH_CLAUDE_PROJECTS = saved[0];
+    if (saved[1] === undefined) delete process.env.CLAUDE_CONFIG_DIR; else process.env.CLAUDE_CONFIG_DIR = saved[1];
+  }
+});
+test("isAlive: fresh and 23h old are alive; 25h old and exactly 24h are stale; missing is unknown", () => {
   process.env.WORKBENCH_CLAUDE_PROJECTS = _mk(_join(_tmp(), "wbp-"));
   const now = Date.now();
   touchTranscript("/w/a", "fresh", 0, now);
   touchTranscript("/w/a", "h23", 23 * H, now);
   touchTranscript("/w/a", "h25", 25 * H, now);
   touchTranscript("/w/a", "h24", 24 * H, now);
-  expect(isAlive("/w/a", "fresh", now)).toBe(true);
-  expect(isAlive("/w/a", "h23", now)).toBe(true);
-  expect(isAlive("/w/a", "h25", now)).toBe(false);
-  expect(isAlive("/w/a", "h24", now)).toBe(false);
-  expect(isAlive("/w/a", "missing", now)).toBe(false);
+  expect(isAlive("/w/a", "fresh", now)).toBe("alive");
+  expect(isAlive("/w/a", "h23", now)).toBe("alive");
+  expect(isAlive("/w/a", "h25", now)).toBe("stale");
+  expect(isAlive("/w/a", "h24", now)).toBe("stale");
+  expect(isAlive("/w/a", "missing", now)).toBe("unknown");
 });
-test("isAlive does not throw when cwd does not exist on disk", () => {
-  process.env.WORKBENCH_CLAUDE_PROJECTS = _mk(_join(_tmp(), "wbp-"));
-  expect(isAlive("/no/such/dir/at/all", "s")).toBe(false);
+test("isAlive finds a hand-encoded dotted worktree path", () => {
+  const p = _mk(_join(_tmp(), "wbp-"));
+  process.env.WORKBENCH_CLAUDE_PROJECTS = p;
+  const now = Date.now();
+  _mkdir(_join(p, "-x--worktrees-y"), { recursive: true });
+  _wf(_join(p, "-x--worktrees-y", "id1.jsonl"), "{}\n");
+  expect(isAlive("/x/.worktrees/y", "id1", now)).toBe("alive");
+});
+test("isAlive falls back to the session id under a differently named project dir", () => {
+  const p = _mk(_join(_tmp(), "wbp-"));
+  process.env.WORKBENCH_CLAUDE_PROJECTS = p;
+  const now = Date.now();
+  _mkdir(_join(p, "-somewhere-else"), { recursive: true });
+  _wf(_join(p, "-somewhere-else", "id2.jsonl"), "{}\n");
+  expect(isAlive("/x/y", "id2", now)).toBe("alive");
+  const t = (now - 25 * H) / 1000; _ut(_join(p, "-somewhere-else", "id2.jsonl"), t, t);
+  expect(isAlive("/x/y", "id2", now)).toBe("stale");
+});
+test("isAlive is unknown when the projects dir does not exist", () => {
+  process.env.WORKBENCH_CLAUDE_PROJECTS = _join(_tmp(), "wbp-does-not-exist-" + Date.now());
+  expect(isAlive("/no/such/dir/at/all", "s")).toBe("unknown");
 });

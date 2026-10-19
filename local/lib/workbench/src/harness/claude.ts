@@ -1,16 +1,33 @@
-import { statSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Event, Outcome } from "../events";
 
 export const LIVENESS_MS = 24 * 60 * 60 * 1000;
+export type Liveness = "alive" | "stale" | "unknown";
+const projectsDir = () =>
+  process.env.WORKBENCH_CLAUDE_PROJECTS ?? join(process.env.CLAUDE_CONFIG_DIR ?? join(homedir(), ".claude"), "projects");
+// Claude Code names a project dir after the cwd with every non-alphanumeric character replaced by "-".
 export function transcriptPath(cwd: string, session: string): string {
-  const projects = process.env.WORKBENCH_CLAUDE_PROJECTS ?? join(homedir(), ".claude/projects");
-  return join(projects, cwd.replaceAll("/", "-"), `${session}.jsonl`);
+  return join(projectsDir(), cwd.replace(/[^a-zA-Z0-9]/g, "-"), `${session}.jsonl`);
 }
-// A session is alive while its transcript was written to within LIVENESS_MS.
-export function isAlive(cwd: string, session: string, nowMs = Date.now()): boolean {
-  try { return nowMs - statSync(transcriptPath(cwd, session)).mtimeMs < LIVENESS_MS; } catch { return false; }
+// The session's transcript: under the encoded cwd, else under any project dir (session ids are UUIDs); null if none.
+export function findTranscript(cwd: string, session: string): string | null {
+  const direct = transcriptPath(cwd, session);
+  if (existsSync(direct)) return direct;
+  let dirs: string[];
+  try { dirs = readdirSync(projectsDir()); } catch { return null; }
+  for (const d of dirs) {
+    const f = join(projectsDir(), d, `${session}.jsonl`);
+    if (existsSync(f)) return f;
+  }
+  return null;
+}
+// alive: transcript written within LIVENESS_MS; stale: found and older; unknown: no transcript found.
+export function isAlive(cwd: string, session: string, nowMs = Date.now()): Liveness {
+  const f = findTranscript(cwd, session);
+  if (!f) return "unknown";
+  try { return nowMs - statSync(f).mtimeMs < LIVENESS_MS ? "alive" : "stale"; } catch { return "unknown"; }
 }
 
 type In = Record<string, any>;

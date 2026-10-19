@@ -45,7 +45,8 @@ export function closePointer(key: string): Pointer | null {
 }
 export function pointerState(p: Pointer, nowMs = Date.now()): PointerState {
   if (p.closed) return "closed";
-  if (p.harness === "claude") return isAlive(p.cwd, p.session, nowMs) ? "open" : "stale";
+  // Liveness feeds deletion, so it fails open: no transcript found counts as open.
+  if (p.harness === "claude") return isAlive(p.cwd, p.session, nowMs) === "stale" ? "stale" : "open";
   return "open";
 }
 export function closeStale(p: Pointer): Pointer {
