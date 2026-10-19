@@ -172,10 +172,16 @@ test_usage_error() {
   grep -Fq "usage:" "$err" || fail "usage text missing on stderr"
 }
 
+test_old_scripts_removed() {
+  ! [ -e "$dotfiles_root/local/bin/git-delete-squashed" ] || fail "git-delete-squashed should be removed"
+  ! [ -e "$dotfiles_root/local/bin/git-list-squashed" ] || fail "git-list-squashed should be removed"
+}
+
 for t in test_dry_run_plans_from_main \
   test_dry_run_skips_current_and_main_checkout \
   test_yes_executes_plan \
-  test_usage_error; do
+  test_usage_error \
+  test_old_scripts_removed; do
   echo "==> $t"
   "$t"
   echo "  PASS"
