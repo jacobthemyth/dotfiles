@@ -7,10 +7,11 @@ set -eo pipefail
 usage="usage: git cleanup [--yes] [--closed]"
 
 yes=0
+closed=0
 for arg in "$@"; do
   case "$arg" in
     --yes) yes=1 ;;
-    --closed) ;; # accepted now; acts once PR state is available
+    --closed) closed=1 ;;
     -h | --help)
       echo "$usage"
       exit 0
@@ -115,12 +116,83 @@ ahead_count() {
   git -C "$main_wt" rev-list --count "$default..$1"
 }
 
+# <owner>/<repo> of origin when it is a GitHub remote, else nothing.
+origin_slug() {
+  git -C "$main_wt" remote get-url origin 2> /dev/null |
+    sed -n -E 's#^.*github\.com[:/]+([^/]+)/([^/]+)$#\1/\2#p' |
+    sed -e 's#\.git$##' -e 's#/$##'
+}
+
+# Whether the gh enhancement can run: gh and jq installed, gh signed in, and
+# origin on GitHub.
+gh_available() {
+  command -v gh > /dev/null && command -v jq > /dev/null || return 1
+  [ -n "$(origin_slug)" ] || return 1
+  gh auth status > /dev/null 2>&1
+}
+
+# Newest PR per branch, from one GraphQL request per 50 branches. Fills the
+# parallel arrays pr_branch/pr_state/pr_number (branches without a PR are left
+# out). Any failure clears gh_ok, so the run falls back to git alone.
+pr_branch=()
+pr_state=()
+pr_number=()
+
+fetch_pr_states() {
+  local slug owner repo q resp parsed key st num idx
+  slug="$(origin_slug)"
+  owner="${slug%%/*}"
+  repo="${slug#*/}"
+  pr_branch=()
+  pr_state=()
+  pr_number=()
+  while [ "$#" -gt 0 ]; do
+    local batch=("$1")
+    shift
+    while [ "${#batch[@]}" -lt 50 ] && [ "$#" -gt 0 ]; do
+      batch+=("$1")
+      shift
+    done
+    q="$(jq -nr --arg o "$owner" --arg r "$repo" '
+      "{ repository(owner: \($o | @json), name: \($r | @json)) { "
+      + ([$ARGS.positional | to_entries[]
+          | "b\(.key): pullRequests(headRefName: \(.value | @json), last: 1, orderBy: {field: CREATED_AT, direction: ASC}, states: [OPEN, MERGED, CLOSED]) { nodes { number state } }"]
+         | join(" "))
+      + " } }"' --args "${batch[@]}")" || { gh_ok=0; return 1; }
+    resp="$(gh api graphql -f query="$q")" || { gh_ok=0; return 1; }
+    parsed="$(printf '%s' "$resp" | jq -r '.data.repository | to_entries[]
+      | select(.value.nodes[0] != null)
+      | "\(.key)\t\(.value.nodes[0].state)\t\(.value.nodes[0].number)"')" || { gh_ok=0; return 1; }
+    while IFS=$'\t' read -r key st num; do
+      [ -n "$key" ] || continue
+      idx="${key#b}"
+      pr_branch+=("${batch[$idx]}")
+      pr_state+=("$st")
+      pr_number+=("$num")
+    done <<< "$parsed"
+  done
+}
+
+# Sets pr_found_state and pr_found_number for <branch>; returns 1 without a PR.
+find_pr() {
+  local i=0
+  while [ "$i" -lt "${#pr_branch[@]}" ]; do
+    if [ "${pr_branch[$i]}" = "$1" ]; then
+      pr_found_state="${pr_state[$i]}"
+      pr_found_number="${pr_number[$i]}"
+      return 0
+    fi
+    i=$((i + 1))
+  done
+  return 1
+}
+
 emit() {
   printf '%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4"
 }
 
 # Print the output line for <branch>; the default branch prints nothing.
-# Rules run in order and the first match wins; add new ones after the dirty rule.
+# Rules run in order and the first match wins; PR-state rules follow the dirty rule.
 classify() {
   local branch="$1" wt count
   [ "$branch" != "$default" ] || return 0
@@ -133,6 +205,18 @@ classify() {
   elif [ -n "$wt" ] && is_dirty "$wt"; then
     count="$(dirty_count "$wt")"
     emit skip "$branch" "$wt" "dirty, $count file$([ "$count" -eq 1 ] || echo s)"
+  elif [ "$gh_ok" -eq 1 ] && find_pr "$branch" && [ "$pr_found_state" = MERGED ]; then
+    emit delete "$branch" "${wt:--}" "PR #$pr_found_number merged"
+  elif [ "$gh_ok" -eq 1 ] && find_pr "$branch" && [ "$pr_found_state" = CLOSED ]; then
+    if [ "$closed" -eq 1 ]; then
+      emit delete "$branch" "${wt:--}" "closed PR #$pr_found_number"
+    elif [ -n "$wt" ]; then
+      emit worktree "$branch" "$wt" "closed PR #$pr_found_number, branch kept"
+    else
+      emit skip "$branch" "-" "closed PR #$pr_found_number, branch kept"
+    fi
+  elif [ "$gh_ok" -eq 1 ] && find_pr "$branch" && [ "$pr_found_state" = OPEN ]; then
+    emit skip "$branch" "${wt:--}" "open PR #$pr_found_number"
   elif ancestry_merged "$branch"; then
     emit delete "$branch" "${wt:--}" "ancestry-merged"
   elif squash_merged "$branch"; then
@@ -156,8 +240,25 @@ run() {
 }
 
 default="$(default_branch)"
+
+# Every local branch but the default gets classified, so those are the ones to ask about.
+branches=()
+while IFS= read -r branch; do
+  [ "$branch" = "$default" ] || branches+=("$branch")
+done < <(git -C "$main_wt" for-each-ref refs/heads --format='%(refname:short)')
+
+gh_ok=0
+if gh_available; then
+  gh_ok=1
+  [ "${#branches[@]}" -eq 0 ] || fetch_pr_states "${branches[@]}" || true
+fi
+
 echo "repo: $main_wt  default: $default"
-echo "gh not available: PR state unknown"
+if [ "$gh_ok" -eq 1 ]; then
+  echo "gh: $(origin_slug)"
+else
+  echo "gh not available: PR state unknown"
+fi
 
 if [ "$yes" -eq 1 ]; then
   git -C "$main_wt" worktree prune -v 2>&1
@@ -168,10 +269,10 @@ fi
 load_worktrees
 
 plan=()
-while IFS= read -r branch; do
+for branch in ${branches[@]+"${branches[@]}"}; do
   line="$(classify "$branch")"
   [ -z "$line" ] || plan+=("$line")
-done < <(git -C "$main_wt" for-each-ref refs/heads --format='%(refname:short)')
+done
 
 [ "${#plan[@]}" -eq 0 ] || printf '%s\n' "${plan[@]}"
 

@@ -14,7 +14,12 @@ fixture="$(cd "$fixture" && pwd -P)"
 export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
 export GIT_AUTHOR_NAME=test GIT_AUTHOR_EMAIL=test@example.com
 export GIT_COMMITTER_NAME=test GIT_COMMITTER_EMAIL=test@example.com
-export PATH="$dotfiles_root/local/bin:$PATH"
+# fake_bin goes first on PATH for every test; no_gh/use_gh decide which gh it holds,
+# so a real gh on the machine never leaks into a test.
+fake_bin="$fixture/fake_bin"
+mkdir -p "$fake_bin"
+export PATH="$fake_bin:$dotfiles_root/local/bin:$PATH"
+export FAKE_GH_QUERY_LOG="$fixture/query.log"
 
 repo="$fixture/repo"
 out="$fixture/out.txt"
@@ -76,6 +81,72 @@ mk_repo() {
   git -C "$repo" worktree add -q "$repo/.worktrees/gone-dir" gone-dir
   git -C "$repo" worktree add -q --detach "$repo/.worktrees/detached" main
   rm -rf "$repo/.worktrees/gone-dir"
+
+  # One commit each, not merged: only PR state can say what became of them.
+  for b in pr-merged pr-closed pr-open; do
+    git -C "$repo" worktree add -q -b "$b" "$repo/.worktrees/$b" main
+    echo "$b" > "$repo/.worktrees/$b/$b.txt"
+    git -C "$repo/.worktrees/$b" add "$b.txt"
+    git -C "$repo/.worktrees/$b" commit -q -m "$b"
+  done
+  # Awkward name for the JSON escaping check, plus enough branches to force two batches.
+  git -C "$repo" branch 'weird/na.me-"q"'
+  local n
+  for n in $(seq 0 54); do
+    git -C "$repo" branch "bulk-$n"
+  done
+}
+
+# gh that is installed but cannot authenticate, standing in for "no gh".
+no_gh() {
+  printf '#!/bin/sh\nexit 1\n' > "$fake_bin/gh"
+  chmod +x "$fake_bin/gh"
+}
+
+# gh that answers `auth status` and a batched pullRequests GraphQL query. The PR
+# table is FAKE_GH_PRS="branch=STATE:number ..."; unlisted branches have no PR.
+use_gh() {
+  cat > "$fake_bin/gh" <<'FAKE'
+#!/usr/bin/env bash
+case "$1 $2" in
+  "auth status") exit "${FAKE_GH_AUTH_EXIT:-0}" ;;
+  "api graphql") ;;
+  *) exit 1 ;;
+esac
+[ "${FAKE_GH_FAIL:-0}" != 1 ] || exit 1
+q=""
+for a in "$@"; do
+  case "$a" in query=*) q="${a#query=}" ;; esac
+done
+printf '%s\n' "$q" >> "$FAKE_GH_QUERY_LOG"
+resp='{"data":{"repository":{'
+sep=""
+while IFS= read -r m; do
+  alias="${m%%:*}"
+  name="$(printf '%s' "${m#*headRefName: }" | jq -r .)"
+  nodes="[]"
+  for w in $FAKE_GH_PRS; do
+    if [ "${w%%=*}" = "$name" ]; then
+      rest="${w#*=}"
+      nodes="[{\"number\":${rest#*:},\"state\":\"${rest%%:*}\"}]"
+    fi
+  done
+  resp="$resp$sep\"$alias\":{\"nodes\":$nodes}"
+  sep=","
+done < <(printf '%s' "$q" | grep -oE 'b[0-9]+: pullRequests\(headRefName: "([^"\\]|\\.)*"')
+printf '%s\n' "$resp}}}"
+FAKE
+  chmod +x "$fake_bin/gh"
+}
+
+# mk_repo with an origin that looks like GitHub (fetch URL only; a push would
+# still go to the bare repo).
+mk_gh_repo() {
+  mk_repo
+  git -C "$repo" remote set-url origin git@github.com:acme/repo.git
+  git -C "$repo" remote set-url --push origin "$fixture/origin.git"
+  use_gh
+  rm -f "$FAKE_GH_QUERY_LOG"
 }
 
 # assert_line DISPOSITION BRANCH REASON-SUBSTRING
@@ -177,14 +248,105 @@ test_old_scripts_removed() {
   ! [ -e "$dotfiles_root/local/bin/git-list-squashed" ] || fail "git-list-squashed should be removed"
 }
 
-for t in test_dry_run_plans_from_main \
+export_prs="pr-merged=MERGED:11 pr-closed=CLOSED:12 pr-open=OPEN:13"
+
+test_gh_header_when_available() {
+  mk_gh_repo
+  git -C "$repo" cleanup > "$out"
+  [ "$(sed -n 2p "$out")" = "gh: acme/repo" ] || fail "header line 2"
+}
+
+test_gh_states() {
+  mk_gh_repo
+  FAKE_GH_PRS="$export_prs" git -C "$repo" cleanup > "$out"
+  assert_line delete pr-merged "PR #11 merged"
+  assert_line worktree pr-closed "closed PR #12, branch kept"
+  assert_line skip pr-open "open PR #13"
+  assert_line delete zero-ahead "zero commits ahead"
+  assert_line skip dirty-merged "dirty"
+}
+
+test_gh_closed_flag() {
+  mk_gh_repo
+  FAKE_GH_PRS="$export_prs" git -C "$repo" cleanup --closed > "$out"
+  assert_line delete pr-closed "closed PR #12"
+}
+
+test_gh_closed_without_worktree_is_skipped() {
+  mk_gh_repo
+  git -C "$repo" worktree remove "$repo/.worktrees/pr-closed"
+  FAKE_GH_PRS="$export_prs" git -C "$repo" cleanup > "$out"
+  assert_line skip pr-closed "closed PR #12, branch kept"
+}
+
+test_gh_yes_closed_keeps_branch() {
+  mk_gh_repo
+  FAKE_GH_PRS="$export_prs" git -C "$repo" cleanup --yes > "$out" || fail "cleanup --yes exited non-zero"
+  assert_no_dir pr-closed
+  assert_branch pr-closed
+  assert_no_branch pr-merged
+  assert_branch pr-open
+  assert_dir pr-open
+}
+
+test_gh_escapes_and_batches() {
+  mk_gh_repo
+  FAKE_GH_PRS="$export_prs" git -C "$repo" cleanup > "$out"
+  [ "$(wc -l < "$FAKE_GH_QUERY_LOG" | tr -d ' ')" -eq 2 ] || fail "expected two GraphQL requests"
+  local first second
+  first="$(sed -n 1p "$FAKE_GH_QUERY_LOG")"
+  second="$(sed -n 2p "$FAKE_GH_QUERY_LOG")"
+  case "$first" in *'b0: '*'b49: '*) ;; *) fail "first request should hold b0..b49" ;; esac
+  case "$first" in *'b50: '*) fail "first request has more than 50 aliases" ;; esac
+  case "$second" in *'b0: '*'b15: '*) ;; *) fail "second request should restart at b0" ;; esac
+  case "$second" in *'b16: '*) fail "second request has too many aliases" ;; esac
+  grep -Fq '\"q\"' "$FAKE_GH_QUERY_LOG" || fail "quotes in branch name not escaped"
+  assert_line delete 'weird/na.me-"q"' "zero commits ahead"
+  assert_line delete pr-merged "PR #11 merged"
+  assert_line skip pr-open "open PR #13"
+}
+
+test_gh_api_failure_falls_back() {
+  mk_gh_repo
+  FAKE_GH_FAIL=1 git -C "$repo" cleanup > "$out" || fail "should exit 0 when the gh query fails"
+  [ "$(sed -n 2p "$out")" = "gh not available: PR state unknown" ] || fail "header line 2"
+  assert_line delete merged-ancestry "ancestry-merged"
+}
+
+test_gh_unauthenticated_falls_back() {
+  mk_gh_repo
+  FAKE_GH_AUTH_EXIT=1 git -C "$repo" cleanup > "$out" || fail "should exit 0 when gh is unauthenticated"
+  [ "$(sed -n 2p "$out")" = "gh not available: PR state unknown" ] || fail "header line 2"
+  assert_line delete merged-ancestry "ancestry-merged"
+}
+
+run_tests() {
+  local t
+  for t in "$@"; do
+    echo "==> $t"
+    no_gh
+    "$t"
+    echo "  PASS"
+  done
+}
+
+run_tests test_dry_run_plans_from_main \
   test_dry_run_skips_current_and_main_checkout \
   test_yes_executes_plan \
   test_usage_error \
-  test_old_scripts_removed; do
-  echo "==> $t"
-  "$t"
-  echo "  PASS"
-done
+  test_old_scripts_removed
+
+if command -v jq > /dev/null; then
+  run_tests test_gh_header_when_available \
+    test_gh_states \
+    test_gh_closed_flag \
+    test_gh_closed_without_worktree_is_skipped \
+    test_gh_yes_closed_keeps_branch \
+    test_gh_escapes_and_batches \
+    test_gh_api_failure_falls_back \
+    test_gh_unauthenticated_falls_back
+else
+  echo "SKIP: jq not installed, gh tests not run"
+fi
 
 echo "git-cleanup test: OK"
