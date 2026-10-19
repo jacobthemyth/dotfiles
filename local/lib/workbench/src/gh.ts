@@ -39,3 +39,40 @@ export function myPrs(slug: string): PrWithBranch[] {
     "--json", "number,url,isDraft,state,headRefName,baseRefName") as Raw[] | null;
   return (r ?? []).map((x) => ({ pr: toPr(x), branch: x.headRefName!, base: x.baseRefName }));
 }
+
+export let lastGhError: string | null = null;
+export const BATCH = 50;
+export type BranchPr = { pr: Pr; base: string; headRefOid: string };
+
+export function buildBranchQuery(owner: string, repo: string, branches: string[]): string {
+  const fields = branches.map((b, i) =>
+    `b${i}: pullRequests(headRefName: ${JSON.stringify(b)}, states: [OPEN, MERGED, CLOSED], last: 1, orderBy: {field: CREATED_AT, direction: ASC}) { nodes { number url isDraft state baseRefName headRefOid } }`);
+  return `query { repository(owner: ${JSON.stringify(owner)}, name: ${JSON.stringify(repo)}) { ${fields.join(" ")} } }`;
+}
+
+export function parseBranchResponse(branches: string[], json: unknown): Map<string, BranchPr> {
+  const out = new Map<string, BranchPr>();
+  const repo = (json as { data?: { repository?: Record<string, { nodes?: (Raw & { headRefOid: string })[] } | null> } } | null)?.data?.repository;
+  if (!repo) return out;
+  branches.forEach((b, i) => {
+    const n = repo[`b${i}`]?.nodes?.[0];
+    if (n) out.set(b, { pr: toPr(n), base: n.baseRefName, headRefOid: n.headRefOid });
+  });
+  return out;
+}
+
+export function prsForBranches(slug: string, branches: string[], deps: { run?: (query: string) => unknown } = {}): Map<string, BranchPr> {
+  lastGhError = null;
+  const s = stub<Record<string, BranchPr>>("prsForBranches");
+  if (s) return new Map(Object.entries(s.value ?? {}));
+  const [owner, repo] = slug.split("/");
+  const run = deps.run ?? ((q: string) => gh("api", "graphql", "-f", `query=${q}`));
+  const out = new Map<string, BranchPr>();
+  for (let i = 0; i < branches.length; i += BATCH) {
+    const chunk = branches.slice(i, i + BATCH);
+    const json = run(buildBranchQuery(owner, repo, chunk));
+    if (json == null) { lastGhError = "gh api graphql failed"; return new Map(); }
+    for (const [k, v] of parseBranchResponse(chunk, json)) out.set(k, v);
+  }
+  return out;
+}
