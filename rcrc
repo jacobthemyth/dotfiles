@@ -16,5 +16,5 @@ esac
 
 export DOTFILES_DIRS="$HOME/.dotfiles"
 export SYMLINK_DIRS="agents/skills/* claude/skills/* local/lib/papersync config/papersync local/lib/workbench config/workbench"
-export EXCLUDES="script/* README.md LICENSE docs docs/* test test/* *__pycache__*"
+export EXCLUDES="script/* README.md LICENSE docs docs/* test test/* superpowers superpowers/* *__pycache__*"
 export TAGS="$RCM_OS_TAG"
