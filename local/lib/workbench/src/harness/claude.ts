@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Event, Outcome } from "../events";
@@ -11,23 +11,25 @@ const projectsDir = () =>
 export function transcriptPath(cwd: string, session: string): string {
   return join(projectsDir(), cwd.replace(/[^a-zA-Z0-9]/g, "-"), `${session}.jsonl`);
 }
-// The session's transcript: under the encoded cwd, else under any project dir (session ids are UUIDs); null if none.
-export function findTranscript(cwd: string, session: string): string | null {
-  const direct = transcriptPath(cwd, session);
-  if (existsSync(direct)) return direct;
-  let dirs: string[];
-  try { dirs = readdirSync(projectsDir()); } catch { return null; }
-  for (const d of dirs) {
-    const f = join(projectsDir(), d, `${session}.jsonl`);
-    if (existsSync(f)) return f;
-  }
-  return null;
+// Every transcript file for the session: under the encoded cwd and under any other project dir (session ids are
+// UUIDs). EnterWorktree leaves a small stub under the worktree's dir while the real transcript grows elsewhere.
+function transcripts(cwd: string, session: string): { path: string; mtimeMs: number }[] {
+  const paths = new Set<string>([transcriptPath(cwd, session)]);
+  try { for (const d of readdirSync(projectsDir())) paths.add(join(projectsDir(), d, `${session}.jsonl`)); } catch { /* no projects dir */ }
+  const out: { path: string; mtimeMs: number }[] = [];
+  for (const path of paths) { try { out.push({ path, mtimeMs: statSync(path).mtimeMs }); } catch { /* absent */ } }
+  return out;
 }
-// alive: transcript written within LIVENESS_MS; stale: found and older; unknown: no transcript found.
+// The session's most recently written transcript; null if none.
+export function findTranscript(cwd: string, session: string): string | null {
+  const all = transcripts(cwd, session);
+  return all.length === 0 ? null : all.reduce((a, b) => (b.mtimeMs > a.mtimeMs ? b : a)).path;
+}
+// alive: newest transcript written within LIVENESS_MS; stale: found and older; unknown: no transcript found.
 export function isAlive(cwd: string, session: string, nowMs = Date.now()): Liveness {
-  const f = findTranscript(cwd, session);
-  if (!f) return "unknown";
-  try { return nowMs - statSync(f).mtimeMs < LIVENESS_MS ? "alive" : "stale"; } catch { return "unknown"; }
+  const all = transcripts(cwd, session);
+  if (all.length === 0) return "unknown";
+  return nowMs - Math.max(...all.map((t) => t.mtimeMs)) < LIVENESS_MS ? "alive" : "stale";
 }
 
 type In = Record<string, any>;

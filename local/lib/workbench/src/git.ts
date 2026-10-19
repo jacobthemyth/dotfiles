@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 function exec(cwd: string, args: string[]): { ok: boolean; out: string; err: string } {
   try {
@@ -21,16 +23,20 @@ export function remoteSlug(cwd: string): string | null {
   return m ? m[1] : null;
 }
 
-export function worktrees(repo: string): { path: string; branch: string | null }[] {
-  const out = git(repo, "worktree", "list", "--porcelain");
-  if (!out) return [];
-  const list: { path: string; branch: string | null }[] = [];
-  for (const line of out.split("\n")) {
-    if (line.startsWith("worktree ")) list.push({ path: line.slice(9), branch: null });
+export type WorktreeEntry = { path: string; branch: string | null; detached: boolean };
+// The repo's worktrees, main first; null when `git worktree list` fails.
+export function worktreeList(repo: string): WorktreeEntry[] | null {
+  const r = exec(repo, ["worktree", "list", "--porcelain"]);
+  if (!r.ok) return null;
+  const list: WorktreeEntry[] = [];
+  for (const line of r.out.split("\n")) {
+    if (line.startsWith("worktree ")) list.push({ path: line.slice(9), branch: null, detached: false });
     else if (line.startsWith("branch ") && list.length) list[list.length - 1].branch = line.slice(7).replace(/^refs\/heads\//, "");
+    else if (line === "detached" && list.length) list[list.length - 1].detached = true;
   }
   return list;
 }
+export const worktrees = (repo: string): WorktreeEntry[] => worktreeList(repo) ?? [];
 
 // Every local branch and its tip; null when `repo` is not a repository.
 export function heads(repo: string): Record<string, string> | null {
@@ -74,10 +80,18 @@ export function commonDir(path: string): string | null {
 // the item; each step is skipped by the caller when already gone. `worktree remove` refuses a dirty tree.
 export const removeWorktree = (repo: string, worktree: string): boolean => git(repo, "worktree", "remove", worktree) !== null;
 // Deletes `branch` only while its tip is still `sha`, so a branch that moved since it was planned survives.
-// update-ref would also delete a checked-out branch and leave that worktree on an unborn branch; refuse that, as
-// `git branch -D` does.
+// update-ref skips the checks `git branch -D` makes, so they are made here and fail closed: refuse when the worktree
+// list cannot be read, when a worktree has the branch checked out, or when the branch's worktree or any detached
+// worktree is mid-rebase or mid-bisect (the branch being rebased is not checked out while that runs).
+const IN_PROGRESS = ["rebase-merge", "rebase-apply", "BISECT_START"];
 export function deleteBranchAt(repo: string, branch: string, sha: string): boolean {
-  if (worktrees(repo).some((w) => w.branch === branch)) return false;
+  const list = worktreeList(repo);
+  if (list === null || list.length === 0) return false;
+  if (list.some((w) => w.branch === branch)) return false;
+  for (const w of list.filter((x) => x.detached)) {
+    const dir = git(w.path, "rev-parse", "--absolute-git-dir");
+    if (!dir || IN_PROGRESS.some((f) => existsSync(join(dir, f)))) return false;
+  }
   return exec(repo, ["update-ref", "-d", `refs/heads/${branch}`, sha]).ok;
 }
 

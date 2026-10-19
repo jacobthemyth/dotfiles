@@ -112,3 +112,15 @@ test("isAlive is unknown when the projects dir does not exist", () => {
   process.env.WORKBENCH_CLAUDE_PROJECTS = _join(_tmp(), "wbp-does-not-exist-" + Date.now());
   expect(isAlive("/no/such/dir/at/all", "s")).toBe("unknown");
 });
+test("isAlive uses the newest transcript: an old stub at the encoded path does not hide a live one elsewhere", () => {
+  const p = _mk(_join(_tmp(), "wbp-"));
+  process.env.WORKBENCH_CLAUDE_PROJECTS = p;
+  const now = Date.now();
+  const stub = _join(p, "-x--worktrees-y", "id3.jsonl");
+  const live = _join(p, "-x", "id3.jsonl");
+  for (const f of [stub, live]) { _mkdir(_join(f, ".."), { recursive: true }); _wf(f, "{}\n"); }
+  const old = (now - 30 * H) / 1000; _ut(stub, old, old);
+  expect(isAlive("/x/.worktrees/y", "id3", now)).toBe("alive");
+  _ut(live, old, old);
+  expect(isAlive("/x/.worktrees/y", "id3", now)).toBe("stale");
+});
