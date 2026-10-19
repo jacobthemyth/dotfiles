@@ -8,7 +8,8 @@ import { planPrune, executePrune, renderPlan, sweepable, type PrunePlan } from "
 import { sessionKeyFromEnv } from "../session-key";
 import { loadPointer, useWorkset } from "../session";
 import { baseSource, diffBase, orderMembers } from "../stack";
-import { addMember, createWorkset, listWorksets, loadWorkset, removeMember, renameWorkset, saveWorkset, type Member, type Role, type Workset } from "../workset";
+import { renameWorkset } from "../rename";
+import { addMember, createWorkset, listWorksets, loadWorkset, removeMember, saveWorkset, type Member, type Role, type Workset } from "../workset";
 
 const USAGE = `usage: workbench workset <subcommand>
   list [--json]
