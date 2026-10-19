@@ -22,7 +22,7 @@ Glossary: [CONTEXT.md](CONTEXT.md). Design: [docs/superpowers/specs/2026-10-10-w
 | `workbench workset rm <name> <member-id>` | Remove a member. |
 | `workbench workset use <name> [--session <key>]` | Bind a session to a workset (creates it if missing). |
 | `workbench workset adopt <name> <id> [--role ...]` / `ignore <name> <id>` | Claim or ignore an unclaimed item from `scan`. |
-| `workbench workset prune <id> [--yes]` | Remove a merged or gone branch and its worktree (dry run without `--yes`). |
+| `workbench workset prune [<name>] [--yes]` | Prune dead members (merged, upstream gone, branch gone) of a workset and delete it once empty; with no name, sweep every default-named workset whose members are all dead. Dry run without `--yes`. |
 | `workbench scan [--json]` | Derive branches, worktrees and PRs; list claimed, unclaimed and prunable. |
 | `workbench open <workset> [--allow-dirty] [--no-attach]` | Open a review: lock the work worktrees, build the `wb-<workset>` tmux session. |
 | `workbench submit <workset> [-m\|--message <m>]` | Commit your edits, deliver the review to bound sessions' inboxes, release the lock, kill the review window. |

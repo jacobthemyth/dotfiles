@@ -175,30 +175,6 @@ function setup() {
   return { a, wt, id: idOf(a, "gone") };
 }
 
-test("workset prune prints commands without --yes, and removes with --yes", async () => {
-  const { a, wt, id } = setup();
-  const dry = await capture(() => worksetRun(["prune", id]));
-  expect(dry.code).toBe(0);
-  expect(dry.out).toContain(`git worktree remove ${wt}`);
-  expect(dry.out).toContain("git branch -D gone");
-  expect(sh(a, "branch", "--list", "gone")).not.toBe("");
-  const live = await capture(() => worksetRun(["prune", idOf(a, "live"), "--yes"]));
-  expect(live.code).toBe(1);
-  expect(sh(a, "branch", "--list", "live")).not.toBe("");
-  const yes = await capture(() => worksetRun(["prune", id, "--yes"]));
-  expect(yes.code).toBe(0);
-  expect(sh(a, "branch", "--list", "gone")).toBe("");
-  expect(Bun.spawnSync(["test", "-d", wt]).exitCode).not.toBe(0);
-});
-
-test("workset prune refuses an item a workset claims", async () => {
-  const { a, id } = setup();
-  const w = createWorkset("w", "hand"); w.members.push({ id } as never); saveWorkset(w);
-  const r = await capture(() => worksetRun(["prune", id, "--yes"]));
-  expect(r.code).toBe(1);
-  expect(sh(a, "branch", "--list", "gone")).not.toBe("");
-});
-
 test("workset adopt creates the workset and adds the item; ignore appends once", async () => {
   const { a, wt, id } = setup();
   expect((await capture(() => worksetRun(["adopt", "w", id, "--role", "throwaway"]))).code).toBe(0);

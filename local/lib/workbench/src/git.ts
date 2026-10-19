@@ -69,12 +69,10 @@ export function commonDir(path: string): string | null {
   return d || null;
 }
 
-// The only destructive git command in workbench. Callers must have checked prunable-ness and
-// that nothing claims the item. Removes the worktree (if any), then force-deletes the branch.
-export function pruneWorktreeAndBranch(repo: string, worktree: string | null, branch: string): boolean {
-  if (worktree && git(repo, "worktree", "remove", worktree) === null) return false;
-  return git(repo, "branch", "-D", branch) !== null;
-}
+// The only destructive git commands in workbench. Callers must have checked prunable-ness and that nothing claims
+// the item; each step is skipped by the caller when already gone. `worktree remove` refuses a dirty tree.
+export const removeWorktree = (repo: string, worktree: string): boolean => git(repo, "worktree", "remove", worktree) !== null;
+export const deleteBranch = (repo: string, branch: string): boolean => git(repo, "branch", "-D", branch) !== null;
 
 // Paths (relative to the worktree) with uncommitted changes, untracked included; null on failure.
 export function dirtyFiles(path: string): string[] | null {

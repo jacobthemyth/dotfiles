@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, existsSync } from "node:fs";
+import { readdirSync, readFileSync, existsSync, rmSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { join } from "node:path";
 import { sub } from "./paths";
@@ -9,6 +9,9 @@ import { inboxFile, type ReviewFile } from "./submit";
 export type InboxReview = ReviewFile & { read: boolean };
 const inboxDir = (key: string) => join(sub("inbox"), key);
 const pidFile = (key: string) => join(sub("watch"), `${key}.pid`);
+
+export const removeInbox = (key: string): void => rmSync(inboxDir(key), { recursive: true, force: true });
+export const removePidFile = (key: string): void => removeFile(pidFile(key));
 
 function load(key: string): InboxReview[] {
   const dir = inboxDir(key);

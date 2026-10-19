@@ -28,6 +28,18 @@ The ref a member's diff is taken against: its pull request's base, else its decl
 A branch, worktree or pull request of yours that derivation found and no workset claims. Adopted, ignored or pruned.
 _Avoid_: orphan, stray
 
+**Prunable member**:
+A member whose branch and worktree are safe to delete: merged (the local tip is within the PR head), upstream gone with nothing unique, branch or repo gone. Never one with uncommitted changes, a closed PR, or an open session in its worktree.
+_Avoid_: dead (informal)
+
+**Named**:
+A workset whose name was chosen by a person, as opposed to the default name derived from a session. Only unnamed worksets are swept; a named one is pruned by naming it.
+_Avoid_: custom
+
+**Stale**:
+A pointer that is not closed but whose session has shown no activity for a day. Pruning closes it with reason `stale` before deleting it.
+_Avoid_: dead, zombie
+
 **Central repo**:
 A shared checkout on its default branch that collects a workset's docs and ledgers without a branch of its own. Excluded from worksets for now.
 _Avoid_: ledger repo, workspace repo
