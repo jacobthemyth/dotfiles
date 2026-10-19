@@ -75,3 +75,38 @@ test("workset use leaves the previous workset's sessions", async () => {
   expect(loadWorkset("other")!.sessions).toEqual([key]);
   expect(loadPointer(key)!.workset).toBe("other");
 });
+
+import { mkdirSync as _mkdir, writeFileSync as _wf, utimesSync as _ut } from "node:fs";
+import { transcriptPath } from "../src/harness/claude";
+import { closeStale, pointerState, savePointer, type Pointer } from "../src/session";
+
+const mkPtr = (over: Partial<Pointer> = {}): Pointer =>
+  ({ key: "claude-s1", harness: "claude", session: "s1", workset: "claude-s1", cwd: "/w/x", opened: "t", closed: null, ...over });
+function transcript(ageMs: number) {
+  const f = transcriptPath("/w/x", "s1");
+  _mkdir(join(f, ".."), { recursive: true }); _wf(f, "{}\n");
+  const t = (Date.now() - ageMs) / 1000; _ut(f, t, t);
+}
+test("pointerState: closed wins regardless of transcript", () => {
+  process.env.WORKBENCH_CLAUDE_PROJECTS = mkdtempSync(join(tmpdir(), "wbp-"));
+  transcript(0);
+  expect(pointerState(mkPtr({ closed: "2026-01-01T00:00:00Z" }))).toBe("closed");
+});
+test("pointerState: open for live transcript, stale for old or missing", () => {
+  process.env.WORKBENCH_CLAUDE_PROJECTS = mkdtempSync(join(tmpdir(), "wbp-"));
+  expect(pointerState(mkPtr())).toBe("stale");
+  transcript(0);
+  expect(pointerState(mkPtr())).toBe("open");
+  transcript(25 * 3600 * 1000);
+  expect(pointerState(mkPtr())).toBe("stale");
+});
+test("pointerState: unknown harness is open when not closed", () => {
+  expect(pointerState(mkPtr({ harness: "other" }))).toBe("open");
+});
+test("closeStale records closed and closed_reason and round-trips", () => {
+  const p = mkPtr(); savePointer(p);
+  closeStale(p);
+  const back = loadPointer("claude-s1")!;
+  expect(back.closed).not.toBeNull();
+  expect(back.closed_reason).toBe("stale");
+});

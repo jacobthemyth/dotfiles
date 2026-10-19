@@ -50,3 +50,36 @@ test("workbench hook with an unknown harness exits 1, never 2", async () => {
   const err = console.error; console.error = () => {};
   try { expect(await run(["nope"])).toBe(1); } finally { console.error = err; }
 });
+
+import { mkdtempSync as _mk, mkdirSync as _mkdir, writeFileSync as _wf, utimesSync as _ut } from "node:fs";
+import { tmpdir as _tmp } from "node:os";
+import { join as _join } from "node:path";
+import { transcriptPath, isAlive } from "../src/harness/claude";
+
+function touchTranscript(cwd: string, session: string, ageMs: number, nowMs: number) {
+  const f = transcriptPath(cwd, session);
+  _mkdir(_join(f, ".."), { recursive: true }); _wf(f, "{}\n");
+  const t = (nowMs - ageMs) / 1000; _ut(f, t, t);
+}
+const H = 60 * 60 * 1000;
+test("transcriptPath replaces every slash in cwd with a dash", () => {
+  process.env.WORKBENCH_CLAUDE_PROJECTS = "/p";
+  expect(transcriptPath("/Users/j/Code/x", "abc")).toBe("/p/-Users-j-Code-x/abc.jsonl");
+});
+test("isAlive: fresh and 23h old are alive; 25h old, exactly 24h and missing are not", () => {
+  process.env.WORKBENCH_CLAUDE_PROJECTS = _mk(_join(_tmp(), "wbp-"));
+  const now = Date.now();
+  touchTranscript("/w/a", "fresh", 0, now);
+  touchTranscript("/w/a", "h23", 23 * H, now);
+  touchTranscript("/w/a", "h25", 25 * H, now);
+  touchTranscript("/w/a", "h24", 24 * H, now);
+  expect(isAlive("/w/a", "fresh", now)).toBe(true);
+  expect(isAlive("/w/a", "h23", now)).toBe(true);
+  expect(isAlive("/w/a", "h25", now)).toBe(false);
+  expect(isAlive("/w/a", "h24", now)).toBe(false);
+  expect(isAlive("/w/a", "missing", now)).toBe(false);
+});
+test("isAlive does not throw when cwd does not exist on disk", () => {
+  process.env.WORKBENCH_CLAUDE_PROJECTS = _mk(_join(_tmp(), "wbp-"));
+  expect(isAlive("/no/such/dir/at/all", "s")).toBe(false);
+});

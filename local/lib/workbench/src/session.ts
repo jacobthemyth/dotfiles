@@ -1,9 +1,11 @@
 import { join } from "node:path";
 import { sub } from "./paths";
+import { isAlive } from "./harness/claude";
 import { readJson, writeJson, now, listJson } from "./store";
 import { createWorkset, loadWorkset, saveWorkset, type Workset } from "./workset";
 
-export type Pointer = { key: string; harness: string; session: string; workset: string; cwd: string; opened: string; closed: string | null };
+export type Pointer = { key: string; harness: string; session: string; workset: string; cwd: string; opened: string; closed: string | null; closed_reason?: "stale" };
+export type PointerState = "open" | "stale" | "closed";
 const dir = () => sub("sessions");
 export const pointerKey = (harness: string, session: string) => `${harness}-${session}`;
 const file = (key: string) => join(dir(), `${key}.json`);
@@ -39,4 +41,12 @@ export function openPointer(harness: string, session: string, cwd: string): Poin
 }
 export function closePointer(key: string): Pointer | null {
   const p = loadPointer(key); if (!p) return null; p.closed = now(); savePointer(p); return p;
+}
+export function pointerState(p: Pointer, nowMs = Date.now()): PointerState {
+  if (p.closed) return "closed";
+  if (p.harness === "claude") return isAlive(p.cwd, p.session, nowMs) ? "open" : "stale";
+  return "open";
+}
+export function closeStale(p: Pointer): Pointer {
+  p.closed = now(); p.closed_reason = "stale"; savePointer(p); return p;
 }

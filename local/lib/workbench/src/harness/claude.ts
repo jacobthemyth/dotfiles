@@ -1,4 +1,17 @@
+import { statSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import type { Event, Outcome } from "../events";
+
+export const LIVENESS_MS = 24 * 60 * 60 * 1000;
+export function transcriptPath(cwd: string, session: string): string {
+  const projects = process.env.WORKBENCH_CLAUDE_PROJECTS ?? join(homedir(), ".claude/projects");
+  return join(projects, cwd.replaceAll("/", "-"), `${session}.jsonl`);
+}
+// A session is alive while its transcript was written to within LIVENESS_MS.
+export function isAlive(cwd: string, session: string, nowMs = Date.now()): boolean {
+  try { return nowMs - statSync(transcriptPath(cwd, session)).mtimeMs < LIVENESS_MS; } catch { return false; }
+}
 
 type In = Record<string, any>;
 export function parseClaudeHook(i: unknown): Event | null {
