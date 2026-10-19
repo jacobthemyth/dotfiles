@@ -445,3 +445,14 @@ test("removeInbox and removePidFile refuse an empty or path-like key", () => {
   removeInbox(""); removeInbox("../inbox"); removePidFile("");
   expect(existsSync(join(sub("inbox"), "claude-x"))).toBe(true);
 });
+
+test("workset rename: prints old -> new; wrong arity is a usage error", async () => {
+  saveWorkset({ name: "a", created: "2026-01-01T00:00:00Z", members: [], sessions: [], ignored: [] });
+  const ok = await capture(() => worksetRun(["rename", "a", "b"]));
+  expect(ok).toMatchObject({ code: 0, out: "a -> b" });
+  expect(loadWorkset("b")!.name).toBe("b");
+  expect((await capture(() => worksetRun(["rename", "a"]))).code).toBe(2);
+  const miss = await capture(() => worksetRun(["rename", "a", "c"]));
+  expect(miss.code).toBe(1);
+  expect(miss.err).toBe('workbench: no workset "a"');
+});

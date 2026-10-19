@@ -8,7 +8,7 @@ import { planPrune, executePrune, renderPlan, sweepable, type PrunePlan } from "
 import { sessionKeyFromEnv } from "../session-key";
 import { loadPointer, useWorkset } from "../session";
 import { baseSource, diffBase, orderMembers } from "../stack";
-import { addMember, createWorkset, listWorksets, loadWorkset, removeMember, saveWorkset, type Member, type Role, type Workset } from "../workset";
+import { addMember, createWorkset, listWorksets, loadWorkset, removeMember, renameWorkset, saveWorkset, type Member, type Role, type Workset } from "../workset";
 
 const USAGE = `usage: workbench workset <subcommand>
   list [--json]
@@ -19,6 +19,7 @@ const USAGE = `usage: workbench workset <subcommand>
   use <name> [--session <key>]
   adopt <name> <id> [--role work|throwaway]
   ignore <name> <id>
+  rename <old> <new>
   prune [<name>] [--yes]`;
 
 const fail = (msg: string, code = 1) => { console.error(msg); return code; };
@@ -157,6 +158,13 @@ export async function run(args: string[]): Promise<number> {
         const ws = loadWorkset(positionals[0]);
         if (!ws) return fail(`workbench: no workset "${positionals[0]}"`);
         if (!ws.ignored.includes(positionals[1])) { ws.ignored.push(positionals[1]); saveWorkset(ws); }
+        return 0;
+      }
+      case "rename": {
+        const { positionals } = parseArgs({ args: rest, allowPositionals: true, options: {} });
+        if (positionals.length !== 2) return fail("usage: workbench workset rename <old> <new>", 2);
+        renameWorkset(positionals[0], positionals[1]);
+        console.log(`${positionals[0]} -> ${positionals[1]}`);
         return 0;
       }
       case "prune": {
