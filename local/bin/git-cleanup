@@ -112,13 +112,12 @@ worktree_locked() {
   return 1
 }
 
-# Number of changed or untracked files in the worktree at <path>.
+# Number of changed or untracked files in the worktree at <path>; fails when
+# git status itself fails, so callers can treat the worktree as unsafe.
 dirty_count() {
-  git -C "$1" status --porcelain --untracked-files=normal --ignore-submodules=none | wc -l | tr -d ' '
-}
-
-is_dirty() {
-  [ "$(dirty_count "$1")" -gt 0 ]
+  local status_out
+  status_out="$(git -C "$1" status --porcelain --untracked-files=normal --ignore-submodules=none 2> /dev/null)" || return 1
+  printf '%s\n' "$status_out" | sed '/^$/d' | wc -l | tr -d ' '
 }
 
 # Reachable from the default branch, and not merely sitting at its tip.
@@ -255,8 +254,9 @@ classify() {
     emit skip "$branch" "${wt:--}" "current"
   elif [ "$wt" = "$main_wt" ]; then
     emit skip "$branch" "$wt" "checked out in $main_wt"
-  elif [ -n "$wt" ] && is_dirty "$wt"; then
-    count="$(dirty_count "$wt")"
+  elif [ -n "$wt" ] && ! count="$(dirty_count "$wt")"; then
+    emit skip "$branch" "$wt" "status failed"
+  elif [ -n "$wt" ] && [ "$count" -gt 0 ]; then
     emit skip "$branch" "$wt" "dirty, $count file$([ "$count" -eq 1 ] || echo s)"
   elif [ -n "$wt" ] && worktree_locked "$branch"; then
     emit skip "$branch" "$wt" "locked"

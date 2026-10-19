@@ -460,6 +460,19 @@ test_yes_continues_past_failure_and_exits_1() {
   assert_no_branch merged-ancestry
 }
 
+# chmod 000 on the worktree makes git worktree prune treat it as gone, so the
+# failure is forced with a corrupt index instead.
+test_unreadable_worktree_is_skipped() {
+  mk_repo
+  echo garbage > "$repo/.git/worktrees/merged-ancestry/index"
+  ! git -C "$repo/.worktrees/merged-ancestry" status > /dev/null 2>&1 || fail "status should fail on a corrupt index"
+  git -C "$repo" cleanup > "$out"
+  assert_line skip merged-ancestry "status failed"
+  git -C "$repo" cleanup --yes > "$out" || fail "cleanup --yes exited non-zero"
+  assert_branch merged-ancestry
+  assert_dir merged-ancestry
+}
+
 test_help() {
   mk_repo
   (cd "$repo" && git-cleanup --help) > "$out"
@@ -476,6 +489,7 @@ run_tests test_dry_run_plans_from_main \
   test_default_branch_dangling_origin_head_uses_main \
   test_locked_worktree_is_skipped \
   test_yes_continues_past_failure_and_exits_1 \
+  test_unreadable_worktree_is_skipped \
   test_help \
   test_yes_executes_plan \
   test_usage_error \
