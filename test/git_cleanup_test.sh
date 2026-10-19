@@ -297,7 +297,7 @@ test_gh_yes_closed_keeps_branch() {
 
 test_gh_escapes_and_batches() {
   mk_gh_repo
-  FAKE_GH_PRS="$export_prs" git -C "$repo" cleanup > "$out"
+  FAKE_GH_PRS="$export_prs weird/na.me-\"q\"=OPEN:14" git -C "$repo" cleanup > "$out"
   [ "$(wc -l < "$FAKE_GH_QUERY_LOG" | tr -d ' ')" -eq 2 ] || fail "expected two GraphQL requests"
   local first second
   first="$(sed -n 1p "$FAKE_GH_QUERY_LOG")"
@@ -307,7 +307,7 @@ test_gh_escapes_and_batches() {
   case "$second" in *'b0: '*'b15: '*) ;; *) fail "second request should restart at b0" ;; esac
   case "$second" in *'b16: '*) fail "second request has too many aliases" ;; esac
   grep -Fq '\"q\"' "$FAKE_GH_QUERY_LOG" || fail "quotes in branch name not escaped"
-  assert_line delete 'weird/na.me-"q"' "zero commits ahead"
+  assert_line skip 'weird/na.me-"q"' "open PR #14"
   assert_line delete pr-merged "PR #11 merged"
   assert_line skip pr-open "open PR #13"
 }
@@ -334,6 +334,17 @@ test_gh_merged_reused_branch_is_kept() {
   FAKE_GH_PRS="pr-reused=MERGED:21:$first" git -C "$repo" cleanup --yes > "$out" || fail "cleanup --yes exited non-zero"
   assert_branch pr-reused
   assert_dir pr-reused
+}
+
+test_gh_closed_reused_branch_is_kept() {
+  mk_gh_repo
+  add_commits pr-closed-reused first second
+  local first
+  first="$(git -C "$repo" rev-parse pr-closed-reused~1)"
+  FAKE_GH_PRS="pr-closed-reused=CLOSED:25:$first" git -C "$repo" cleanup --closed --yes > "$out" || fail "cleanup --yes exited non-zero"
+  assert_line skip pr-closed-reused "unmerged work"
+  assert_branch pr-closed-reused
+  assert_dir pr-closed-reused
 }
 
 test_gh_merged_behind_head_is_deleted() {
@@ -371,7 +382,7 @@ test_gh_merged_unknown_oid_falls_through() {
 test_gh_api_failure_falls_back() {
   mk_gh_repo
   FAKE_GH_FAIL=1 git -C "$repo" cleanup > "$out" || fail "should exit 0 when the gh query fails"
-  [ "$(sed -n 2p "$out")" = "gh not available: PR state unknown" ] || fail "header line 2"
+  [ "$(sed -n 2p "$out")" = "gh query failed: PR state unknown" ] || fail "header line 2"
   assert_line delete merged-ancestry "ancestry-merged"
 }
 
@@ -392,8 +403,80 @@ run_tests() {
   done
 }
 
+test_dirty_ignores_user_config() {
+  mk_repo
+  git -C "$repo" config status.showUntrackedFiles no
+  git -C "$repo" cleanup > "$out"
+  git -C "$repo" config --unset status.showUntrackedFiles
+  assert_line skip dirty-merged "dirty, 1 file"
+}
+
+test_default_branch_unresolvable_exits_2() {
+  local scratch="$fixture/scratch" status=0
+  rm -rf "$scratch"
+  git init -q -b trunk "$scratch"
+  git -C "$scratch" commit -q --allow-empty -m init
+  git -C "$scratch" symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/master
+  git -C "$scratch" cleanup > "$out" 2> "$err" || status=$?
+  [ "$status" -eq 2 ] || fail "expected exit 2, got $status"
+  grep -Fq "git cleanup: cannot determine the default branch (set origin/HEAD or init.defaultBranch)" "$err" ||
+    fail "default branch message missing"
+  if grep -q trunk "$out"; then fail "nothing should be planned"; fi
+}
+
+test_default_branch_dangling_origin_head_uses_main() {
+  mk_repo
+  git -C "$repo" symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/master
+  git -C "$repo" cleanup > "$out"
+  [ "$(sed -n 1p "$out")" = "repo: $repo  default: main" ] || fail "header should name main"
+}
+
+test_locked_worktree_is_skipped() {
+  mk_repo
+  git -C "$repo" worktree lock "$repo/.worktrees/merged-ancestry"
+  git -C "$repo" cleanup > "$out"
+  assert_line skip merged-ancestry "locked"
+  git -C "$repo" cleanup --yes > "$out" || fail "cleanup --yes exited non-zero"
+  assert_branch merged-ancestry
+  assert_dir merged-ancestry
+  assert_no_branch zero-ahead
+}
+
+test_yes_continues_past_failure_and_exits_1() {
+  mk_repo
+  # aaa-fail sorts before zzz-ok; its worktree sits in a read-only directory so
+  # removal fails.
+  mkdir "$fixture/ro"
+  git -C "$repo" worktree add -q -b aaa-fail "$fixture/ro/aaa-fail" main
+  git -C "$repo" worktree add -q -b zzz-ok "$repo/.worktrees/zzz-ok" main
+  chmod 555 "$fixture/ro"
+  local status=0
+  git -C "$repo" cleanup --yes > "$out" 2>&1 || status=$?
+  chmod 755 "$fixture/ro"
+  [ "$status" -eq 1 ] || fail "expected exit 1, got $status"
+  assert_branch aaa-fail
+  assert_no_branch zzz-ok
+  assert_no_dir zzz-ok
+  assert_no_branch merged-ancestry
+}
+
+test_help() {
+  mk_repo
+  (cd "$repo" && git-cleanup --help) > "$out"
+  local n
+  n="$(wc -l < "$out" | tr -d ' ')"
+  [ "$n" -ge 4 ] && [ "$n" -le 6 ] || fail "help should be 4-6 lines, got $n"
+  grep -Fq -- "--closed" "$out" || fail "help should mention --closed"
+}
+
 run_tests test_dry_run_plans_from_main \
   test_dry_run_skips_current_and_main_checkout \
+  test_dirty_ignores_user_config \
+  test_default_branch_unresolvable_exits_2 \
+  test_default_branch_dangling_origin_head_uses_main \
+  test_locked_worktree_is_skipped \
+  test_yes_continues_past_failure_and_exits_1 \
+  test_help \
   test_yes_executes_plan \
   test_usage_error \
   test_old_scripts_removed
@@ -406,6 +489,7 @@ if command -v jq > /dev/null; then
     test_gh_yes_closed_keeps_branch \
     test_gh_escapes_and_batches \
     test_gh_merged_reused_branch_is_kept \
+    test_gh_closed_reused_branch_is_kept \
     test_gh_merged_behind_head_is_deleted \
     test_gh_merged_behind_head_fetches_and_deletes \
     test_gh_merged_unknown_oid_falls_through \

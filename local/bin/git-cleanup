@@ -4,7 +4,11 @@
 
 set -eo pipefail
 
-usage="usage: git cleanup [--yes] [--closed]"
+usage="usage: git cleanup [--yes] [--closed]
+  Dry run by default: prints a plan, changes nothing. --yes carries it out.
+  --closed also deletes the branches of closed PRs (otherwise only their worktrees go).
+  A dry run may fetch PR heads (refs/pull/N/head) from origin.
+  Dispositions: delete (branch and worktree), worktree (worktree only), skip (left alone)."
 
 yes=0
 closed=0
@@ -30,43 +34,53 @@ main_wt="$(git worktree list --porcelain | sed -n '1s/^worktree //p')"
 # associative arrays). Detached and prunable entries are left out.
 wt_paths=()
 wt_branches=()
+wt_locked=()
 
 load_worktrees() {
-  local line path="" branch="" prunable=0
+  local line path="" branch="" prunable=0 locked=0
   wt_paths=()
   wt_branches=()
+  wt_locked=()
   while IFS= read -r line; do
     case "$line" in
       "worktree "*)
         path="${line#worktree }"
         branch=""
         prunable=0
+        locked=0
         ;;
       "branch refs/heads/"*) branch="${line#branch refs/heads/}" ;;
       prunable*) prunable=1 ;;
+      locked*) locked=1 ;;
       "")
         if [ -n "$branch" ] && [ "$prunable" -eq 0 ]; then
           wt_paths+=("$path")
           wt_branches+=("$branch")
+          wt_locked+=("$locked")
         fi
         path=""
         branch=""
         prunable=0
+        locked=0
         ;;
     esac
   done < <(git -C "$main_wt" worktree list --porcelain; echo)
 }
 
+# The default branch, only ever a branch that exists locally: origin/HEAD's
+# target, else main, master, or init.defaultBranch. Exits 2 when none resolves.
 default_branch() {
-  local head
+  local head name
   head="$(git -C "$main_wt" symbolic-ref --short -q refs/remotes/origin/HEAD || true)"
-  if [ -n "$head" ]; then
-    echo "${head#origin/}"
-  elif git -C "$main_wt" show-ref --verify -q refs/heads/main; then
-    echo main
-  else
-    echo master
-  fi
+  head="${head#origin/}"
+  for name in "$head" main master "$(git -C "$main_wt" config --get init.defaultBranch || true)"; do
+    if [ -n "$name" ] && git -C "$main_wt" show-ref --verify -q "refs/heads/$name"; then
+      echo "$name"
+      return 0
+    fi
+  done
+  echo "git cleanup: cannot determine the default branch (set origin/HEAD or init.defaultBranch)" >&2
+  exit 2
 }
 
 current_branch() {
@@ -85,9 +99,22 @@ worktree_of() {
   done
 }
 
+# Whether the worktree for <branch> is locked.
+worktree_locked() {
+  local i=0
+  while [ "$i" -lt "${#wt_branches[@]}" ]; do
+    if [ "${wt_branches[$i]}" = "$1" ]; then
+      [ "${wt_locked[$i]}" -eq 1 ]
+      return
+    fi
+    i=$((i + 1))
+  done
+  return 1
+}
+
 # Number of changed or untracked files in the worktree at <path>.
 dirty_count() {
-  git -C "$1" status --porcelain | wc -l | tr -d ' '
+  git -C "$1" status --porcelain --untracked-files=normal --ignore-submodules=none | wc -l | tr -d ' '
 }
 
 is_dirty() {
@@ -96,24 +123,24 @@ is_dirty() {
 
 # Reachable from the default branch, and not merely sitting at its tip.
 ancestry_merged() {
-  [ "$(git -C "$main_wt" rev-parse "$1")" != "$(git -C "$main_wt" rev-parse "$default")" ] &&
-    git -C "$main_wt" merge-base --is-ancestor "$1" "$default"
+  [ "$(git -C "$main_wt" rev-parse "refs/heads/$1")" != "$(git -C "$main_wt" rev-parse "refs/heads/$default")" ] &&
+    git -C "$main_wt" merge-base --is-ancestor "refs/heads/$1" "refs/heads/$default"
 }
 
 # Whether one commit holding the branch's whole diff is already in the default
 # branch (a squash merge leaves an equivalent patch there).
 squash_merged() {
   local base probe
-  base="$(git -C "$main_wt" merge-base "$default" "$1")" || return 1
-  probe="$(git -C "$main_wt" commit-tree "$1^{tree}" -p "$base" -m _)"
-  case "$(git -C "$main_wt" cherry "$default" "$probe")" in
+  base="$(git -C "$main_wt" merge-base "refs/heads/$default" "refs/heads/$1")" || return 1
+  probe="$(git -C "$main_wt" commit-tree "refs/heads/$1^{tree}" -p "$base" -m _)"
+  case "$(git -C "$main_wt" cherry "refs/heads/$default" "$probe")" in
     -*) return 0 ;;
     *) return 1 ;;
   esac
 }
 
 ahead_count() {
-  git -C "$main_wt" rev-list --count "$default..$1"
+  git -C "$main_wt" rev-list --count "refs/heads/$default..refs/heads/$1"
 }
 
 # <owner>/<repo> of origin when it is a GitHub remote, else nothing.
@@ -128,7 +155,7 @@ origin_slug() {
 gh_available() {
   command -v gh > /dev/null && command -v jq > /dev/null || return 1
   [ -n "$(origin_slug)" ] || return 1
-  gh auth status > /dev/null 2>&1
+  gh auth status --hostname github.com > /dev/null 2>&1
 }
 
 # Newest PR per branch, from one GraphQL request per 50 branches. Fills the
@@ -167,6 +194,7 @@ fetch_pr_states() {
       | "\(.key)\t\(.value.nodes[0].state)\t\(.value.nodes[0].number)\t\(.value.nodes[0].headRefOid)"')" || { gh_ok=0; return 1; }
     while IFS=$'\t' read -r key st num oid; do
       [ -n "$key" ] || continue
+      case "$key" in b[0-9]*) ;; *) continue ;; esac
       idx="${key#b}"
       pr_branch+=("${batch[$idx]}")
       pr_state+=("$st")
@@ -201,7 +229,10 @@ pr_head_covers() {
   tip="$(git -C "$main_wt" rev-parse "refs/heads/$1")"
   [ "$tip" = "$2" ] && return 0
   git -C "$main_wt" cat-file -e "$2^{commit}" 2> /dev/null ||
-    { git -C "$main_wt" fetch -q origin "refs/pull/$3/head" > /dev/null 2>&1 || true; }
+    {
+      echo "git cleanup: fetching refs/pull/$3/head for $1" >&2
+      GIT_TERMINAL_PROMPT=0 git -C "$main_wt" fetch -q origin "refs/pull/$3/head" > /dev/null 2>&1 || true
+    }
   git -C "$main_wt" cat-file -e "$2^{commit}" 2> /dev/null &&
     git -C "$main_wt" merge-base --is-ancestor "$tip" "$2"
 }
@@ -213,9 +244,12 @@ emit() {
 # Print the output line for <branch>; the default branch prints nothing.
 # Rules run in order and the first match wins; PR-state rules follow the dirty rule.
 classify() {
-  local branch="$1" wt count
+  local branch="$1" wt count have_pr
   [ "$branch" != "$default" ] || return 0
   wt="$(worktree_of "$branch")"
+
+  have_pr=0
+  [ "$gh_ok" -ne 1 ] || ! find_pr "$branch" || have_pr=1
 
   if [ "$branch" = "$(current_branch)" ]; then
     emit skip "$branch" "${wt:--}" "current"
@@ -224,10 +258,13 @@ classify() {
   elif [ -n "$wt" ] && is_dirty "$wt"; then
     count="$(dirty_count "$wt")"
     emit skip "$branch" "$wt" "dirty, $count file$([ "$count" -eq 1 ] || echo s)"
-  elif [ "$gh_ok" -eq 1 ] && find_pr "$branch" && [ "$pr_found_state" = MERGED ] &&
+  elif [ -n "$wt" ] && worktree_locked "$branch"; then
+    emit skip "$branch" "$wt" "locked"
+  elif [ "$have_pr" -eq 1 ] && [ "$pr_found_state" = MERGED ] &&
     pr_head_covers "$branch" "$pr_found_oid" "$pr_found_number"; then
     emit delete "$branch" "${wt:--}" "PR #$pr_found_number merged"
-  elif [ "$gh_ok" -eq 1 ] && find_pr "$branch" && [ "$pr_found_state" = CLOSED ]; then
+  elif [ "$have_pr" -eq 1 ] && [ "$pr_found_state" = CLOSED ] &&
+    pr_head_covers "$branch" "$pr_found_oid" "$pr_found_number"; then
     if [ "$closed" -eq 1 ]; then
       emit delete "$branch" "${wt:--}" "closed PR #$pr_found_number"
     elif [ -n "$wt" ]; then
@@ -235,7 +272,7 @@ classify() {
     else
       emit skip "$branch" "-" "closed PR #$pr_found_number, branch kept"
     fi
-  elif [ "$gh_ok" -eq 1 ] && find_pr "$branch" && [ "$pr_found_state" = OPEN ]; then
+  elif [ "$have_pr" -eq 1 ] && [ "$pr_found_state" = OPEN ]; then
     emit skip "$branch" "${wt:--}" "open PR #$pr_found_number"
   elif ancestry_merged "$branch"; then
     emit delete "$branch" "${wt:--}" "ancestry-merged"
@@ -259,23 +296,26 @@ run() {
   return "$status"
 }
 
-default="$(default_branch)"
+default="$(default_branch)" || exit 2
 
 # Every local branch but the default gets classified, so those are the ones to ask about.
 branches=()
 while IFS= read -r branch; do
   [ "$branch" = "$default" ] || branches+=("$branch")
-done < <(git -C "$main_wt" for-each-ref refs/heads --format='%(refname:short)')
+done < <(git -C "$main_wt" for-each-ref refs/heads --format='%(refname:lstrip=2)')
 
 gh_ok=0
+gh_failed=0
 if gh_available; then
   gh_ok=1
-  [ "${#branches[@]}" -eq 0 ] || fetch_pr_states "${branches[@]}" || true
+  [ "${#branches[@]}" -eq 0 ] || fetch_pr_states "${branches[@]}" || gh_failed=1
 fi
 
 echo "repo: $main_wt  default: $default"
 if [ "$gh_ok" -eq 1 ]; then
   echo "gh: $(origin_slug)"
+elif [ "$gh_failed" -eq 1 ]; then
+  echo "gh query failed: PR state unknown"
 else
   echo "gh not available: PR state unknown"
 fi
