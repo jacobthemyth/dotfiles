@@ -145,12 +145,12 @@ FAKE
   chmod +x "$fake_bin/gh"
 }
 
-# mk_repo with an origin that looks like GitHub (fetch URL only; a push would
-# still go to the bare repo).
+# mk_repo with an origin that looks like GitHub: the configured URL is the GitHub
+# one (what origin_slug reads) and insteadOf sends fetches and pushes to the bare repo.
 mk_gh_repo() {
   mk_repo
   git -C "$repo" remote set-url origin git@github.com:acme/repo.git
-  git -C "$repo" remote set-url --push origin "$fixture/origin.git"
+  git -C "$repo" config "url.$fixture/origin.git.insteadOf" git@github.com:acme/repo.git
   use_gh
   rm -f "$FAKE_GH_QUERY_LOG"
 }
@@ -346,11 +346,26 @@ test_gh_merged_behind_head_is_deleted() {
   assert_line delete pr-behind "PR #22 merged"
 }
 
+test_gh_merged_behind_head_fetches_and_deletes() {
+  mk_gh_repo
+  add_commits pr-behind2 first
+  local a b
+  a="$(git -C "$repo" rev-parse pr-behind2)"
+  b="$(git -C "$repo" commit-tree "$a^{tree}" -p "$a" -m second)"
+  git -C "$repo" push -q origin "$b:refs/pull/24/head"
+  git -C "$repo" prune --expire=now
+  ! git -C "$repo" cat-file -e "$b^{commit}" 2> /dev/null || fail "head commit should not be a local object"
+  FAKE_GH_PRS="pr-behind2=MERGED:24:$b" git -C "$repo" cleanup > "$out"
+  assert_line delete pr-behind2 "PR #24 merged"
+  [ -z "$(git -C "$repo" for-each-ref refs/pull)" ] || fail "fetch must not create refs/pull refs"
+}
+
 test_gh_merged_unknown_oid_falls_through() {
   mk_gh_repo
   add_commits pr-unknown first
   FAKE_GH_PRS="pr-unknown=MERGED:23:0123456789abcdef0123456789abcdef01234567" git -C "$repo" cleanup > "$out"
   assert_line skip pr-unknown "unmerged work"
+  [ -z "$(git -C "$repo" for-each-ref refs/pull)" ] || fail "no refs/pull refs expected"
 }
 
 test_gh_api_failure_falls_back() {
@@ -392,6 +407,7 @@ if command -v jq > /dev/null; then
     test_gh_escapes_and_batches \
     test_gh_merged_reused_branch_is_kept \
     test_gh_merged_behind_head_is_deleted \
+    test_gh_merged_behind_head_fetches_and_deletes \
     test_gh_merged_unknown_oid_falls_through \
     test_gh_api_failure_falls_back \
     test_gh_unauthenticated_falls_back
