@@ -108,3 +108,28 @@ export function commit(path: string, message: string, trailers: string[], files:
 }
 // Takes `files` back out of the index; no commit is touched.
 export const unstage = (path: string, files: string[]) => git(path, "restore", "--staged", "--", ...files) !== null;
+
+// Commits ahead of the upstream; null when there is no upstream, it is gone, or git fails.
+export function aheadOfUpstream(repo: string, branch: string): number | null {
+  const out = git(repo, "for-each-ref", "--format=%(upstream)|%(upstream:track)", `refs/heads/${branch}`);
+  if (!out) return null;
+  const [upstream, track = ""] = out.split("|");
+  if (!upstream || track === "[gone]") return null;
+  const m = track.match(/ahead (\d+)/);
+  return m ? Number(m[1]) : 0;
+}
+export function revListCount(repo: string, range: string): number | null {
+  const out = git(repo, "rev-list", "--count", range);
+  return out === null ? null : Number(out);
+}
+export const hasCommit = (repo: string, oid: string) => exec(repo, ["cat-file", "-e", `${oid}^{commit}`]).ok;
+export const isAncestor = (repo: string, ancestor: string, descendant: string) => exec(repo, ["merge-base", "--is-ancestor", ancestor, descendant]).ok;
+// Best effort: brings a PR's head commit into the local object store. Never prompts.
+export function fetchPullHead(repo: string, number: number): boolean {
+  try {
+    const r = Bun.spawnSync(["git", "fetch", "-q", "origin", `refs/pull/${number}/head`], {
+      cwd: repo, env: { ...process.env, GIT_TERMINAL_PROMPT: "0" }, stdout: "pipe", stderr: "pipe",
+    });
+    return r.exitCode === 0;
+  } catch { return false; }
+}
