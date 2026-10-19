@@ -116,12 +116,12 @@ function stacked(name = "stack") {
   saveWorkset(wsOf(name, [m1, m2, m3]));
   return { repo, s1, m1, m2, m3, name };
 }
-// Two dead members: one merged with a worktree, one whose branch is gone.
-function dead(name: string) {
+// Two dead members (the stub is keyed by branch, so concurrent fixtures need distinct branch names): one merged with a worktree, one whose branch is gone.
+function dead(name: string, branch = "done") {
   const repo = mkRepo(`dead-${name.slice(-4)}`);
-  const w = mkWorktree(repo, "done");
-  stub({ done: { pr: pr("MERGED", 9), base: "main", headRefOid: w.tip } });
-  const members = [mem(repo, "done", { worktree: w.path }), mem(repo, "ghost")];
+  const w = mkWorktree(repo, branch);
+  stub({ [branch]: { pr: pr("MERGED", 9), base: "main", headRefOid: w.tip } });
+  const members = [mem(repo, branch, { worktree: w.path }), mem(repo, "ghost")];
   saveWorkset(wsOf(name, members));
   return { repo, w, members };
 }
@@ -259,7 +259,7 @@ test("refused when locked", () => {
 
 test("sweepable", () => {
   dead(DEFAULT_NAME);                                       // default all-dead: in
-  const d2 = dead("named-dead");                            // named all-dead: out
+  const d2 = dead("named-dead", "named-done");                            // named all-dead: out
   void d2;
   stacked(DEFAULT_NAME2);                                   // default mixed: out
   const repo = mkRepo("emp");
