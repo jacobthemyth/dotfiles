@@ -1,5 +1,188 @@
 #!/usr/bin/env bash
+# Plan (or with --yes, carry out) the removal of dead branches and their
+# worktrees in the repository containing the current directory.
 
 set -eo pipefail
 
-git branch --merged main | grep -v "main" | xargs git branch -d
+usage="usage: git cleanup [--yes] [--closed]"
+
+yes=0
+for arg in "$@"; do
+  case "$arg" in
+    --yes) yes=1 ;;
+    --closed) ;; # accepted now; acts once PR state is available
+    -h | --help)
+      echo "$usage"
+      exit 0
+      ;;
+    *)
+      echo "$usage" >&2
+      exit 2
+      ;;
+  esac
+done
+
+main_wt="$(git worktree list --porcelain | sed -n '1s/^worktree //p')"
+[ -n "$main_wt" ] || { echo "git-cleanup: not in a git repository" >&2; exit 2; }
+
+# Linked worktrees that have a branch, as parallel arrays (bash 3.2: no
+# associative arrays). Detached and prunable entries are left out.
+wt_paths=()
+wt_branches=()
+
+load_worktrees() {
+  local line path="" branch="" prunable=0
+  wt_paths=()
+  wt_branches=()
+  while IFS= read -r line; do
+    case "$line" in
+      "worktree "*)
+        path="${line#worktree }"
+        branch=""
+        prunable=0
+        ;;
+      "branch refs/heads/"*) branch="${line#branch refs/heads/}" ;;
+      prunable*) prunable=1 ;;
+      "")
+        if [ -n "$branch" ] && [ "$prunable" -eq 0 ]; then
+          wt_paths+=("$path")
+          wt_branches+=("$branch")
+        fi
+        path=""
+        branch=""
+        prunable=0
+        ;;
+    esac
+  done < <(git -C "$main_wt" worktree list --porcelain; echo)
+}
+
+default_branch() {
+  local head
+  head="$(git -C "$main_wt" symbolic-ref --short -q refs/remotes/origin/HEAD || true)"
+  if [ -n "$head" ]; then
+    echo "${head#origin/}"
+  elif git -C "$main_wt" show-ref --verify -q refs/heads/main; then
+    echo main
+  else
+    echo master
+  fi
+}
+
+current_branch() {
+  git branch --show-current
+}
+
+# Path of the worktree that has <branch> checked out, or nothing.
+worktree_of() {
+  local i=0
+  while [ "$i" -lt "${#wt_branches[@]}" ]; do
+    if [ "${wt_branches[$i]}" = "$1" ]; then
+      echo "${wt_paths[$i]}"
+      return 0
+    fi
+    i=$((i + 1))
+  done
+}
+
+# Number of changed or untracked files in the worktree at <path>.
+dirty_count() {
+  git -C "$1" status --porcelain | wc -l | tr -d ' '
+}
+
+is_dirty() {
+  [ "$(dirty_count "$1")" -gt 0 ]
+}
+
+# Reachable from the default branch, and not merely sitting at its tip.
+ancestry_merged() {
+  [ "$(git -C "$main_wt" rev-parse "$1")" != "$(git -C "$main_wt" rev-parse "$default")" ] &&
+    git -C "$main_wt" merge-base --is-ancestor "$1" "$default"
+}
+
+# Whether one commit holding the branch's whole diff is already in the default
+# branch (a squash merge leaves an equivalent patch there).
+squash_merged() {
+  local base probe
+  base="$(git -C "$main_wt" merge-base "$default" "$1")" || return 1
+  probe="$(git -C "$main_wt" commit-tree "$1^{tree}" -p "$base" -m _)"
+  case "$(git -C "$main_wt" cherry "$default" "$probe")" in
+    -*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+ahead_count() {
+  git -C "$main_wt" rev-list --count "$default..$1"
+}
+
+emit() {
+  printf '%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4"
+}
+
+# Print the output line for <branch>; the default branch prints nothing.
+# Rules run in order and the first match wins; add new ones after the dirty rule.
+classify() {
+  local branch="$1" wt count
+  [ "$branch" != "$default" ] || return 0
+  wt="$(worktree_of "$branch")"
+
+  if [ "$branch" = "$(current_branch)" ]; then
+    emit skip "$branch" "${wt:--}" "current"
+  elif [ "$wt" = "$main_wt" ]; then
+    emit skip "$branch" "$wt" "checked out in $main_wt"
+  elif [ -n "$wt" ] && is_dirty "$wt"; then
+    count="$(dirty_count "$wt")"
+    emit skip "$branch" "$wt" "dirty, $count file$([ "$count" -eq 1 ] || echo s)"
+  elif ancestry_merged "$branch"; then
+    emit delete "$branch" "${wt:--}" "ancestry-merged"
+  elif squash_merged "$branch"; then
+    emit delete "$branch" "${wt:--}" "squash-merged"
+  elif [ "$(ahead_count "$branch")" -eq 0 ]; then
+    emit delete "$branch" "${wt:--}" "zero commits ahead"
+  else
+    emit skip "$branch" "${wt:--}" "unmerged work"
+  fi
+}
+
+failures=0
+
+# Echo a command and run it; a failure is counted and returned, never fatal.
+run() {
+  local status=0
+  echo "+ $*"
+  "$@" || status=$?
+  [ "$status" -eq 0 ] || failures=$((failures + 1))
+  return "$status"
+}
+
+default="$(default_branch)"
+echo "repo: $main_wt  default: $default"
+echo "gh not available: PR state unknown"
+
+if [ "$yes" -eq 1 ]; then
+  git -C "$main_wt" worktree prune -v 2>&1
+else
+  git -C "$main_wt" worktree prune --dry-run -v 2>&1
+fi
+
+load_worktrees
+
+plan=()
+while IFS= read -r branch; do
+  line="$(classify "$branch")"
+  [ -z "$line" ] || plan+=("$line")
+done < <(git -C "$main_wt" for-each-ref refs/heads --format='%(refname:short)')
+
+[ "${#plan[@]}" -eq 0 ] || printf '%s\n' "${plan[@]}"
+
+if [ "$yes" -eq 1 ]; then
+  for line in ${plan[@]+"${plan[@]}"}; do
+    IFS=$'\t' read -r disposition branch wt _ <<< "$line"
+    [ "$disposition" != skip ] || continue
+    if [ "$wt" != "-" ]; then
+      run git -C "$main_wt" worktree remove "$wt" || continue
+    fi
+    [ "$disposition" != delete ] || { run git -C "$main_wt" branch -D "$branch" || true; }
+  done
+  [ "$failures" -eq 0 ] || exit 1
+fi

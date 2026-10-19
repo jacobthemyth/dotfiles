@@ -85,6 +85,13 @@ else
   echo "  SKIP: test/tinty_hook_test.sh not present yet"
 fi
 
+echo "==> git-cleanup unit test"
+if [ -x test/git_cleanup_test.sh ]; then
+  test/git_cleanup_test.sh || fail=1
+else
+  echo "  SKIP: test/git_cleanup_test.sh not present yet"
+fi
+
 echo "==> papersync lint + tests"
 if command -v uv >/dev/null 2>&1; then
   (
