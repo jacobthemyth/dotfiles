@@ -10,8 +10,10 @@ export type InboxReview = ReviewFile & { read: boolean };
 const inboxDir = (key: string) => join(sub("inbox"), key);
 const pidFile = (key: string) => join(sub("watch"), `${key}.pid`);
 
-export const removeInbox = (key: string): void => rmSync(inboxDir(key), { recursive: true, force: true });
-export const removePidFile = (key: string): void => removeFile(pidFile(key));
+// An empty or path-like key would resolve to the whole inbox/ or watch/ directory: refuse it.
+const safeKey = (key: string) => key !== "" && key !== "." && key !== ".." && !key.includes("/");
+export const removeInbox = (key: string): void => { if (safeKey(key)) rmSync(inboxDir(key), { recursive: true, force: true }); };
+export const removePidFile = (key: string): void => { if (safeKey(key)) removeFile(pidFile(key)); };
 
 function load(key: string): InboxReview[] {
   const dir = inboxDir(key);

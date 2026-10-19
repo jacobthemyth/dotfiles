@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { sub } from "./paths";
 import { isAlive } from "./harness/claude";
-import { readJson, writeJson, now, listJson } from "./store";
+import { readJson, writeJson, now, listJson, removeFile } from "./store";
 import { createWorkset, loadWorkset, saveWorkset, type Workset } from "./workset";
 
 export type Pointer = { key: string; harness: string; session: string; workset: string; cwd: string; opened: string; closed: string | null; closed_reason?: "stale" };
@@ -11,6 +11,7 @@ export const pointerKey = (harness: string, session: string) => `${harness}-${se
 const file = (key: string) => join(dir(), `${key}.json`);
 export const loadPointer = (key: string) => readJson<Pointer>(file(key));
 export const savePointer = (p: Pointer) => writeJson(file(p.key), p);
+export const removePointer = (key: string) => removeFile(file(key));
 export const pointerKeys = () => listJson(dir());
 export const listPointers = () => pointerKeys().map((k) => loadPointer(k)!).filter(Boolean);
 export function bindSession(key: string, workset: string): Pointer {

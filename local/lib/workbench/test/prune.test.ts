@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { remoteSlug } from "../src/git";
 import { sub } from "../src/paths";
 import { removeFile, writeJson } from "../src/store";
+import { removeInbox, removePidFile } from "../src/inbox";
 import { loadPointer, savePointer, type Pointer } from "../src/session";
 import { transcriptPath } from "../src/harness/claude";
 import { archiveFile } from "../src/review";
@@ -221,7 +222,6 @@ test("pointers: stale is closed, closed and stale are deleted, open keeps the wo
   expect(plan.deleteWorkset).toBe(true);
   expect(loadPointer("claude-c")!.closed_reason).toBeUndefined();
   expect(executePrune(plan, () => {})).toBe(true);
-  expect(plan.pointers.close[0].closed_reason).toBe("stale");
   for (const k of ["claude-s", "claude-c"]) {
     expect(existsSync(join(sub("sessions"), `${k}.json`))).toBe(false);
     expect(existsSync(join(sub("inbox"), k))).toBe(false);
@@ -347,4 +347,101 @@ test("a git failure keeps the member and the workset, and returns false", () => 
   expect(existsSync(d.w.path)).toBe(true);
   expect(loadWorkset(DEFAULT_NAME)!.members.map((m) => m.branch)).toEqual(["done"]);
   expect(lines.join("\n")).toContain("failed");
+});
+
+test("a member whose worktree was switched to another branch is kept", () => {
+  const repo = mkRepo("sw");
+  const w = mkWorktree(repo, "m");
+  mkBranch(repo, "other", true);
+  stub({ m: { pr: pr("MERGED", 1), base: "main", headRefOid: w.tip } });
+  sh(w.path, "switch", "-q", "other");
+  saveWorkset(wsOf("sw1", [mem(repo, "m", { worktree: w.path })]));
+  const plan = planPrune(loadWorkset("sw1")!);
+  expect(plan.members).toEqual([]);
+  expect(plan.kept[0].reason).toBe("worktree on other");
+  expect(executePrune(plan, () => {})).toBe(true);
+  expect(hasBranch(repo, "m")).toBe(true);
+  expect(hasBranch(repo, "other")).toBe(true);
+  expect(existsSync(w.path)).toBe(true);
+  // detached HEAD
+  sh(w.path, "switch", "-q", "--detach");
+  expect(planPrune(loadWorkset("sw1")!).kept[0].reason).toBe("worktree on detached");
+});
+
+test("a member also held by another workset is kept", () => {
+  const d = dead(DEFAULT_NAME);
+  saveWorkset(wsOf("keeper", [d.members[0]]));
+  const plan = planPrune(loadWorkset(DEFAULT_NAME)!);
+  expect(plan.kept.map((k) => [k.member.branch, k.reason])).toEqual([["done", "also in workset keeper"]]);
+  expect(plan.deleteWorkset).toBe(false);
+  expect(executePrune(plan, () => {})).toBe(true);
+  expect(hasBranch(d.repo, "done")).toBe(true);
+  expect(existsSync(d.w.path)).toBe(true);
+});
+
+test("a pointer that came back to life before execute is left alone", () => {
+  const cwd = join(tmp, "cwd");
+  mkdirSync(cwd);
+  pointer("s", cwd);
+  const repo = mkRepo("rev");
+  saveWorkset(wsOf(DEFAULT_NAME, [mem(repo, "ghost")], ["claude-s"]));
+  const plan = planPrune(loadWorkset(DEFAULT_NAME)!);
+  expect(plan.deleteWorkset).toBe(true);
+  transcript(cwd, "s", Date.now());
+  expect(executePrune(plan, () => {})).toBe(true);
+  expect(existsSync(join(sub("sessions"), "claude-s.json"))).toBe(true);
+  expect(loadPointer("claude-s")!.closed).toBeNull();
+  expect(loadWorkset(DEFAULT_NAME)).not.toBeNull();
+});
+
+test("a workset that gained a member before execute is not deleted", () => {
+  const d = dead(DEFAULT_NAME);
+  const plan = planPrune(loadWorkset(DEFAULT_NAME)!);
+  const ws = loadWorkset(DEFAULT_NAME)!;
+  ws.members.push(mem(d.repo, "late"));
+  saveWorkset(ws);
+  expect(executePrune(plan, () => {})).toBe(true);
+  expect(loadWorkset(DEFAULT_NAME)!.members.map((m) => m.branch)).toEqual(["late"]);
+});
+
+test("execute keeps the workset and every pointer file when a session is open", () => {
+  const cwd = join(tmp, "cwd");
+  mkdirSync(cwd);
+  pointer("o", cwd); transcript(cwd, "o", Date.now());
+  pointer("s", cwd);
+  pointer("c", cwd, { closed: "2026-01-02T00:00:00.000Z" });
+  const repo = mkRepo("op");
+  saveWorkset(wsOf(DEFAULT_NAME, [mem(repo, "ghost")], ["claude-o", "claude-s", "claude-c"]));
+  const plan = planPrune(loadWorkset(DEFAULT_NAME)!);
+  expect(plan.keepReason).toBe("open session claude-o");
+  expect(executePrune(plan, () => {})).toBe(true);
+  for (const k of ["claude-o", "claude-s", "claude-c"]) expect(existsSync(join(sub("sessions"), `${k}.json`))).toBe(true);
+  expect(loadPointer("claude-s")!.closed_reason).toBe("stale");
+  expect(loadWorkset(DEFAULT_NAME)!.members).toEqual([]);
+});
+
+test("a chain of two pruned members collapses onto the first surviving base", () => {
+  const repo = mkRepo("chain");
+  const a = mkWorktree(repo, "c1");
+  const b = mkWorktree(repo, "c2");
+  mkBranch(repo, "c3", false);
+  stub({
+    c1: { pr: pr("MERGED", 1), base: "main", headRefOid: a.tip },
+    c2: { pr: pr("MERGED", 2), base: "c1", headRefOid: b.tip },
+  });
+  saveWorkset(wsOf("chain", [
+    mem(repo, "c1", { worktree: a.path, base: "main" }),
+    mem(repo, "c2", { worktree: b.path, base: "c1" }),
+    mem(repo, "c3", { base: "c2", base_source: "inferred" }),
+  ]));
+  const plan = planPrune(loadWorkset("chain")!);
+  expect(plan.rebase.map((r) => [r.from, r.to])).toEqual([["c2", "main"]]);
+  expect(executePrune(plan, () => {})).toBe(true);
+  expect(loadWorkset("chain")!.members.map((m) => [m.branch, m.base])).toEqual([["c3", "main"]]);
+});
+
+test("removeInbox and removePidFile refuse an empty or path-like key", () => {
+  mkdirSync(join(sub("inbox"), "claude-x"), { recursive: true });
+  removeInbox(""); removeInbox("../inbox"); removePidFile("");
+  expect(existsSync(join(sub("inbox"), "claude-x"))).toBe(true);
 });

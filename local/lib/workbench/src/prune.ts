@@ -1,11 +1,9 @@
 import { existsSync, realpathSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 import * as git from "./git";
 import { removeInbox, removePidFile } from "./inbox";
-import { sub } from "./paths";
 import { clearNotes, loadLock } from "./review";
-import { closeStale, listPointers, pointerState, type Pointer } from "./session";
-import { removeFile } from "./store";
+import { closeStale, listPointers, loadPointer, pointerState, removePointer, type Pointer } from "./session";
 import { isNamed, memberStatuses, type MemberStatus, type TriageDeps } from "./triage";
 import { deleteWorkset, listWorksets, loadWorkset, removeMember, saveWorkset, type Member, type Workset } from "./workset";
 
@@ -15,7 +13,7 @@ export type PrunePlan = {
   kept: MemberStatus[];                                       // not prunable, with reason
   rebase: { member: Member; from: string; to: string }[];     // base rewrites for remaining members
   deleteWorkset: boolean; keepReason: string | null;          // "members remain" | "open session <key>"
-  pointers: { close: Pointer[]; delete: Pointer[] };          // stale → closed; closed-and-bound-only-here → deleted
+  pointers: { close: Pointer[]; delete: Pointer[] };          // stale → closed; closed-and-bound-only-here → deleted only when the workset is deleted
 };
 
 const real = (p: string) => { try { return realpathSync(p); } catch { return resolve(p); } };
@@ -52,12 +50,36 @@ function pointerPlan(ws: Workset, nowMs?: number): { close: Pointer[]; delete: P
   return { close, delete: del, open };
 }
 
+// Triage says a member is safe to delete; two more facts only prune can see. A branch another workset also holds is
+// not ours to delete, and a worktree that no longer has a pruned member's branch checked out holds something else.
+function guard(ws: Workset, statuses: MemberStatus[]): MemberStatus[] {
+  const others = listWorksets().filter((n) => n !== ws.name).map((n) => loadWorkset(n)).filter((w): w is Workset => !!w);
+  const keep = (s: MemberStatus, reason: string): MemberStatus => ({ ...s, prunable: false, reason });
+  let out = statuses.map((s) => {
+    if (!s.prunable) return s;
+    const other = others.find((w) => w.members.some((m) => m.repo === s.member.repo && m.branch === s.member.branch));
+    return other ? keep(s, `also in workset ${other.name}`) : s;
+  });
+  for (let changed = true; changed;) {
+    changed = false;
+    out = out.map((s) => {
+      if (!s.prunable || !s.repoExists || !s.worktreeExists || !s.member.worktree) return s;
+      const cur = git.currentBranch(s.member.worktree);
+      const ok = cur !== null && out.some((x) => x.prunable && x.member.repo === s.member.repo && x.member.branch === cur);
+      if (ok) return s;
+      changed = true;
+      return keep(s, `worktree on ${cur ?? "detached"}`);
+    });
+  }
+  return out;
+}
+
 export function planPrune(ws: Workset, deps: TriageDeps = {}): PrunePlan {
   const empty = { close: [], delete: [] };
   if (loadLock(ws.name)) {
     return { workset: ws.name, refused: "locked", members: [], kept: [], rebase: [], deleteWorkset: false, keepReason: null, pointers: empty };
   }
-  const statuses = memberStatuses(ws, deps);
+  const statuses = guard(ws, memberStatuses(ws, deps));
   const done = new Set<string>();
   const members = statuses.filter((s) => s.prunable).map((s) => ({ status: s, cmds: cmdsOf(steps(s, done)) }));
   const kept = statuses.filter((s) => !s.prunable);
@@ -107,9 +129,14 @@ export function executePrune(plan: PrunePlan, log: (line: string) => void): bool
 
   const ws = loadWorkset(plan.workset);
   const removing = plan.members.filter((m) => !failed.has(m.status.member.id)).map((m) => m.status.member.id);
+  // Re-read state the plan only sampled: the workset may have gained members, a session may have come back.
+  const openNow = (p: Pointer) => { const f = loadPointer(p.key); return !!f && pointerState(f) === "open"; };
+  const reviving = [...plan.pointers.close, ...plan.pointers.delete].some(openNow);
+  const membersLeft = ws ? ws.members.filter((m) => !removing.includes(m.id)).length : 0;
+  const deleting = plan.deleteWorkset && failed.size === 0 && !reviving && membersLeft === 0;
   if (ws) {
     for (const id of removing) removeMember(ws, id);
-    if (!(plan.deleteWorkset && failed.size === 0)) {
+    if (!deleting) {
       for (const r of plan.rebase) {
         if (failedBranches.has(r.from)) continue;
         const m = ws.members.find((x) => x.id === r.member.id);
@@ -122,19 +149,25 @@ export function executePrune(plan: PrunePlan, log: (line: string) => void): bool
       saveWorkset(ws);
     }
   }
-  for (const p of plan.pointers.close) { closeStale(p); log(`closed stale pointer ${p.key}`); }
-  if (plan.deleteWorkset && failed.size === 0) {
+  for (const p of plan.pointers.close) {
+    const f = loadPointer(p.key);
+    if (!f || pointerState(f) !== "stale") continue;
+    closeStale(f);
+    log(`closed stale pointer ${p.key}`);
+  }
+  if (deleting) {
     for (const p of plan.pointers.delete) {
+      if (!p.key || p.key.includes("/")) { log(`skipped pointer with unsafe key "${p.key}"`); continue; }
       removeInbox(p.key);
       removePidFile(p.key);
-      removeFile(join(sub("sessions"), `${p.key}.json`));
+      removePointer(p.key);
       log(`deleted pointer ${p.key}`);
     }
     clearNotes(plan.workset);
     deleteWorkset(plan.workset);
     log("deleted workset");
   } else if (plan.deleteWorkset) {
-    log("kept workset: a git step failed");
+    log(failed.size > 0 ? "kept workset: a git step failed" : reviving ? "kept workset: open session" : "kept workset: members remain");
   }
   return ok;
 }
