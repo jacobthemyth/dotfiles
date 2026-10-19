@@ -1,5 +1,5 @@
 import { test, expect, beforeEach, afterEach } from "bun:test";
-import { existsSync, mkdtempSync, mkdirSync, realpathSync, rmSync, writeFileSync, utimesSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { remoteSlug } from "../src/git";
@@ -76,6 +76,8 @@ const mem = (repo: string, branch: string, over: Partial<Member> = {}): Member =
 const wsOf = (name: string, members: Member[], sessions: string[] = []): Workset => ({ name, created: "2026-01-01T00:00:00.000Z", members, sessions, ignored: [] });
 const DEFAULT_NAME = "claude-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
 const DEFAULT_NAME2 = "claude-aaaaaaaa-bbbb-cccc-dddd-ffffffffffff";
+const OPEN_NAME = "claude-aaaaaaaa-bbbb-cccc-dddd-000000000003";
+const UNREAD_NAME = "claude-aaaaaaaa-bbbb-cccc-dddd-000000000004";
 const pr = (state: string, number = 1) => ({ number, url: `https://x/pull/${number}`, draft: false, state });
 let stubbed: Record<string, unknown> = {};
 const stub = (map: Record<string, { pr: ReturnType<typeof pr>; base: string; headRefOid: string }>, replace = false) => {
@@ -118,7 +120,7 @@ function stacked(name = "stack") {
   saveWorkset(wsOf(name, [m1, m2, m3]));
   return { repo, s1, m1, m2, m3, name };
 }
-// Two dead members (the stub is keyed by branch, so concurrent fixtures need distinct branch names): one merged with a worktree, one whose branch is gone.
+// Two dead members (a flat stub map is keyed by branch alone, so concurrent fixtures need distinct branch names): one merged with a worktree, one whose branch is gone.
 function dead(name: string, branch = "done") {
   const repo = mkRepo(`dead-${name.slice(-4)}`);
   const w = mkWorktree(repo, branch);
@@ -133,9 +135,9 @@ test("planPrune on a mixed workset", () => {
   const plan = planPrune(loadWorkset(f.name)!);
   expect(plan.refused).toBeNull();
   expect(plan.members.map((m) => m.status.member.branch)).toEqual(["s1"]);
-  expect(plan.members[0].cmds).toEqual([`git worktree remove ${f.s1.path}`, "git branch -D s1"]);
+  expect(plan.members[0].cmds).toEqual([`git worktree remove ${f.s1.path}`, `git update-ref -d refs/heads/s1 ${f.s1.tip}`]);
   expect(plan.kept.map((k) => [k.member.branch, k.reason])).toEqual([["s2", "open PR"], ["s3", "unmerged work"]]);
-  expect(plan.rebase).toEqual([{ member: f.m2, from: "s1", to: "main" }]);
+  expect(plan.rebase).toEqual([{ member: f.m2, from: "s1", to: "main", viaPr: true }]);
   expect(plan.deleteWorkset).toBe(false);
   expect(plan.keepReason).toBe("members remain");
   const text = renderPlan(plan);
@@ -169,7 +171,7 @@ test("rebase without PR collapses the chain", () => {
   const f = stacked();
   stub({ s1: { pr: pr("MERGED", 1), base: "main", headRefOid: f.s1.tip } }, true); // s2 has no PR now
   const plan = planPrune(loadWorkset(f.name)!);
-  expect(plan.rebase).toEqual([{ member: f.m2, from: "s1", to: "main" }]);
+  expect(plan.rebase).toEqual([{ member: f.m2, from: "s1", to: "main", viaPr: false }]);
   expect(executePrune(plan, () => {})).toBe(true);
   const s2 = loadWorkset(f.name)!.members.find((m) => m.branch === "s2")!;
   expect(s2.base).toBe("main");
@@ -203,7 +205,7 @@ test("pointers: stale is closed, closed and stale are deleted, open keeps the wo
   const keys = ["claude-o", "claude-s", "claude-c"];
   for (const k of keys.slice(1)) {
     mkdirSync(join(sub("inbox"), k), { recursive: true });
-    writeFileSync(join(sub("inbox"), k, "x.json"), "{}");
+    writeFileSync(join(sub("inbox"), k, "x.json"), JSON.stringify({ id: "x", read: true }));
     mkdirSync(sub("watch"), { recursive: true });
     writeFileSync(join(sub("watch"), `${k}.pid`), "1");
   }
@@ -278,7 +280,7 @@ test("sweepable", () => {
   expect(names).not.toContain("claude-cccccccc-bbbb-cccc-dddd-eeeeeeeeeeee");
 });
 
-test("shared worktree: the first prune takes the member on it, the second takes the other", () => {
+test("shared stored worktree: removed once, for the member git has checked out there", () => {
   const repo = mkRepo("dup");
   const w = mkWorktree(repo, "one");
   mkBranch(repo, "two", true);
@@ -289,22 +291,64 @@ test("shared worktree: the first prune takes the member on it, the second takes 
   });
   saveWorkset(wsOf(DEFAULT_NAME, [mem(repo, "one", { worktree: w.path }), mem(repo, "two", { worktree: w.path })]));
   const plan = planPrune(loadWorkset(DEFAULT_NAME)!);
-  expect(plan.members.map((m) => m.status.member.branch)).toEqual(["one"]);
-  expect(plan.members[0].cmds).toEqual([`git worktree remove ${w.path}`, "git branch -D one"]);
-  expect(plan.kept.map((k) => [k.member.branch, k.reason])).toEqual([["two", "worktree on one"]]);
-  expect(plan.deleteWorkset).toBe(false);
+  expect(plan.members.map((m) => [m.status.member.branch, m.cmds])).toEqual([
+    ["one", [`git worktree remove ${w.path}`, `git update-ref -d refs/heads/one ${w.tip}`]],
+    ["two", [`git update-ref -d refs/heads/two ${twoTip}`]],
+  ]);
+  expect(plan.kept).toEqual([]);
+  expect(plan.deleteWorkset).toBe(true);
   expect(executePrune(plan, () => {})).toBe(true);
   expect(existsSync(w.path)).toBe(false);
   expect(hasBranch(repo, "one")).toBe(false);
-  expect(hasBranch(repo, "two")).toBe(true);
-  expect(loadWorkset(DEFAULT_NAME)!.members.map((m) => m.branch)).toEqual(["two"]);
-
-  const again = planPrune(loadWorkset(DEFAULT_NAME)!);
-  expect(again.members.map((m) => [m.status.member.branch, m.status.reason, m.cmds])).toEqual([["two", "merged", ["git branch -D two"]]]);
-  expect(again.kept).toEqual([]);
-  expect(executePrune(again, () => {})).toBe(true);
   expect(hasBranch(repo, "two")).toBe(false);
   expect(loadWorkset(DEFAULT_NAME)).toBeNull();
+});
+
+test("a branch checked out in the main checkout gets only the branch delete, which fails", () => {
+  const repo = mkRepo("mainco");
+  const tip = mkBranch(repo, "mx", true);
+  sh(repo, "checkout", "-q", "mx");
+  stub({ mx: { pr: pr("MERGED", 1), base: "main", headRefOid: tip } });
+  saveWorkset(wsOf("mainco", [mem(repo, "mx", { worktree: repo })]));
+  const plan = planPrune(loadWorkset("mainco")!);
+  expect(plan.members.map((m) => m.cmds)).toEqual([[`git update-ref -d refs/heads/mx ${tip}`]]);
+  const lines: string[] = [];
+  expect(executePrune(plan, (l) => lines.push(l))).toBe(false);
+  expect(lines).toContain(`failed in ${repo}: git update-ref -d refs/heads/mx ${tip}`);
+  expect(existsSync(repo)).toBe(true);
+  expect(sh(repo, "symbolic-ref", "--short", "HEAD")).toBe("mx");
+  expect(hasBranch(repo, "mx")).toBe(true);
+  expect(loadWorkset("mainco")!.members.map((m) => m.branch)).toEqual(["mx"]);
+});
+
+test("a branch whose tip moved after planning is not deleted", () => {
+  const repo = mkRepo("moved");
+  const tip = mkBranch(repo, "mv", true);
+  stub({ mv: { pr: pr("MERGED", 1), base: "main", headRefOid: tip } });
+  saveWorkset(wsOf("moved", [mem(repo, "mv")]));
+  const plan = planPrune(loadWorkset("moved")!);
+  expect(plan.members[0].steps).toEqual({ worktree: null, branch: "mv", sha: tip });
+  sh(repo, "checkout", "-q", "mv");
+  sh(repo, "commit", "-q", "--allow-empty", "-m", "late");
+  sh(repo, "checkout", "-q", "main");
+  expect(executePrune(plan, () => {})).toBe(false);
+  expect(hasBranch(repo, "mv")).toBe(true);
+  expect(sh(repo, "rev-parse", "mv")).not.toBe(tip);
+  expect(loadWorkset("moved")!.members.map((m) => m.branch)).toEqual(["mv"]);
+});
+
+test("a worktree switched to another branch after planning is not removed", () => {
+  const repo = mkRepo("late-switch");
+  const w = mkWorktree(repo, "ls");
+  mkBranch(repo, "else", true);
+  stub({ ls: { pr: pr("MERGED", 1), base: "main", headRefOid: w.tip } });
+  saveWorkset(wsOf("lsw", [mem(repo, "ls", { worktree: w.path })]));
+  const plan = planPrune(loadWorkset("lsw")!);
+  expect(plan.members[0].steps.worktree).toBe(w.path);
+  sh(w.path, "switch", "-q", "else");
+  expect(executePrune(plan, () => {})).toBe(false);
+  expect(existsSync(w.path)).toBe(true);
+  expect(hasBranch(repo, "ls")).toBe(true);
 });
 
 test("list's prune action and the sweep agree", () => {
@@ -319,8 +363,21 @@ test("list's prune action and the sweep agree", () => {
       saveWorkset(wsOf(DEFAULT_NAME2, [mem(repo, "wm", { worktree: w.path })]));
     }],
     ["claude-bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeeeee", () => { saveWorkset(wsOf("claude-bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeeeee", [])); }],
+    [OPEN_NAME, () => {                                    // every member dead, but a bound session is open
+      dead(OPEN_NAME, "open-done");
+      const cwd = join(tmp, "open-cwd");
+      mkdirSync(cwd);
+      pointer("live", cwd, { workset: OPEN_NAME }); transcript(cwd, "live", Date.now());
+    }],
+    [UNREAD_NAME, () => {                                  // every member dead, but a review waits unread
+      dead(UNREAD_NAME, "unread-done");
+      const ws = loadWorkset(UNREAD_NAME)!;
+      ws.sessions = ["claude-reader"];
+      saveWorkset(ws);
+      writeJson(join(sub("inbox"), "claude-reader", "r1.json"), { id: "r1", read: false });
+    }],
   ];
-  const expected = [true, false, true];
+  const expected = [true, true, true, false, false];
   cases.forEach(([name, setup], i) => {
     setup();
     const ws = loadWorkset(name)!;
@@ -328,6 +385,9 @@ test("list's prune action and the sweep agree", () => {
     expect(summarize(ws).action === "prune").toBe(swept);
     expect(swept).toBe(expected[i]);
   });
+  expect(summarize(loadWorkset(UNREAD_NAME)!).action).toBe("review");
+  expect(planPrune(loadWorkset(UNREAD_NAME)!).refused).toBe("unread review");
+  expect(planPrune(loadWorkset(OPEN_NAME)!).keepReason).toBe("open session claude-live");
 });
 
 test("prune command: sweep dry run changes nothing, --yes executes", async () => {
@@ -336,7 +396,7 @@ test("prune command: sweep dry run changes nothing, --yes executes", async () =>
   expect(dry.code).toBe(0);
   expect(dry.out).toContain(`${DEFAULT_NAME}:`);
   expect(dry.out).toContain(`would run in ${d.repo}: git worktree remove ${d.w.path}`);
-  expect(dry.out).toContain("git branch -D done");
+  expect(dry.out).toContain(`git update-ref -d refs/heads/done ${d.w.tip}`);
   expect(dry.out).toContain("delete workset");
   expect(hasBranch(d.repo, "done")).toBe(true);
   expect(loadWorkset(DEFAULT_NAME)).not.toBeNull();
@@ -364,6 +424,17 @@ test("prune command by name: dry run, --yes, and named worksets", async () => {
   expect(sweep.out).not.toContain("cinf-1");
 });
 
+test("prune says so on stderr when gh is down", async () => {
+  const repo = mkRepo("ghdown");
+  saveWorkset(wsOf("cinf-gh", [mem(repo, "ghost")]));
+  const oldPath = process.env.PATH;
+  process.env.PATH = join(tmp, "nobin"); // gh cannot run
+  try {
+    const r = await capture(() => worksetRun(["prune", "cinf-gh"]));
+    expect(r.err).toContain("gh not available: PR state from stored members");
+  } finally { process.env.PATH = oldPath; }
+});
+
 test("prune with a member id now fails as an unknown workset", async () => {
   const r = await capture(() => worksetRun(["prune", "owner/repo#branch", "--yes"]));
   expect(r.code).toBe(1);
@@ -382,7 +453,7 @@ test("a git failure keeps the member and the workset, and returns false", () => 
   expect(lines.join("\n")).toContain("failed");
 });
 
-test("a member kept by triage gets no commands and nothing is touched", () => {
+test("a member whose stored worktree switched branch gets only the branch delete", () => {
   const repo = mkRepo("sw");
   const w = mkWorktree(repo, "m");
   mkBranch(repo, "other", true);
@@ -390,12 +461,13 @@ test("a member kept by triage gets no commands and nothing is touched", () => {
   sh(w.path, "switch", "-q", "other");
   saveWorkset(wsOf("sw1", [mem(repo, "m", { worktree: w.path })]));
   const plan = planPrune(loadWorkset("sw1")!);
-  expect(plan.members).toEqual([]);
-  expect(plan.kept[0].reason).toBe("worktree on other");
+  expect(plan.members.map((m) => [m.status.reason, m.cmds])).toEqual([["merged", [`git update-ref -d refs/heads/m ${w.tip}`]]]);
+  expect(plan.kept).toEqual([]);
   expect(executePrune(plan, () => {})).toBe(true);
-  expect(hasBranch(repo, "m")).toBe(true);
+  expect(hasBranch(repo, "m")).toBe(false);
   expect(hasBranch(repo, "other")).toBe(true);
   expect(existsSync(w.path)).toBe(true);
+  expect(sh(w.path, "symbolic-ref", "--short", "HEAD")).toBe("other");
 });
 
 test("a dead member shared with another workset is pruned and removed from that workset", () => {
@@ -406,7 +478,7 @@ test("a dead member shared with another workset is pruned and removed from that 
   const plan = planPrune(loadWorkset(DEFAULT_NAME)!);
   expect(plan.members.map((m) => m.status.member.branch)).toEqual(["done", "ghost"]);
   expect(plan.kept).toEqual([]);
-  expect(plan.siblings).toEqual(["keeper"]);
+  expect(plan.siblings.map((x) => [x.workset, x.locked, x.remove.map((m) => m.id)])).toEqual([["keeper", false, [d.members[0].id]]]);
   expect(renderPlan(plan)).toContain("  also removes from workset keeper");
   const before = loadWorkset("keeper")!;
   const lines: string[] = [];
@@ -417,7 +489,89 @@ test("a dead member shared with another workset is pruned and removed from that 
   const after = loadWorkset("keeper")!;
   expect(after.members.map((m) => m.id)).toEqual([keepMember.id]);
   expect(after).toEqual({ ...before, members: [keepMember] });
-  expect(lines).toContain("removed from workset keeper");
+  expect(lines).toContain(`removed ${d.members[0].id} from workset keeper`);
+});
+
+// A stacked pair in one checkout: "sm" merged (pruned from the main workset), "sk" on top of it with no PR.
+function siblingFixture(slugStub = true) {
+  const repo = mkRepo("sib");
+  const w = mkWorktree(repo, "sm");
+  sh(repo, "checkout", "-q", "-b", "sk", "sm");
+  sh(repo, "commit", "-q", "--allow-empty", "-m", "sk");
+  sh(repo, "checkout", "-q", "main");
+  const slug = remoteSlug(repo)!;
+  const entry = { pr: pr("MERGED", 11), base: "main", headRefOid: w.tip };
+  if (slugStub) {
+    writeFileSync(join(tmp, "stub.json"), JSON.stringify({ prsForBranches: { [slug]: { sm: entry } } }));
+    process.env.WORKBENCH_GH_STUB = join(tmp, "stub.json");
+  } else stub({ sm: entry });
+  const sm = mem(repo, "sm", { worktree: w.path, base: "main", base_source: "declared" });
+  const sk = mem(repo, "sk", { base: "sm", base_source: "inferred" });
+  saveWorkset(wsOf("cinf-main", [sm]));
+  return { repo, w, sm, sk, slug };
+}
+
+test("a sibling workset of the same checkout loses the pruned member and is rebased", () => {
+  const f = siblingFixture();
+  const extra = mem(f.repo, "elsewhere-x");
+  saveWorkset(wsOf("cinf-sib", [{ ...f.sm, worktree: null }, f.sk, extra]));
+  const plan = planPrune(loadWorkset("cinf-main")!);
+  expect(plan.siblings.map((x) => [x.workset, x.locked, x.remove.map((m) => m.id), x.rebase.map((r) => [r.member.id, r.from, r.to, r.viaPr])]))
+    .toEqual([["cinf-sib", false, [f.sm.id], [[f.sk.id, "sm", "main", false]]]]);
+  const text = renderPlan(plan);
+  expect(text).toContain("  also removes from workset cinf-sib");
+  expect(text).toContain(`  also rebases ${f.sk.id} in cinf-sib: sm -> main`);
+  const lines: string[] = [];
+  expect(executePrune(plan, (l) => lines.push(l))).toBe(true);
+  expect(hasBranch(f.repo, "sm")).toBe(false);
+  const after = loadWorkset("cinf-sib")!;
+  expect(after.members.map((m) => [m.branch, m.base, m.base_source])).toEqual([["sk", "main", "inferred"], ["elsewhere-x", null, null]]);
+  expect(lines).toContain(`rebased ${f.sk.id} in cinf-sib: sm -> main`);
+});
+
+test("a sibling member's PR base wins when it has one", () => {
+  const f = siblingFixture();
+  const stubbed = JSON.parse(readFileSync(join(tmp, "stub.json"), "utf8"));
+  stubbed.prsForBranches[f.slug].sk = { pr: pr("OPEN", 12), base: "release", headRefOid: sh(f.repo, "rev-parse", "sk") };
+  writeFileSync(join(tmp, "stub.json"), JSON.stringify(stubbed));
+  saveWorkset(wsOf("cinf-sib", [f.sm, f.sk]));
+  const plan = planPrune(loadWorkset("cinf-main")!);
+  expect(plan.siblings[0].rebase.map((r) => [r.to, r.viaPr])).toEqual([["release", true]]);
+  expect(executePrune(plan, () => {})).toBe(true);
+  expect(loadWorkset("cinf-sib")!.members.map((m) => [m.branch, m.base, m.base_source])).toEqual([["sk", "release", "pr"]]);
+});
+
+test("a sibling member of the same slug and branch in another checkout is not matched", () => {
+  const f = siblingFixture();
+  const clone = join(tmp, "clone");
+  sh(tmp, "clone", "-q", join(tmp, "sib-origin.git"), clone);
+  sh(clone, "branch", "sm", "origin/sm");
+  const other = mem(clone, "sm");
+  expect(other.id).toBe(f.sm.id); // same slug#branch
+  saveWorkset(wsOf("cinf-clone", [other, mem(clone, "ck", { base: "sm", base_source: "inferred" })]));
+  const plan = planPrune(loadWorkset("cinf-main")!);
+  expect(plan.siblings).toEqual([]);
+  expect(renderPlan(plan)).not.toContain("cinf-clone");
+  expect(executePrune(plan, () => {})).toBe(true);
+  expect(hasBranch(f.repo, "sm")).toBe(false);
+  expect(hasBranch(clone, "sm")).toBe(true);
+  expect(loadWorkset("cinf-clone")!.members.map((m) => [m.branch, m.base])).toEqual([["sm", null], ["ck", "sm"]]);
+});
+
+test("a locked sibling workset is left untouched and reported", () => {
+  const f = siblingFixture();
+  saveWorkset(wsOf("cinf-locked", [f.sm, f.sk]));
+  writeJson(join(sub("locks"), "cinf-locked.json"), { workset: "cinf-locked", review: "r", paths: [], opened: "x", holder: "h" });
+  const before = loadWorkset("cinf-locked")!;
+  const plan = planPrune(loadWorkset("cinf-main")!);
+  expect(plan.siblings.map((x) => [x.workset, x.locked])).toEqual([["cinf-locked", true]]);
+  const text = renderPlan(plan);
+  expect(text).toContain("  sibling cinf-locked locked; not updated");
+  expect(text).not.toContain("also removes from workset cinf-locked");
+  const lines: string[] = [];
+  expect(executePrune(plan, (l) => lines.push(l))).toBe(true);
+  expect(lines).toContain("sibling cinf-locked locked; not updated");
+  expect(loadWorkset("cinf-locked")).toEqual(before);
 });
 
 test("a pointer that came back to life before execute is left alone", () => {

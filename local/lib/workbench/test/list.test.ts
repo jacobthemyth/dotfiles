@@ -84,8 +84,8 @@ function fixture() {
   return { a };
 }
 
-test("list prints one row per workset in action order with the pr mix", async () => {
-  const { a } = fixture();
+test("list prints one row per workset in action order with the pr mix, and no unclaimed footer", async () => {
+  fixture();
   const r = await capture(() => worksetRun(["list"]));
   expect(r.code).toBe(0);
   const lines = r.out.split("\n");
@@ -99,19 +99,41 @@ test("list prints one row per workset in action order with the pr mix", async ()
   expect(lines[2]).toMatch(/\snamed\s/);
   expect(lines[2]).toContain("0m 0c 1o 0n");
   expect(lines[2].trimEnd()).toMatch(/ -$/);
+  expect(lines).toHaveLength(3);
+});
+
+test("list --unclaimed adds the unclaimed footer", async () => {
+  const { a } = fixture();
+  const r = await capture(() => worksetRun(["list", "--unclaimed"]));
+  expect(r.code).toBe(0);
+  const lines = r.out.split("\n");
   expect(lines[3]).toBe("");
   expect(lines[4]).toBe("unclaimed per repo:");
   expect(lines[5]).toBe(`${remoteSlug(a)}  1`);
   expect(lines).toHaveLength(6);
 });
 
-test("list --json shape", async () => {
+test("list --json shape: unclaimed only with --unclaimed", async () => {
   const { a } = fixture();
   const r = await capture(() => worksetRun(["list", "--json"]));
   const j = JSON.parse(r.out);
   expect(j.worksets[0].action).toBe("prune");
   expect(j.worksets).toHaveLength(2);
-  expect(j.unclaimed).toEqual({ [remoteSlug(a)!]: 1 });
+  expect("unclaimed" in j).toBe(false);
+  const u = JSON.parse((await capture(() => worksetRun(["list", "--json", "--unclaimed"]))).out);
+  expect(u.unclaimed).toEqual({ [remoteSlug(a)!]: 1 });
+});
+
+test("list counts dirty worktrees, not files", async () => {
+  const a = mkRepo("a");
+  const w = mkWorktree(a, "open");
+  writeFileSync(join(w.path, "one.txt"), "1");
+  writeFileSync(join(w.path, "two.txt"), "2");
+  stub({ open: { pr: pr("OPEN", 2), base: "main", headRefOid: w.tip } });
+  saveWorkset(wsOf("cinf-1", [mem(a, "open", { worktree: w.path })]));
+  const j = JSON.parse((await capture(() => worksetRun(["list", "--json"]))).out);
+  expect(j.worksets[0].dirty).toBe(1);
+  expect(j.worksets[0].members[0].dirty).toBe(2);
 });
 
 test("list refreshes the stored pr", async () => {

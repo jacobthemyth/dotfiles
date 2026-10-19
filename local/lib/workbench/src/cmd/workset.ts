@@ -12,7 +12,7 @@ import { renameWorkset } from "../rename";
 import { addMember, createWorkset, listWorksets, loadWorkset, removeMember, saveWorkset, type Member, type Role, type Workset } from "../workset";
 
 const USAGE = `usage: workbench workset <subcommand>
-  list [--json]
+  list [--json] [--unclaimed]
   show <name>
   create <name>
   add <name> --repo <path> --branch <b> [--worktree <p>] [--base <ref>] [--order <n>] [--role work|throwaway]
@@ -60,22 +60,29 @@ export async function run(args: string[]): Promise<number> {
   try {
     switch (sub) {
       case "list": {
-        const { values } = parseArgs({ args: rest, allowPositionals: false, options: { json: { type: "boolean" } } });
+        const { values } = parseArgs({ args: rest, allowPositionals: false, options: { json: { type: "boolean" }, unclaimed: { type: "boolean" } } });
         const summaries = summarizeAll();
         if (gh.lastGhError) console.error("gh not available: PR state from stored members");
         for (const s of summaries) {
           const ws = loadWorkset(s.name);
           if (ws && refreshStoredPr(ws, s.members)) saveWorkset(ws);
         }
-        const worksets = listWorksets().map(loadWorkset).filter((w): w is Workset => !!w);
-        const counts: Record<string, number> = {};
-        for (const f of unclaimed(derive(loadConfig()), worksets)) {
-          const key = f.slug ?? f.repo;
-          counts[key] = (counts[key] ?? 0) + 1;
+        // The footer needs a full derivation across every repo root (tens of seconds), so only on request.
+        let counts: Record<string, number> | null = null;
+        if (values.unclaimed) {
+          counts = {};
+          const worksets = listWorksets().map(loadWorkset).filter((w): w is Workset => !!w);
+          for (const f of unclaimed(derive(loadConfig()), worksets)) {
+            const key = f.slug ?? f.repo;
+            counts[key] = (counts[key] ?? 0) + 1;
+          }
         }
-        if (values.json) { console.log(JSON.stringify({ worksets: summaries, unclaimed: counts }, null, 2)); return 0; }
+        if (values.json) {
+          console.log(JSON.stringify(counts ? { worksets: summaries, unclaimed: counts } : { worksets: summaries }, null, 2));
+          return 0;
+        }
         console.log(listTable(summaries));
-        const repos = Object.entries(counts);
+        const repos = Object.entries(counts ?? {});
         if (repos.length > 0) console.log(["", "unclaimed per repo:", ...repos.map(([k, n]) => `${k}  ${n}`)].join("\n"));
         return 0;
       }
@@ -178,8 +185,9 @@ export async function run(args: string[]): Promise<number> {
           plans = [planPrune(ws)];
         } else {
           plans = sweepable();
-          if (plans.length === 0) { console.log("nothing to prune"); return 0; }
         }
+        if (gh.lastGhError) console.error("gh not available: PR state from stored members");
+        if (plans.length === 0) { console.log("nothing to prune"); return 0; }
         let ok = true;
         for (const plan of plans) {
           if (!values.yes) { console.log(renderPlan(plan)); if (plan.refused) ok = false; continue; }

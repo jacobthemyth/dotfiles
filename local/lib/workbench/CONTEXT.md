@@ -29,7 +29,7 @@ A branch, worktree or pull request of yours that derivation found and no workset
 _Avoid_: orphan, stray
 
 **Prunable member**:
-A member whose branch and worktree are safe to delete: merged (the local tip is within the PR head), upstream gone with nothing unique, branch or repo gone. Never one with uncommitted changes, a closed PR, or an open session in its worktree.
+A member whose branch and worktree are safe to delete: merged (the local tip is within the PR head), upstream gone with nothing beyond the default branch, branch or repo gone. Never one with uncommitted changes or an open session in its recorded worktree or in the worktree that has its branch checked out, an open or closed PR, a merged PR whose head does not contain the local tip, or other unmerged work.
 _Avoid_: dead (informal)
 
 **Named**:

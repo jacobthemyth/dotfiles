@@ -73,7 +73,13 @@ export function commonDir(path: string): string | null {
 // The only destructive git commands in workbench. Callers must have checked prunable-ness and that nothing claims
 // the item; each step is skipped by the caller when already gone. `worktree remove` refuses a dirty tree.
 export const removeWorktree = (repo: string, worktree: string): boolean => git(repo, "worktree", "remove", worktree) !== null;
-export const deleteBranch = (repo: string, branch: string): boolean => git(repo, "branch", "-D", branch) !== null;
+// Deletes `branch` only while its tip is still `sha`, so a branch that moved since it was planned survives.
+// update-ref would also delete a checked-out branch and leave that worktree on an unborn branch; refuse that, as
+// `git branch -D` does.
+export function deleteBranchAt(repo: string, branch: string, sha: string): boolean {
+  if (worktrees(repo).some((w) => w.branch === branch)) return false;
+  return exec(repo, ["update-ref", "-d", `refs/heads/${branch}`, sha]).ok;
+}
 
 // Paths (relative to the worktree) with uncommitted changes, untracked included; null on failure.
 export function dirtyFiles(path: string): string[] | null {

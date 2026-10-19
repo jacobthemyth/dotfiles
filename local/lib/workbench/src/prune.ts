@@ -1,39 +1,46 @@
-import { existsSync, realpathSync } from "node:fs";
+import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
+import * as gh from "./gh";
 import * as git from "./git";
-import { removeInbox, removePidFile } from "./inbox";
+import { removeInbox, removePidFile, unreadCount } from "./inbox";
 import { clearNotes, loadLock } from "./review";
 import { closeStale, listPointers, loadPointer, pointerState, removePointer, type Pointer } from "./session";
-import { isNamed, memberStatuses, type MemberStatus, type TriageDeps } from "./triage";
+import { boundKeys, isNamed, memberStatuses, type MemberStatus, type TriageDeps } from "./triage";
 import { deleteWorkset, listWorksets, loadWorkset, removeMember, saveWorkset, type Member, type Workset } from "./workset";
 
+export type Steps = { worktree: string | null; branch: string | null; sha: string | null };
+export type Rebase = { member: Member; from: string; to: string; viaPr: boolean };
+// Another workset of the same checkout that lists a pruned member: the member leaves it and its bases are re-pointed,
+// unless it holds a review lock, in which case it is left untouched.
+export type SiblingPlan = { workset: string; locked: boolean; remove: Member[]; rebase: Rebase[] };
 export type PrunePlan = {
-  workset: string; refused: string | null;                    // "locked" when a lock exists
-  members: { status: MemberStatus; cmds: string[] }[];        // prunable members; cmds is the git commands or [] for already-gone
+  workset: string; refused: string | null;                    // "locked" | "unread review"
+  members: { status: MemberStatus; steps: Steps; cmds: string[] }[]; // prunable members; cmds is [] for already-gone
   kept: MemberStatus[];                                       // not prunable, with reason
-  rebase: { member: Member; from: string; to: string }[];     // base rewrites for remaining members
-  siblings: string[];                                         // other worksets that list a pruned member; it is removed from them
+  rebase: Rebase[];                                           // base rewrites for remaining members
+  siblings: SiblingPlan[];
   deleteWorkset: boolean; keepReason: string | null;          // "members remain" | "open session <key>"
   pointers: { close: Pointer[]; delete: Pointer[] };          // stale → closed; closed-and-bound-only-here → deleted only when the workset is deleted
 };
 
 const real = (p: string) => { try { return realpathSync(p); } catch { return resolve(p); } };
+const sameBranch = (a: { repo: string; branch: string }, b: { repo: string; branch: string }) =>
+  a.branch === b.branch && real(a.repo) === real(b.repo);
 
-// The git steps for one member. `done` holds worktree paths already scheduled or removed, so a path shared by
-// several members is removed once; a branch that no longer exists is not deleted.
-function steps(s: MemberStatus, done: Set<string>): { worktree: string | null; branch: string | null } {
-  if (!s.repoExists) return { worktree: null, branch: null };
+// The git steps for one member: the worktree git has its branch checked out in (never the main checkout), then the
+// branch at its planned tip. `done` holds worktree paths already scheduled, so a path is removed once.
+function steps(s: MemberStatus, done: Set<string>): Steps {
+  if (!s.repoExists) return { worktree: null, branch: null, sha: null };
   let worktree: string | null = null;
-  if (s.member.worktree && existsSync(s.member.worktree) && !done.has(real(s.member.worktree))) {
-    worktree = s.member.worktree;
+  if (s.realWorktree && !s.mainCheckout && !done.has(real(s.realWorktree))) {
+    worktree = s.realWorktree;
     done.add(real(worktree));
   }
-  return { worktree, branch: s.branchExists ? s.member.branch : null };
+  return s.branchExists && s.tip ? { worktree, branch: s.member.branch, sha: s.tip } : { worktree, branch: null, sha: null };
 }
-const cmdsOf = (st: { worktree: string | null; branch: string | null }) => [
-  ...(st.worktree ? [`git worktree remove ${st.worktree}`] : []),
-  ...(st.branch ? [`git branch -D ${st.branch}`] : []),
-];
+const worktreeCmd = (st: Steps) => `git worktree remove ${st.worktree}`;
+const branchCmd = (st: Steps) => `git update-ref -d refs/heads/${st.branch} ${st.sha}`;
+const cmdsOf = (st: Steps) => [...(st.worktree ? [worktreeCmd(st)] : []), ...(st.branch ? [branchCmd(st)] : [])];
 
 function pointerPlan(ws: Workset, nowMs?: number): { close: Pointer[]; delete: Pointer[]; open: Pointer | null } {
   const others = listWorksets().filter((n) => n !== ws.name).map((n) => loadWorkset(n)).filter((w): w is Workset => !!w);
@@ -51,44 +58,89 @@ function pointerPlan(ws: Workset, nowMs?: number): { close: Pointer[]; delete: P
   return { close, delete: del, open };
 }
 
-// Worksets other than `ws` that list any of the pruned members (same repo and branch, or same id).
-function siblingWorksets(ws: Workset, pruned: Member[]): Workset[] {
-  const hit = (m: Member) => pruned.some((p) => p.id === m.id || (p.repo === m.repo && p.branch === m.branch));
-  return listWorksets().filter((n) => n !== ws.name).map((n) => loadWorkset(n)).filter((w): w is Workset => !!w && w.members.some(hit));
+// The new base for a remaining member whose base `from` was a pruned branch: its PR's base, else the pruned
+// member's own base, else the default branch; a chain of pruned members collapses to the first base that survives.
+function newBase(repo: string, from: string, prBase: string | null, pruned: Member[]): string | null {
+  const p = pruned.find((x) => sameBranch(x, { repo, branch: from }));
+  if (!p) return null;
+  let to = prBase ?? p.base ?? git.defaultBranch(repo);
+  for (let i = 0; i < pruned.length; i++) {
+    const q = pruned.find((x) => sameBranch(x, { repo, branch: to }));
+    if (!q) break;
+    to = q.base ?? git.defaultBranch(repo);
+  }
+  return to;
 }
 
-export function planPrune(ws: Workset, deps: TriageDeps = {}): PrunePlan {
-  const empty = { close: [], delete: [] };
-  if (loadLock(ws.name)) {
-    return { workset: ws.name, refused: "locked", members: [], kept: [], rebase: [], siblings: [], deleteWorkset: false, keepReason: null, pointers: empty };
+function siblingPlans(ws: Workset, pruned: Member[], deps: TriageDeps): SiblingPlan[] {
+  const prs = deps.prs ?? gh.prsForBranches;
+  const out: SiblingPlan[] = [];
+  for (const name of listWorksets()) {
+    if (name === ws.name) continue;
+    const other = loadWorkset(name);
+    if (!other) continue;
+    const remove = other.members.filter((m) => pruned.some((p) => sameBranch(p, m)));
+    if (remove.length === 0) continue;
+    if (loadLock(name)) { out.push({ workset: name, locked: true, remove, rebase: [] }); continue; }
+    const needing = other.members.filter((m) => !remove.includes(m) && m.base && pruned.some((p) => sameBranch(p, { repo: m.repo, branch: m.base! })));
+    const bySlug = new Map<string, string[]>();
+    for (const m of needing) if (m.slug) bySlug.set(m.slug, [...(bySlug.get(m.slug) ?? []), m.branch]);
+    const found = new Map<string, Map<string, gh.BranchPr>>();
+    for (const [slug, branches] of bySlug) {
+      const result = prs(slug, [...new Set(branches)]);
+      if (!gh.lastGhError) found.set(slug, result);
+    }
+    const rebase: Rebase[] = [];
+    for (const m of needing) {
+      const prBase = (m.slug ? found.get(m.slug)?.get(m.branch)?.base : undefined) ?? null;
+      const to = newBase(m.repo, m.base!, prBase, pruned);
+      if (to !== null) rebase.push({ member: m, from: m.base!, to, viaPr: prBase !== null && to === prBase });
+    }
+    out.push({ workset: name, locked: false, remove, rebase });
   }
+  return out;
+}
+
+const refusedPlan = (ws: Workset, refused: string): PrunePlan =>
+  ({ workset: ws.name, refused, members: [], kept: [], rebase: [], siblings: [], deleteWorkset: false, keepReason: null, pointers: { close: [], delete: [] } });
+
+export function planPrune(ws: Workset, deps: TriageDeps = {}): PrunePlan {
+  if (loadLock(ws.name)) return refusedPlan(ws, "locked");
+  if (boundKeys(ws).some((k) => unreadCount(k) > 0)) return refusedPlan(ws, "unread review");
   const statuses = memberStatuses(ws, deps);
   const done = new Set<string>();
-  const members = statuses.filter((s) => s.prunable).map((s) => ({ status: s, cmds: cmdsOf(steps(s, done)) }));
+  const members = statuses.filter((s) => s.prunable).map((s) => { const st = steps(s, done); return { status: s, steps: st, cmds: cmdsOf(st) }; });
   const kept = statuses.filter((s) => !s.prunable);
-  const pruned = members.map((m) => m.status.member);
+  // A pruned member's branch is deleted by this prune or already absent, so its record goes everywhere it is listed.
+  const pruned = members.filter((m) => m.steps.branch !== null || !m.status.branchExists).map((m) => m.status.member);
 
-  const rebase: PrunePlan["rebase"] = [];
+  const rebase: Rebase[] = [];
   for (const r of kept) {
     const from = r.member.base;
     if (!from) continue;
-    const p = pruned.find((x) => x.repo === r.member.repo && x.branch === from);
-    if (!p) continue;
-    let to = r.prBase ?? p.base ?? git.defaultBranch(r.member.repo);
-    // a chain of pruned members collapses to the first base that survives
-    for (let i = 0; i < pruned.length; i++) {
-      const q = pruned.find((x) => x.repo === r.member.repo && x.branch === to);
-      if (!q) break;
-      to = q.base ?? git.defaultBranch(r.member.repo);
-    }
-    rebase.push({ member: r.member, from, to });
+    const to = newBase(r.member.repo, from, r.prBase, pruned);
+    if (to !== null) rebase.push({ member: r.member, from, to, viaPr: r.prBase !== null && to === r.prBase });
   }
 
   const ptr = pointerPlan(ws, deps.nowMs);
   let keepReason: string | null = null;
   if (kept.length > 0) keepReason = "members remain";
   else if (ptr.open) keepReason = `open session ${ptr.open.key}`;
-  return { workset: ws.name, refused: null, members, kept, rebase, siblings: siblingWorksets(ws, pruned).map((w) => w.name), deleteWorkset: keepReason === null, keepReason, pointers: { close: ptr.close, delete: ptr.delete } };
+  return {
+    workset: ws.name, refused: null, members, kept, rebase, siblings: siblingPlans(ws, pruned, deps),
+    deleteWorkset: keepReason === null, keepReason, pointers: { close: ptr.close, delete: ptr.delete },
+  };
+}
+
+function applyRebase(ws: Workset, rebase: Rebase[], failed: (r: Rebase) => boolean, log: (line: string) => void, where = ""): void {
+  for (const r of rebase) {
+    if (failed(r)) continue;
+    const m = ws.members.find((x) => x.id === r.member.id);
+    if (!m) continue;
+    m.base = r.to;
+    if (r.viaPr) m.base_source = "pr";
+    log(`rebased ${m.id}${where}: ${r.from} -> ${r.to}`);
+  }
 }
 
 // Runs only what the plan lists. Git failures are logged and skipped; a member whose git step failed stays in
@@ -97,18 +149,17 @@ export function executePrune(plan: PrunePlan, log: (line: string) => void): bool
   if (plan.refused) { log(`refused: ${plan.refused}`); return false; }
   let ok = true;
   const failed = new Set<string>();   // member ids that stay
-  const failedBranches = new Set<string>();
-  const done = new Set<string>();
-  for (const { status: s, cmds } of plan.members) {
-    const st = steps(s, done);
+  const failedMembers: Member[] = [];
+  for (const { status: s, steps: st } of plan.members) {
     const run = (cmd: string, fn: () => boolean) => {
-      if (!cmds.includes(cmd)) return; // only what the plan listed
       if (fn()) log(`ran in ${s.member.repo}: ${cmd}`);
-      else { log(`failed in ${s.member.repo}: ${cmd}`); failed.add(s.member.id); failedBranches.add(s.member.branch); ok = false; }
+      else { log(`failed in ${s.member.repo}: ${cmd}`); failed.add(s.member.id); failedMembers.push(s.member); ok = false; }
     };
-    if (st.worktree) run(`git worktree remove ${st.worktree}`, () => git.removeWorktree(s.member.repo, st.worktree!));
-    if (st.branch && !failed.has(s.member.id)) run(`git branch -D ${st.branch}`, () => git.deleteBranch(s.member.repo, st.branch!));
+    // The worktree is removed only while it still has the member's branch checked out.
+    if (st.worktree) run(worktreeCmd(st), () => git.currentBranch(st.worktree!) === st.branch && git.removeWorktree(s.member.repo, st.worktree!));
+    if (st.branch && !failed.has(s.member.id)) run(branchCmd(st), () => git.deleteBranchAt(s.member.repo, st.branch!, st.sha!));
   }
+  const failedFrom = (r: Rebase) => failedMembers.some((f) => sameBranch(f, { repo: r.member.repo, branch: r.from }));
 
   const ws = loadWorkset(plan.workset);
   const removing = plan.members.filter((m) => !failed.has(m.status.member.id)).map((m) => m.status.member.id);
@@ -119,26 +170,16 @@ export function executePrune(plan: PrunePlan, log: (line: string) => void): bool
   const deleting = plan.deleteWorkset && failed.size === 0 && !reviving && membersLeft === 0;
   if (ws) {
     for (const id of removing) removeMember(ws, id);
-    if (!deleting) {
-      for (const r of plan.rebase) {
-        if (failedBranches.has(r.from)) continue;
-        const m = ws.members.find((x) => x.id === r.member.id);
-        if (!m) continue;
-        const viaPr = plan.kept.find((k) => k.member.id === m.id)?.prBase === r.to;
-        m.base = r.to;
-        if (viaPr) m.base_source = "pr";
-        log(`rebased ${m.id}: ${r.from} -> ${r.to}`);
-      }
-      saveWorkset(ws);
-    }
+    if (!deleting) { applyRebase(ws, plan.rebase, failedFrom, log); saveWorkset(ws); }
   }
   const pruned = plan.members.filter((m) => !failed.has(m.status.member.id)).map((m) => m.status.member);
-  for (const name of plan.siblings) {
-    const other = loadWorkset(name);
+  for (const sib of plan.siblings) {
+    if (sib.locked || loadLock(sib.workset)) { log(`sibling ${sib.workset} locked; not updated`); continue; }
+    const other = loadWorkset(sib.workset);
     if (!other) continue;
-    const gone = other.members.filter((m) => pruned.some((p) => p.id === m.id || (p.repo === m.repo && p.branch === m.branch)));
-    if (gone.length === 0) continue;
-    for (const m of gone) { removeMember(other, m.id); log(`removed from workset ${name}`); }
+    const gone = other.members.filter((m) => pruned.some((p) => sameBranch(p, m)));
+    for (const m of gone) { removeMember(other, m.id); log(`removed ${m.id} from workset ${sib.workset}`); }
+    applyRebase(other, sib.rebase, failedFrom, log, ` in ${sib.workset}`);
     saveWorkset(other);
   }
   for (const p of plan.pointers.close) {
@@ -164,7 +205,7 @@ export function executePrune(plan: PrunePlan, log: (line: string) => void): bool
   return ok;
 }
 
-// Default-named worksets that would be deleted outright: every member dead, nothing open, not locked.
+// Default-named worksets that would be deleted outright: every member dead, nothing open, not locked or unread.
 export function sweepable(deps: TriageDeps = {}): PrunePlan[] {
   const out: PrunePlan[] = [];
   for (const name of listWorksets()) {
@@ -183,7 +224,11 @@ export function renderPlan(plan: PrunePlan): string {
     if (m.cmds.length === 0) out.push(`  nothing to run for ${m.status.member.id}: ${m.status.reason}`);
     for (const c of m.cmds) out.push(`  would run in ${m.status.member.repo}: ${c}`);
   }
-  for (const name of plan.siblings) out.push(`  also removes from workset ${name}`);
+  for (const s of plan.siblings) {
+    if (s.locked) { out.push(`  sibling ${s.workset} locked; not updated`); continue; }
+    out.push(`  also removes from workset ${s.workset}`);
+    for (const r of s.rebase) out.push(`  also rebases ${r.member.id} in ${s.workset}: ${r.from} -> ${r.to}`);
+  }
   for (const k of plan.kept) out.push(`  kept ${k.member.id}: ${k.reason}`);
   for (const r of plan.rebase) out.push(`  rebase ${r.member.id}: ${r.from} -> ${r.to}`);
   out.push(plan.deleteWorkset ? "  delete workset" : `  keep workset: ${plan.keepReason}`);

@@ -286,16 +286,46 @@ test("summarizeAll orders review, prune, name, then dash", () => {
   expect(summarizeAll().map((s) => [s.name, s.action])).toEqual([["cinf-locked", "review"], [DEFAULT_NAME, "prune"], ["cinf-quiet", "-"]]);
 });
 
-test("refreshStoredPr adopts the PR and its base, and is a no-op the second time", () => {
+test("refreshStoredPr adopts the PR and a non-declared base, and is a no-op the second time", () => {
   const f = fixture();
-  const m = mem(f.alpha, "open", { base: "feature-below", base_source: "declared" });
+  const m = mem(f.alpha, "open", { base: "feature-below", base_source: "inferred" });
   const ws = wsOf("w", [m]);
   const s = memberStatuses(ws);
+  expect(s[0].headCovers).toBe(true);
   expect(refreshStoredPr(ws, s)).toBe(true);
   expect(m.pr).toMatchObject({ number: 3, state: "OPEN" });
   expect(m.base).toBe("main");
   expect(m.base_source).toBe("pr");
   expect(refreshStoredPr(ws, memberStatuses(ws))).toBe(false);
+});
+
+test("refreshStoredPr never replaces a declared base", () => {
+  const f = fixture();
+  const m = mem(f.alpha, "open", { base: "feature-below", base_source: "declared" });
+  const legacy = mem(f.alpha, "closed", { base: "below-too" }); // a base with no source reads as declared
+  const ws = wsOf("w", [m, legacy]);
+  expect(refreshStoredPr(ws, memberStatuses(ws))).toBe(true);
+  expect(m.pr).toMatchObject({ number: 3, state: "OPEN" });
+  expect([m.base, m.base_source]).toEqual(["feature-below", "declared"]);
+  expect(legacy.pr).toMatchObject({ number: 2, state: "CLOSED" });
+  expect([legacy.base, legacy.base_source]).toEqual(["below-too", null]);
+});
+
+test("refreshStoredPr skips a member whose tip is not within the PR head", () => {
+  const repo = mkRepo("reuse");
+  const old = mkBranch(repo, "re", true);
+  sh(repo, "branch", "-f", "re", "main");     // the name now points at unrelated history
+  sh(repo, "checkout", "-q", "re");
+  sh(repo, "commit", "-q", "--allow-empty", "-m", "new work");
+  sh(repo, "checkout", "-q", "main");
+  stub({ re: { pr: pr("OPEN", 5), base: "release", headRefOid: old } });
+  const m = mem(repo, "re", { base: "main", base_source: "inferred" });
+  const ws = wsOf("w", [m]);
+  const s = memberStatuses(ws);
+  expect(s[0]).toMatchObject({ pr: "open", headCovers: false });
+  expect(refreshStoredPr(ws, s)).toBe(false);
+  expect(m.pr).toBeNull();
+  expect([m.base, m.base_source]).toEqual(["main", "inferred"]);
 });
 
 test("a gone upstream prunes only work that reached the default branch", () => {
@@ -346,45 +376,104 @@ test("an unknown PR head that cannot be fetched blocks pruning", () => {
   expect(memberStatuses(wsOf("w", [mem(repo, "pf")]))[0]).toMatchObject({ prunable: false, reason: "merged PR but local commits beyond its head" });
 });
 
-test("worktree on another branch or detached is not prunable, and worktreeHead is reported", () => {
+test("the real worktree is the one git has the branch checked out in; the stored path is a hint", () => {
   const repo = mkRepo("wtown");
   const w = mkWorktree(repo, "m", true);
   mkBranch(repo, "other", true);
   stub({ m: { pr: pr("MERGED", 1), base: "main", headRefOid: w.tip } });
   const ws = wsOf("wt1", [mem(repo, "m", { worktree: w.path })]);
   let [s] = memberStatuses(ws);
-  expect(s).toMatchObject({ prunable: true, reason: "merged", worktreeHead: "m" });
+  expect(s).toMatchObject({ prunable: true, reason: "merged", realWorktree: w.path, mainCheckout: false, tip: w.tip });
   sh(w.path, "switch", "-q", "other");
   [s] = memberStatuses(ws);
-  expect(s).toMatchObject({ prunable: false, reason: "worktree on other", worktreeHead: "other" });
+  expect(s).toMatchObject({ prunable: true, reason: "merged", realWorktree: null, worktreeExists: true });
   sh(w.path, "switch", "-q", "--detach");
   [s] = memberStatuses(ws);
-  expect(s).toMatchObject({ prunable: false, reason: "worktree on detached", worktreeHead: null });
+  expect(s).toMatchObject({ prunable: true, reason: "merged", realWorktree: null });
+  // checked out in another worktree than the stored one
+  sh(w.path, "switch", "-q", "other");
+  const elsewhere = join(repo, ".worktrees", "elsewhere");
+  sh(repo, "worktree", "add", "-q", elsewhere, "m");
+  [s] = memberStatuses(ws);
+  expect(s).toMatchObject({ prunable: true, realWorktree: elsewhere, mainCheckout: false });
 });
 
-test("worktree ownership runs after dirty and cwd, before the repo, branch and PR rules", () => {
-  const repo = mkRepo("wtorder");
+test("a branch checked out in the main checkout is flagged as such", () => {
+  const repo = mkRepo("wtmain");
+  const tip = mkBranch(repo, "x", true);
+  sh(repo, "checkout", "-q", "x");
+  stub({ x: { pr: pr("MERGED", 1), base: "main", headRefOid: tip } });
+  const [s] = memberStatuses(wsOf("wm", [mem(repo, "x")]));
+  expect(s).toMatchObject({ prunable: true, reason: "merged", realWorktree: repo, mainCheckout: true });
+});
+
+test("dirty and open-session guards apply to both the stored path and the real worktree", () => {
+  const repo = mkRepo("wtguard");
   const w = mkWorktree(repo, "m", true);
   mkBranch(repo, "other", true);
   stub({ m: { pr: pr("MERGED", 1), base: "main", headRefOid: w.tip } });
   sh(w.path, "switch", "-q", "other");
-  const ws = wsOf("wt2", [mem(repo, "m", { worktree: w.path })]);
+  const real = join(repo, ".worktrees", "real");
+  sh(repo, "worktree", "add", "-q", real, "m");
+  const stored = wsOf("wt2", [mem(repo, "m", { worktree: w.path })]);
+  const hintless = wsOf("wt3", [mem(repo, "m")]);
+  // the stored path, though on another branch
   writeFileSync(join(w.path, "scratch.txt"), "x");
-  expect(memberStatuses(ws)[0].reason).toBe("dirty, 1 file");
+  expect(memberStatuses(stored)[0]).toMatchObject({ prunable: false, reason: "dirty, 1 file", dirtyWorktrees: [w.path] });
   rmSync(join(w.path, "scratch.txt"));
-  const cwd = join(w.path);
-  pointer("o", cwd); transcript(cwd, "o", Date.now());
-  expect(memberStatuses(ws)[0].reason).toBe("cwd of open session claude-o");
+  pointer("o", w.path); transcript(w.path, "o", Date.now());
+  expect(memberStatuses(stored)[0].reason).toBe("cwd of open session claude-o");
   rmSync(join(sub("sessions"), "claude-o.json"));
-  expect(memberStatuses(ws)[0].reason).toBe("worktree on other"); // not "merged"
-  // a gone branch with a worktree on something else is also kept
-  sh(w.path, "switch", "-q", "--detach");
-  sh(repo, "branch", "-D", "m");
-  expect(memberStatuses(ws)[0].reason).toBe("worktree on detached");
+  // the real worktree, with no stored path at all
+  writeFileSync(join(real, "a.txt"), "x");
+  writeFileSync(join(real, "b.txt"), "y");
+  expect(memberStatuses(hintless)[0]).toMatchObject({ prunable: false, reason: "dirty, 2 files", dirtyWorktrees: [real] });
+  rmSync(join(real, "a.txt")); rmSync(join(real, "b.txt"));
+  pointer("r", join(real)); transcript(real, "r", Date.now());
+  expect(memberStatuses(hintless)[0].reason).toBe("cwd of open session claude-r");
+  rmSync(join(sub("sessions"), "claude-r.json"));
+  expect(memberStatuses(hintless)[0]).toMatchObject({ prunable: true, reason: "merged", realWorktree: real });
 });
 
-test("worktreeHead is null when the member has no worktree", () => {
+test("a session in a nested worktree does not claim the main checkout", () => {
+  const repo = mkRepo("wtnest");
+  const tip = mkBranch(repo, "x", true);
+  sh(repo, "checkout", "-q", "x");
+  const nested = join(repo, ".worktrees", "n");
+  sh(repo, "worktree", "add", "-q", "-b", "n", nested, "main");
+  writeFileSync(join(repo, ".git", "info", "exclude"), ".worktrees/\n");
+  stub({ x: { pr: pr("MERGED", 1), base: "main", headRefOid: tip } });
+  pointer("n", nested); transcript(nested, "n", Date.now());
+  const [s] = memberStatuses(wsOf("wn", [mem(repo, "x")]));
+  expect(s).toMatchObject({ cwdOf: null, prunable: true, mainCheckout: true });
+  pointer("m", repo); transcript(repo, "m", Date.now());
+  expect(memberStatuses(wsOf("wn", [mem(repo, "x")]))[0].cwdOf).toBe("claude-m");
+});
+
+test("realWorktree is null when the branch is checked out nowhere", () => {
   const repo = mkRepo("wtnone");
-  const [s] = memberStatuses(wsOf("wt3", [mem(repo, "ghost")]));
-  expect(s).toMatchObject({ prunable: true, reason: "branch gone", worktreeHead: null });
+  mkBranch(repo, "idle", true);
+  const [s] = memberStatuses(wsOf("wt4", [mem(repo, "ghost"), mem(repo, "idle")]));
+  expect(s).toMatchObject({ prunable: true, reason: "branch gone", realWorktree: null, tip: null });
+  expect(memberStatuses(wsOf("wt4", [mem(repo, "idle")]))[0].realWorktree).toBeNull();
+});
+
+test("summarize: dirty counts distinct dirty worktrees, not files", () => {
+  const f = fixture();
+  writeFileSync(join(f.dirtyWt, "two.txt"), "y");
+  const dirty = f.members[5];
+  const twin = mem(f.beta, "dirty-twin", { worktree: f.dirtyWt });
+  const s = summarize(wsOf("cinf-d", [dirty, twin]));
+  expect(s.members.map((m) => m.dirty)).toEqual([2, 2]);
+  expect(s.dirty).toBe(1);
+});
+
+test("summarize: an all-prunable workset with an open bound session is not prune", () => {
+  const f = fixture();
+  const [merged, , , goneUp] = f.members;
+  const cwd = join(tmp, "elsewhere");
+  mkdirSync(cwd);
+  expect(summarize(wsOf("cinf-o", [merged, goneUp], ["claude-live"])).action).toBe("prune");
+  pointer("live", cwd, { workset: "cinf-o" }); transcript(cwd, "live", Date.now());
+  expect(summarize(wsOf("cinf-o", [merged, goneUp], ["claude-live"])).action).toBe("-");
 });
