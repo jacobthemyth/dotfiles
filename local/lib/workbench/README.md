@@ -16,7 +16,8 @@ Glossary: [CONTEXT.md](CONTEXT.md). Design: [docs/superpowers/specs/2026-10-10-w
 | Command | What it does |
 | --- | --- |
 | `workbench config` | Print the loaded config as JSON. |
-| `workbench workset list \| show <name> \| create <name>` | List, show or create worksets. |
+| `workbench workset list [--json]` | Overview: one row per workset with PR mix, dirty worktrees, session state and a suggested action (`review`, `prune`, `name`); unclaimed count per repo below. |
+| `workbench workset show <name> \| create <name>` | Show or create a workset. |
 | `workbench workset add <name> --repo <p> --branch <b> [--worktree <p>] [--base <ref>] [--order <n>] [--role work\|throwaway]` | Declare a member. |
 | `workbench workset rm <name> <member-id>` | Remove a member. |
 | `workbench workset use <name> [--session <key>]` | Bind a session to a workset (creates it if missing). |

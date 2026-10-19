@@ -2,6 +2,8 @@ import { parseArgs } from "node:util";
 import { expandHome } from "../paths";
 import { loadConfig, type Config } from "../config";
 import { derive, foundId, prunable, unclaimed } from "../derive";
+import * as gh from "../gh";
+import { refreshStoredPr, summarizeAll, type WorksetSummary } from "../triage";
 import { pruneWorktreeAndBranch } from "../git";
 import { sessionKeyFromEnv } from "../session-key";
 import { loadPointer, useWorkset } from "../session";
@@ -9,7 +11,7 @@ import { baseSource, diffBase, orderMembers } from "../stack";
 import { addMember, createWorkset, listWorksets, loadWorkset, removeMember, saveWorkset, type Member, type Role, type Workset } from "../workset";
 
 const USAGE = `usage: workbench workset <subcommand>
-  list
+  list [--json]
   show <name>
   create <name>
   add <name> --repo <path> --branch <b> [--worktree <p>] [--base <ref>] [--order <n>] [--role work|throwaway]
@@ -30,6 +32,15 @@ function table(rows: string[][]): string {
   return rows.map((r) => r.map((c, i) => (i === r.length - 1 ? c : c.padEnd(widths[i]))).join("  ")).join("\n");
 }
 
+function listTable(summaries: WorksetSummary[]): string {
+  const rows = summaries.map((s) => [
+    s.action, s.name, s.named ? "named" : "default", String(s.members.length),
+    `${s.prMix.merged}m ${s.prMix.closed}c ${s.prMix.open}o ${s.prMix.nopr}n`, String(s.dirty),
+    `${s.sessions.open} open / ${s.sessions.stale} stale / ${s.sessions.closed} closed`, s.sessions.last?.slice(0, 10) ?? "-",
+  ]);
+  return table([["action", "name", "kind", "members", "pr", "dirty", "sessions", "last"], ...rows]);
+}
+
 function show(ws: Workset): void {
   console.log(ws.name);
   if (ws.members.length === 0) { console.log("(no members)"); return; }
@@ -47,7 +58,23 @@ export async function run(args: string[]): Promise<number> {
   try {
     switch (sub) {
       case "list": {
-        for (const n of listWorksets()) console.log(n);
+        const { values } = parseArgs({ args: rest, allowPositionals: false, options: { json: { type: "boolean" } } });
+        const summaries = summarizeAll();
+        if (gh.lastGhError) console.error("gh not available: PR state from stored members");
+        else for (const s of summaries) {
+          const ws = loadWorkset(s.name);
+          if (ws && refreshStoredPr(ws, s.members)) saveWorkset(ws);
+        }
+        const worksets = listWorksets().map(loadWorkset).filter((w): w is Workset => !!w);
+        const counts: Record<string, number> = {};
+        for (const f of unclaimed(derive(loadConfig()), worksets)) {
+          const key = f.slug ?? f.repo;
+          counts[key] = (counts[key] ?? 0) + 1;
+        }
+        if (values.json) { console.log(JSON.stringify({ worksets: summaries, unclaimed: counts }, null, 2)); return 0; }
+        console.log(listTable(summaries));
+        const repos = Object.entries(counts);
+        if (repos.length > 0) console.log(["", "unclaimed per repo:", ...repos.map(([k, n]) => `${k}  ${n}`)].join("\n"));
         return 0;
       }
       case "show": {
