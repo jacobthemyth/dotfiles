@@ -1,6 +1,5 @@
 import { test, expect } from "bun:test";
 import type { Config } from "../src/config";
-import type { Found } from "../src/derive";
 import type { Pointer } from "../src/session";
 import { buildRows, clamp, move, scroll, sessionLine, splitKeys, type SessionView } from "../src/sidebar-model";
 import { addMember, type Workset } from "../src/workset";
@@ -13,7 +12,6 @@ function ws(): Workset {
   addMember(w, { repo: "/r", slug: "o/r", branch: "junk", worktree: "/wj", role: "throwaway", added_by: "t" });
   return w;
 }
-const found: Found = { repo: "/s", slug: "o/s", branch: "x", worktree: "/wx", pr: null, base: null, main: false };
 const ptr = (key: string, closed: string | null): Pointer => ({ key, harness: "claude", session: key, workset: "w", cwd: "/", opened: "", closed });
 const reply = { at: "t", by: "claude", text: "ok" };
 // One review per entry: read flag and, per comment, its reply count.
@@ -22,35 +20,31 @@ const sv = (key: string, closed: string | null, reviews: [boolean, number[]][] =
   reviews: reviews.map(([read, cs]) => ({ read, comments: cs.map((n) => ({ replies: Array(n).fill(reply) })) })),
 });
 
-test("rows: ordered work members, a whole-stack row, unclaimed and sessions; throwaways hidden", () => {
-  const rows = buildRows(ws(), cfg, { showThrowaway: false, unclaimed: [found], sessions: [sv("claude-1", null, [[false, [1, 0, 2]], [true, [0, 1]]]), sv("claude-2", "t")], current: "o/r#b" });
+test("rows: ordered work members, a whole-stack row and sessions; throwaways hidden", () => {
+  const rows = buildRows(ws(), cfg, { showThrowaway: false, sessions: [sv("claude-1", null, [[false, [1, 0, 2]], [true, [0, 1]]]), sv("claude-2", "t")], current: "o/r#b" });
   expect(rows.map((r) => r.text)).toEqual([
     "members",
     " [work] o/r#a  PR #3 draft  (main → a)",
     "*[work] o/r#b  PR #4 merged  (a → b)",
     "*whole stack o/r  (main → b)",
-    "unclaimed (1)",
-    "  o/s#x  -",
     "sessions",
     "  claude-1  open  inbox: 1 unread  replies 3/5",
     "  claude-2  closed  inbox: 0 unread  replies 0/0",
   ]);
 });
 
-test("rows: t shows throwaways; unclaimed shows scanning before derive returns", () => {
-  const rows = buildRows(ws(), cfg, { showThrowaway: true, unclaimed: null, sessions: [], current: null });
+test("rows: t shows throwaways", () => {
+  const rows = buildRows(ws(), cfg, { showThrowaway: true, sessions: [], current: null });
   expect(rows.some((r) => r.text.includes("[throwaway] o/r#junk"))).toBe(true);
-  expect(rows.some((r) => r.text === "unclaimed (scanning…)")).toBe(true);
 });
 
 test("selection skips headers and sessions and wraps at both ends", () => {
-  const rows = buildRows(ws(), cfg, { showThrowaway: false, unclaimed: [found], sessions: [sv("claude-1", null)], current: null });
+  const rows = buildRows(ws(), cfg, { showThrowaway: false, sessions: [sv("claude-1", null)], current: null });
   const first = clamp(rows, 0);
   expect(first).toBe(1);
   expect(move(rows, first, 1)).toBe(2);
-  expect(move(rows, 3, 1)).toBe(5); // stack row -> unclaimed item, skipping the header
-  expect(move(rows, 5, 1)).toBe(1); // wraps past sessions to the top
-  expect(move(rows, first, -1)).toBe(5);
+  expect(move(rows, 3, 1)).toBe(1); // stack row wraps past sessions to the top
+  expect(move(rows, first, -1)).toBe(3);
   expect(move([{ kind: "header", text: "x" }], 0, 1)).toBe(-1);
 });
 

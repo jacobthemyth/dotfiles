@@ -88,7 +88,7 @@ The per-member diff view, which is hunk.
 _Avoid_: viewer, pane (the tmux object)
 
 **Sidebar**:
-The workset tree rendered beside the reviewer: members with pull request state and stack position, unclaimed items, bound sessions and their state.
+The workset tree rendered beside the reviewer: members with pull request state and stack position, bound sessions and their state.
 _Avoid_: tree, panel, navigator
 
 **Review window**:

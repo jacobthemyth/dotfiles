@@ -1,5 +1,4 @@
 import type { Config } from "./config";
-import { foundId, type Found } from "./derive";
 import type { Pointer } from "./session";
 import { diffBase, orderMembers, stackNodes, type StackNode } from "./stack";
 import type { Member, Workset } from "./workset";
@@ -8,12 +7,11 @@ export type Row =
   | { kind: "header"; text: string }
   | { kind: "member"; text: string; member: Member }
   | { kind: "stack"; text: string; node: StackNode }
-  | { kind: "unclaimed"; text: string; found: Found }
   | { kind: "session"; text: string };
 
 // A bound session and the inbox reviews it holds (only the fields the session line counts).
 export type SessionView = { pointer: Pointer; reviews: { read: boolean; comments: { replies?: unknown[] }[] }[] };
-export type View = { showThrowaway: boolean; unclaimed: Found[] | null; sessions: SessionView[]; current: string | null };
+export type View = { showThrowaway: boolean; sessions: SessionView[]; current: string | null };
 
 // `<key>  open|closed  inbox: <unread> unread  replies <answered>/<comments>`
 export function sessionLine(s: SessionView): string {
@@ -39,14 +37,12 @@ export function buildRows(ws: Workset, config: Config, view: View): Row[] {
     const mark = node.top.id === view.current ? "*" : " ";
     rows.push({ kind: "stack", node, text: `${mark}whole stack ${node.slug ?? node.repo}  (${node.bottomBase} → ${node.top.branch})` });
   }
-  rows.push({ kind: "header", text: view.unclaimed ? `unclaimed (${view.unclaimed.length})` : "unclaimed (scanning…)" });
-  for (const f of view.unclaimed ?? []) rows.push({ kind: "unclaimed", found: f, text: `  ${foundId(f)}  ${prLabel(f.pr)}` });
   rows.push({ kind: "header", text: "sessions" });
   for (const s of view.sessions) rows.push({ kind: "session", text: `  ${sessionLine(s)}` });
   return rows;
 }
 
-const selectable = (r: Row) => r.kind === "member" || r.kind === "stack" || r.kind === "unclaimed";
+const selectable = (r: Row) => r.kind === "member" || r.kind === "stack";
 
 // Moves the selection by delta among selectable rows, wrapping at both ends. -1 when none is selectable.
 export function move(rows: Row[], sel: number, delta: number): number {
