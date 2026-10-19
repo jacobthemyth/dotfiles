@@ -345,3 +345,46 @@ test("an unknown PR head that cannot be fetched blocks pruning", () => {
   stub({ pf: { pr: pr("MERGED", 9), base: "main", headRefOid: "deadbeef".repeat(5) } });
   expect(memberStatuses(wsOf("w", [mem(repo, "pf")]))[0]).toMatchObject({ prunable: false, reason: "merged PR but local commits beyond its head" });
 });
+
+test("worktree on another branch or detached is not prunable, and worktreeHead is reported", () => {
+  const repo = mkRepo("wtown");
+  const w = mkWorktree(repo, "m", true);
+  mkBranch(repo, "other", true);
+  stub({ m: { pr: pr("MERGED", 1), base: "main", headRefOid: w.tip } });
+  const ws = wsOf("wt1", [mem(repo, "m", { worktree: w.path })]);
+  let [s] = memberStatuses(ws);
+  expect(s).toMatchObject({ prunable: true, reason: "merged", worktreeHead: "m" });
+  sh(w.path, "switch", "-q", "other");
+  [s] = memberStatuses(ws);
+  expect(s).toMatchObject({ prunable: false, reason: "worktree on other", worktreeHead: "other" });
+  sh(w.path, "switch", "-q", "--detach");
+  [s] = memberStatuses(ws);
+  expect(s).toMatchObject({ prunable: false, reason: "worktree on detached", worktreeHead: null });
+});
+
+test("worktree ownership runs after dirty and cwd, before the repo, branch and PR rules", () => {
+  const repo = mkRepo("wtorder");
+  const w = mkWorktree(repo, "m", true);
+  mkBranch(repo, "other", true);
+  stub({ m: { pr: pr("MERGED", 1), base: "main", headRefOid: w.tip } });
+  sh(w.path, "switch", "-q", "other");
+  const ws = wsOf("wt2", [mem(repo, "m", { worktree: w.path })]);
+  writeFileSync(join(w.path, "scratch.txt"), "x");
+  expect(memberStatuses(ws)[0].reason).toBe("dirty, 1 file");
+  rmSync(join(w.path, "scratch.txt"));
+  const cwd = join(w.path);
+  pointer("o", cwd); transcript(cwd, "o", Date.now());
+  expect(memberStatuses(ws)[0].reason).toBe("cwd of open session claude-o");
+  rmSync(join(sub("sessions"), "claude-o.json"));
+  expect(memberStatuses(ws)[0].reason).toBe("worktree on other"); // not "merged"
+  // a gone branch with a worktree on something else is also kept
+  sh(w.path, "switch", "-q", "--detach");
+  sh(repo, "branch", "-D", "m");
+  expect(memberStatuses(ws)[0].reason).toBe("worktree on detached");
+});
+
+test("worktreeHead is null when the member has no worktree", () => {
+  const repo = mkRepo("wtnone");
+  const [s] = memberStatuses(wsOf("wt3", [mem(repo, "ghost")]));
+  expect(s).toMatchObject({ prunable: true, reason: "branch gone", worktreeHead: null });
+});

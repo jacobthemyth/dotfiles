@@ -19,6 +19,7 @@ export type MemberStatus = {
   dirty: number;
   unpushed: boolean;
   cwdOf: string | null;
+  worktreeHead: string | null; // branch checked out in the member's worktree; null when detached or no worktree
   prunable: boolean; reason: string;
 };
 export type Action = "review" | "prune" | "name" | "-";
@@ -74,8 +75,9 @@ export function memberStatuses(ws: Workset, deps: TriageDeps = {}): MemberStatus
       member: m, pr, prNumber: lookedUp ? hit?.pr.number ?? null : m.pr?.number ?? null, prBase: hit?.base ?? null,
       headRefOid: hit?.headRefOid ?? null, prRecord: hit?.pr ?? null, branchExists, repoExists, worktreeExists,
     };
+    const worktreeHead = repoExists && worktreeExists ? git.currentBranch(m.worktree!) : null;
     const done = (rest: Partial<MemberStatus> & Pick<MemberStatus, "prunable" | "reason">): MemberStatus =>
-      ({ dirty: 0, unpushed: false, cwdOf: null, ...base, ...rest });
+      ({ dirty: 0, unpushed: false, cwdOf: null, worktreeHead, ...base, ...rest });
 
     // Guards that protect uncommitted work and a live session apply even when the repo or branch is gone.
     const files = worktreeExists ? git.dirtyFiles(m.worktree!) : [];
@@ -94,6 +96,10 @@ export function memberStatuses(ws: Workset, deps: TriageDeps = {}): MemberStatus
 
     if (cwdOf) return done({ ...state, prunable: false, reason: `cwd of open session ${cwdOf}` });
     if (dirty > 0) return done({ ...state, prunable: false, reason: `dirty, ${dirty} ${dirty === 1 ? "file" : "files"}` });
+    // A worktree that no longer has the member's branch checked out holds something else; leave it alone.
+    if (repoExists && worktreeExists && worktreeHead !== m.branch) {
+      return done({ ...state, prunable: false, reason: `worktree on ${worktreeHead ?? "detached"}` });
+    }
     if (!repoExists) return done({ ...state, prunable: true, reason: "repo gone" });
     if (!branchExists) return done({ ...state, prunable: true, reason: "branch gone" });
     if (pr === "merged" && hit) {

@@ -12,6 +12,7 @@ export type PrunePlan = {
   members: { status: MemberStatus; cmds: string[] }[];        // prunable members; cmds is the git commands or [] for already-gone
   kept: MemberStatus[];                                       // not prunable, with reason
   rebase: { member: Member; from: string; to: string }[];     // base rewrites for remaining members
+  siblings: string[];                                         // other worksets that list a pruned member; it is removed from them
   deleteWorkset: boolean; keepReason: string | null;          // "members remain" | "open session <key>"
   pointers: { close: Pointer[]; delete: Pointer[] };          // stale → closed; closed-and-bound-only-here → deleted only when the workset is deleted
 };
@@ -50,36 +51,18 @@ function pointerPlan(ws: Workset, nowMs?: number): { close: Pointer[]; delete: P
   return { close, delete: del, open };
 }
 
-// Triage says a member is safe to delete; two more facts only prune can see. A branch another workset also holds is
-// not ours to delete, and a worktree that no longer has a pruned member's branch checked out holds something else.
-function guard(ws: Workset, statuses: MemberStatus[]): MemberStatus[] {
-  const others = listWorksets().filter((n) => n !== ws.name).map((n) => loadWorkset(n)).filter((w): w is Workset => !!w);
-  const keep = (s: MemberStatus, reason: string): MemberStatus => ({ ...s, prunable: false, reason });
-  let out = statuses.map((s) => {
-    if (!s.prunable) return s;
-    const other = others.find((w) => w.members.some((m) => m.repo === s.member.repo && m.branch === s.member.branch));
-    return other ? keep(s, `also in workset ${other.name}`) : s;
-  });
-  for (let changed = true; changed;) {
-    changed = false;
-    out = out.map((s) => {
-      if (!s.prunable || !s.repoExists || !s.worktreeExists || !s.member.worktree) return s;
-      const cur = git.currentBranch(s.member.worktree);
-      const ok = cur !== null && out.some((x) => x.prunable && x.member.repo === s.member.repo && x.member.branch === cur);
-      if (ok) return s;
-      changed = true;
-      return keep(s, `worktree on ${cur ?? "detached"}`);
-    });
-  }
-  return out;
+// Worksets other than `ws` that list any of the pruned members (same repo and branch, or same id).
+function siblingWorksets(ws: Workset, pruned: Member[]): Workset[] {
+  const hit = (m: Member) => pruned.some((p) => p.id === m.id || (p.repo === m.repo && p.branch === m.branch));
+  return listWorksets().filter((n) => n !== ws.name).map((n) => loadWorkset(n)).filter((w): w is Workset => !!w && w.members.some(hit));
 }
 
 export function planPrune(ws: Workset, deps: TriageDeps = {}): PrunePlan {
   const empty = { close: [], delete: [] };
   if (loadLock(ws.name)) {
-    return { workset: ws.name, refused: "locked", members: [], kept: [], rebase: [], deleteWorkset: false, keepReason: null, pointers: empty };
+    return { workset: ws.name, refused: "locked", members: [], kept: [], rebase: [], siblings: [], deleteWorkset: false, keepReason: null, pointers: empty };
   }
-  const statuses = guard(ws, memberStatuses(ws, deps));
+  const statuses = memberStatuses(ws, deps);
   const done = new Set<string>();
   const members = statuses.filter((s) => s.prunable).map((s) => ({ status: s, cmds: cmdsOf(steps(s, done)) }));
   const kept = statuses.filter((s) => !s.prunable);
@@ -105,7 +88,7 @@ export function planPrune(ws: Workset, deps: TriageDeps = {}): PrunePlan {
   let keepReason: string | null = null;
   if (kept.length > 0) keepReason = "members remain";
   else if (ptr.open) keepReason = `open session ${ptr.open.key}`;
-  return { workset: ws.name, refused: null, members, kept, rebase, deleteWorkset: keepReason === null, keepReason, pointers: { close: ptr.close, delete: ptr.delete } };
+  return { workset: ws.name, refused: null, members, kept, rebase, siblings: siblingWorksets(ws, pruned).map((w) => w.name), deleteWorkset: keepReason === null, keepReason, pointers: { close: ptr.close, delete: ptr.delete } };
 }
 
 // Runs only what the plan lists. Git failures are logged and skipped; a member whose git step failed stays in
@@ -149,6 +132,15 @@ export function executePrune(plan: PrunePlan, log: (line: string) => void): bool
       saveWorkset(ws);
     }
   }
+  const pruned = plan.members.filter((m) => !failed.has(m.status.member.id)).map((m) => m.status.member);
+  for (const name of plan.siblings) {
+    const other = loadWorkset(name);
+    if (!other) continue;
+    const gone = other.members.filter((m) => pruned.some((p) => p.id === m.id || (p.repo === m.repo && p.branch === m.branch)));
+    if (gone.length === 0) continue;
+    for (const m of gone) { removeMember(other, m.id); log(`removed from workset ${name}`); }
+    saveWorkset(other);
+  }
   for (const p of plan.pointers.close) {
     const f = loadPointer(p.key);
     if (!f || pointerState(f) !== "stale") continue;
@@ -191,6 +183,7 @@ export function renderPlan(plan: PrunePlan): string {
     if (m.cmds.length === 0) out.push(`  nothing to run for ${m.status.member.id}: ${m.status.reason}`);
     for (const c of m.cmds) out.push(`  would run in ${m.status.member.repo}: ${c}`);
   }
+  for (const name of plan.siblings) out.push(`  also removes from workset ${name}`);
   for (const k of plan.kept) out.push(`  kept ${k.member.id}: ${k.reason}`);
   for (const r of plan.rebase) out.push(`  rebase ${r.member.id}: ${r.from} -> ${r.to}`);
   out.push(plan.deleteWorkset ? "  delete workset" : `  keep workset: ${plan.keepReason}`);
