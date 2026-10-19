@@ -142,6 +142,20 @@ ahead_count() {
   git -C "$main_wt" rev-list --count "refs/heads/$default..refs/heads/$1"
 }
 
+# The pure-git verdict that the branch's commits are already in the default
+# branch: prints the reason, or fails when they are not.
+merged_reason() {
+  if ancestry_merged "$1"; then
+    echo "ancestry-merged"
+  elif squash_merged "$1"; then
+    echo "squash-merged"
+  elif [ "$(ahead_count "$1")" -eq 0 ]; then
+    echo "zero commits ahead"
+  else
+    return 1
+  fi
+}
+
 # <owner>/<repo> of origin when it is a GitHub remote, else nothing.
 origin_slug() {
   git -C "$main_wt" config --get remote.origin.url 2> /dev/null |
@@ -243,7 +257,7 @@ emit() {
 # Print the output line for <branch>; the default branch prints nothing.
 # Rules run in order and the first match wins; PR-state rules follow the dirty rule.
 classify() {
-  local branch="$1" wt count have_pr
+  local branch="$1" wt count have_pr reason
   [ "$branch" != "$default" ] || return 0
   wt="$(worktree_of "$branch")"
 
@@ -263,6 +277,9 @@ classify() {
   elif [ "$have_pr" -eq 1 ] && [ "$pr_found_state" = MERGED ] &&
     pr_head_covers "$branch" "$pr_found_oid" "$pr_found_number"; then
     emit delete "$branch" "${wt:--}" "PR #$pr_found_number merged"
+  elif [ "$have_pr" -eq 1 ] && [ "$pr_found_state" = CLOSED ] && reason="$(merged_reason "$branch")"; then
+    # A closed PR says nothing about commits main already holds.
+    emit delete "$branch" "${wt:--}" "$reason (closed PR #$pr_found_number)"
   elif [ "$have_pr" -eq 1 ] && [ "$pr_found_state" = CLOSED ] &&
     pr_head_covers "$branch" "$pr_found_oid" "$pr_found_number"; then
     if [ "$closed" -eq 1 ]; then
@@ -274,12 +291,8 @@ classify() {
     fi
   elif [ "$have_pr" -eq 1 ] && [ "$pr_found_state" = OPEN ]; then
     emit skip "$branch" "${wt:--}" "open PR #$pr_found_number"
-  elif ancestry_merged "$branch"; then
-    emit delete "$branch" "${wt:--}" "ancestry-merged"
-  elif squash_merged "$branch"; then
-    emit delete "$branch" "${wt:--}" "squash-merged"
-  elif [ "$(ahead_count "$branch")" -eq 0 ]; then
-    emit delete "$branch" "${wt:--}" "zero commits ahead"
+  elif reason="$(merged_reason "$branch")"; then
+    emit delete "$branch" "${wt:--}" "$reason"
   else
     emit skip "$branch" "${wt:--}" "unmerged work"
   fi

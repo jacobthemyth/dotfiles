@@ -128,11 +128,17 @@ export function memberStatuses(ws: Workset, deps: TriageDeps = {}): MemberStatus
         : done({ prunable: false, reason: "merged PR but local commits beyond its head" });
     }
     if (pr === "open") return done({ prunable: false, reason: "open PR" });
-    if (pr === "closed") return done({ prunable: false, reason: "closed PR" });
+    // The tip already being in the default branch is proof the commits live on; a closed PR or a gone
+    // upstream says nothing against that.
+    const def = git.defaultBranch(m.repo);
+    const inDefault = () => git.isAncestor(m.repo, tip, def) || git.revListCount(m.repo, `${def}..${tip}`) === 0;
+    if (pr === "closed") {
+      return inDefault()
+        ? done({ prunable: true, reason: `merged into ${def} (closed PR)` })
+        : done({ prunable: false, reason: "closed PR" });
+    }
     if (git.upstreamGone(m.repo, m.branch)) {
-      const def = git.defaultBranch(m.repo);
-      const inDefault = git.isAncestor(m.repo, tip, def) || git.revListCount(m.repo, `${def}..${tip}`) === 0;
-      return inDefault
+      return inDefault()
         ? done({ prunable: true, reason: "remote-gone" })
         : done({ prunable: false, reason: `remote gone but local commits not in ${def}` });
     }

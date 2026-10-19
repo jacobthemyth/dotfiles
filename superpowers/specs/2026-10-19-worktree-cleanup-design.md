@@ -130,9 +130,13 @@ and has never been used.
      ahead of it. A branch name reused
      after its PR merged, or a same-named branch from a fork, therefore
      falls through to the pure-git rules instead of being deleted.
-   - PR `CLOSED` (not merged): remove the worktree, keep the branch, report
-     "closed PR #N, branch kept". With `--closed`, delete the branch too.
-     The same head-SHA guard applies (final review, 2026-10-19): a closed
+   - PR `CLOSED` (not merged): first run the pure-git rules; if the
+     branch is ancestry-merged, squash-merged or zero commits ahead of the
+     default branch, delete it with that reason plus "(closed PR #N)",
+     because a closed PR says nothing about commits main already holds
+     (added 2026-10-19 after the first live run). Otherwise remove the
+     worktree, keep the branch, report "closed PR #N, branch kept". With
+     `--closed`, delete the branch too. The same head-SHA guard applies (final review, 2026-10-19): a closed
      PR whose head does not cover the local tip is a reused name, and the
      branch falls through to the pure-git rules instead.
    - PR `OPEN`: skip, "open PR #N".
@@ -198,7 +202,10 @@ and has never been used.
     ancestor of, or zero commits ahead of, the repo's default branch (added
     after the Task 3 review: a gone upstream alone says nothing about
     local-only commits), or its branch no longer exists in its repo, or its
-    repo no longer exists. The dirty and open-session exclusions below apply
+    repo no longer exists, or its PR is `CLOSED` *and* its tip is in the
+    default branch (reason `merged into <default> (closed PR)`; a closed
+    PR with a tip not in the default branch stays `closed PR`, not
+    prunable). The dirty and open-session exclusions below apply
     to every one of these, including a member whose branch or repo is gone
     but whose worktree directory still exists. This is the existing `prunable` rule
     plus the two "already gone" cases. `CLOSED` is *not* prunable; the

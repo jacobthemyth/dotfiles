@@ -98,6 +98,8 @@ function fixture(): Fix {
   const alpha = mkRepo("alpha"), beta = mkRepo("beta");
   const merged = mkWorktree(alpha, "merged", true);
   const closedTip = mkBranch(alpha, "closed", true);
+  const closedMergedTip = mkBranch(alpha, "closed-merged", true);
+  sh(alpha, "merge", "-q", "--no-ff", "-m", "merge closed-merged", "closed-merged");
   const openTip = mkBranch(alpha, "open", true);
   mkBranch(alpha, "gone-up", true);
   sh(alpha, "merge", "-q", "--no-ff", "-m", "merge gone-up", "gone-up");
@@ -109,12 +111,13 @@ function fixture(): Fix {
   stub({
     merged: { pr: pr("MERGED", 1), base: "main", headRefOid: merged.tip },
     closed: { pr: pr("CLOSED", 2), base: "main", headRefOid: closedTip },
+    "closed-merged": { pr: pr("CLOSED", 9), base: "main", headRefOid: closedMergedTip },
     open: { pr: pr("OPEN", 3), base: "main", headRefOid: openTip },
     dirty: { pr: pr("MERGED", 4), base: "main", headRefOid: dirty.tip },
   });
   const members = [
     mem(alpha, "merged", { worktree: merged.path }), mem(alpha, "closed"), mem(alpha, "open"), mem(alpha, "gone-up"),
-    mem(alpha, "local-only"), mem(beta, "dirty", { worktree: dirty.path }),
+    mem(alpha, "local-only"), mem(beta, "dirty", { worktree: dirty.path }), mem(alpha, "closed-merged"),
   ];
   return { alpha, beta, members, mergedWt: merged.path, dirtyWt: dirty.path };
 }
@@ -132,6 +135,7 @@ test("memberStatuses classifies each member", () => {
   const s = byBranch(memberStatuses(wsOf("w", [...f.members, ghost])));
   expect(s.merged).toMatchObject({ pr: "merged", prNumber: 1, prBase: "main", prunable: true, reason: "merged", branchExists: true, worktreeExists: true, repoExists: true });
   expect(s.closed).toMatchObject({ pr: "closed", prunable: false, reason: "closed PR" });
+  expect(s["closed-merged"]).toMatchObject({ pr: "closed", prNumber: 9, prunable: true, reason: "merged into main (closed PR)" });
   expect(s.open).toMatchObject({ pr: "open", prunable: false, reason: "open PR" });
   expect(s["gone-up"]).toMatchObject({ pr: "nopr", prunable: true, reason: "remote-gone" });
   expect(s["local-only"]).toMatchObject({ prunable: false, reason: "unmerged work", unpushed: true });
@@ -172,7 +176,7 @@ test("one prsForBranches call per distinct slug", () => {
   memberStatuses(wsOf("w", f.members), { prs });
   expect(calls.length).toBe(2);
   expect(calls.map((c) => c.slug).sort()).toEqual([remoteSlug(f.alpha)!, remoteSlug(f.beta)!].sort());
-  expect(calls.find((c) => c.slug === remoteSlug(f.alpha))!.branches.sort()).toEqual(["closed", "gone-up", "local-only", "merged", "open"]);
+  expect(calls.find((c) => c.slug === remoteSlug(f.alpha))!.branches.sort()).toEqual(["closed", "closed-merged", "gone-up", "local-only", "merged", "open"]);
 });
 
 test("an open session in the worktree blocks pruning", () => {

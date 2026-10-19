@@ -336,6 +336,25 @@ test_gh_merged_reused_branch_is_kept() {
   assert_dir pr-reused
 }
 
+test_gh_closed_but_merged_is_deleted() {
+  mk_gh_repo
+  add_commits pr-closed-merged one
+  add_commits pr-closed-squashed two
+  git -C "$repo" merge -q --no-ff -m "merge pr-closed-merged" pr-closed-merged
+  git -C "$repo" merge -q --squash pr-closed-squashed > /dev/null 2>&1
+  git -C "$repo" commit -q -m "squash pr-closed-squashed"
+  local prs="pr-closed-merged=CLOSED:26 pr-closed-squashed=CLOSED:27 pr-closed=CLOSED:12"
+  FAKE_GH_PRS="$prs" git -C "$repo" cleanup > "$out"
+  assert_line delete pr-closed-merged "ancestry-merged (closed PR #26)"
+  assert_line delete pr-closed-squashed "squash-merged (closed PR #27)"
+  assert_line worktree pr-closed "closed PR #12, branch kept"
+  FAKE_GH_PRS="$prs" git -C "$repo" cleanup --yes > "$out" || fail "cleanup --yes exited non-zero"
+  assert_no_branch pr-closed-merged
+  assert_no_dir pr-closed-merged
+  assert_no_branch pr-closed-squashed
+  assert_branch pr-closed
+}
+
 test_gh_closed_reused_branch_is_kept() {
   mk_gh_repo
   add_commits pr-closed-reused first second
@@ -504,6 +523,7 @@ if command -v jq > /dev/null; then
     test_gh_escapes_and_batches \
     test_gh_merged_reused_branch_is_kept \
     test_gh_closed_reused_branch_is_kept \
+    test_gh_closed_but_merged_is_deleted \
     test_gh_merged_behind_head_is_deleted \
     test_gh_merged_behind_head_fetches_and_deletes \
     test_gh_merged_unknown_oid_falls_through \
