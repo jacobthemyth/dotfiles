@@ -103,7 +103,6 @@ test("list prints one row per workset in action order with the pr mix", async ()
   expect(lines[4]).toBe("unclaimed per repo:");
   expect(lines[5]).toBe(`${remoteSlug(a)}  1`);
   expect(lines).toHaveLength(6);
-  console.log(r.out);
 });
 
 test("list --json shape", async () => {
@@ -122,19 +121,16 @@ test("list refreshes the stored pr", async () => {
   expect(loadWorkset("cinf-1")!.members[0].pr?.state).toBe("OPEN");
 });
 
-test("list says so on stderr when gh is unavailable and keeps the stored pr", async () => {
-  fixture();
-  const f = join(tmp, "stub2.json");
-  writeFileSync(f, JSON.stringify({ myPrs: [] }));
-  process.env.WORKBENCH_GH_STUB = f;
-  const ok = await capture(() => worksetRun(["list"]));
-  expect(ok.err).not.toContain("gh not available");
-  // a failing lookup: no stub, and a gh that cannot run
-  delete process.env.WORKBENCH_GH_STUB;
+test("list says so on stderr when gh is down and keeps the stored pr", async () => {
+  const a = mkRepo("a");
+  const w = mkWorktree(a, "open");
+  const stored = { number: 5, url: "u", draft: false, state: "MERGED" };
+  saveWorkset(wsOf("cinf-1", [mem(a, "open", { worktree: w.path, pr: stored })]));
   const oldPath = process.env.PATH;
-  process.env.PATH = join(tmp, "nobin");
+  process.env.PATH = join(tmp, "nobin"); // gh cannot run
   try {
     const r = await capture(() => worksetRun(["list"]));
     expect(r.err).toContain("gh not available: PR state from stored members");
   } finally { process.env.PATH = oldPath; }
+  expect(loadWorkset("cinf-1")!.members[0].pr).toEqual(stored);
 });

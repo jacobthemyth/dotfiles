@@ -61,7 +61,7 @@ export async function run(args: string[]): Promise<number> {
         const { values } = parseArgs({ args: rest, allowPositionals: false, options: { json: { type: "boolean" } } });
         const summaries = summarizeAll();
         if (gh.lastGhError) console.error("gh not available: PR state from stored members");
-        else for (const s of summaries) {
+        for (const s of summaries) {
           const ws = loadWorkset(s.name);
           if (ws && refreshStoredPr(ws, s.members)) saveWorkset(ws);
         }
