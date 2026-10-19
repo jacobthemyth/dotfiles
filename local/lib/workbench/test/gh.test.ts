@@ -43,9 +43,9 @@ test("parseBranchResponse maps aliases back", () => {
     b1: { nodes: [] },
   } } };
   const m = parseBranchResponse(["x/y", "z", "missing"], json);
-  expect([...m.keys()]).toEqual(["x/y"]);
-  expect(m.get("x/y")).toEqual({ pr: { number: 7, url: "u", draft: false, state: "OPEN" }, base: "main", headRefOid: "sha" });
-  expect(parseBranchResponse(["a"], null).size).toBe(0);
+  expect([...m!.keys()]).toEqual(["x/y"]);
+  expect(m!.get("x/y")).toEqual({ pr: { number: 7, url: "u", draft: false, state: "OPEN" }, base: "main", headRefOid: "sha" });
+  expect(parseBranchResponse(["a"], null)).toBeNull();
 });
 
 test("lastGhError set on failure and cleared on success", () => {
@@ -53,4 +53,33 @@ test("lastGhError set on failure and cleared on success", () => {
   expect(gh.lastGhError).not.toBeNull();
   prsForBranches("o/r", ["a"], { run: () => ({ data: { repository: {} } }) });
   expect(gh.lastGhError).toBeNull();
+});
+
+test("batching maps nodes to the right branch past index 49", () => {
+  const branches = Array.from({ length: 120 }, (_, i) => `br${i}`);
+  const chosen = ["br10", "br60", "br110"];
+  const run = (q: string) => {
+    const repository: Record<string, unknown> = {};
+    for (const m of q.matchAll(/\b(b\d+): pullRequests\(headRefName: "([^"]*)"/g)) {
+      if (chosen.includes(m[2])) {
+        const n = Number(m[2].slice(2));
+        repository[m[1]] = { nodes: [{ number: n, url: `u${n}`, isDraft: false, state: "OPEN", baseRefName: "main", headRefOid: `sha${n}` }] };
+      }
+    }
+    return { data: { repository } };
+  };
+  const m = prsForBranches("o/r", branches, { run });
+  expect([...m.keys()].sort()).toEqual([...chosen].sort());
+  expect(m.get("br60")?.pr.number).toBe(60);
+  expect(m.get("br60")?.headRefOid).toBe("sha60");
+  expect(m.get("br110")?.pr.number).toBe(110);
+  expect(m.get("br110")?.headRefOid).toBe("sha110");
+  expect(m.has("br59")).toBe(false);
+  expect(m.has("br61")).toBe(false);
+});
+
+test("GraphQL error response without repository is a failure", () => {
+  const run = () => ({ errors: [{ message: "Could not resolve to a Repository" }], data: null });
+  expect(prsForBranches("o/r", ["a"], { run }).size).toBe(0);
+  expect(gh.lastGhError).toContain("Could not resolve to a Repository");
 });

@@ -50,10 +50,10 @@ export function buildBranchQuery(owner: string, repo: string, branches: string[]
   return `query { repository(owner: ${JSON.stringify(owner)}, name: ${JSON.stringify(repo)}) { ${fields.join(" ")} } }`;
 }
 
-export function parseBranchResponse(branches: string[], json: unknown): Map<string, BranchPr> {
+export function parseBranchResponse(branches: string[], json: unknown): Map<string, BranchPr> | null {
   const out = new Map<string, BranchPr>();
   const repo = (json as { data?: { repository?: Record<string, { nodes?: (Raw & { headRefOid: string })[] } | null> } } | null)?.data?.repository;
-  if (!repo) return out;
+  if (!repo) return null;
   branches.forEach((b, i) => {
     const n = repo[`b${i}`]?.nodes?.[0];
     if (n) out.set(b, { pr: toPr(n), base: n.baseRefName, headRefOid: n.headRefOid });
@@ -72,7 +72,13 @@ export function prsForBranches(slug: string, branches: string[], deps: { run?: (
     const chunk = branches.slice(i, i + BATCH);
     const json = run(buildBranchQuery(owner, repo, chunk));
     if (json == null) { lastGhError = "gh api graphql failed"; return new Map(); }
-    for (const [k, v] of parseBranchResponse(chunk, json)) out.set(k, v);
+    const parsed = parseBranchResponse(chunk, json);
+    if (!parsed) {
+      const msg = (json as { errors?: { message?: string }[] })?.errors?.[0]?.message;
+      lastGhError = `gh api graphql returned no repository${msg ? `: ${msg}` : ""}`;
+      return new Map();
+    }
+    for (const [k, v] of parsed) out.set(k, v);
   }
   return out;
 }
