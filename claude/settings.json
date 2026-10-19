@@ -6,6 +6,7 @@
     ],
     "defaultMode": "auto"
   },
+  "model": "fable",
   "hooks": {
     "PreToolUse": [
       {
@@ -105,10 +106,10 @@
     "codex@openai-codex": true,
     "document-skills@anthropic-agent-skills": true,
     "simple-english@simple-english": true,
-    "superpowers@claude-plugins-official": true,
     "beads@beads-marketplace": true,
     "tmux-agent-sidebar@hiroppy": true,
-    "i-have-adhd@i-have-adhd": true
+    "i-have-adhd@i-have-adhd": true,
+    "superpowers@pinned": true
   },
   "extraKnownMarketplaces": {
     "anthropic-agent-skills": {
@@ -145,6 +146,12 @@
       "source": {
         "source": "github",
         "repo": "ayghri/i-have-adhd"
+      }
+    },
+    "pinned": {
+      "source": {
+        "source": "directory",
+        "path": "/Users/jake/.claude/pinned-marketplace"
       }
     }
   },
