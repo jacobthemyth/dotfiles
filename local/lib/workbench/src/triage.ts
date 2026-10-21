@@ -24,6 +24,7 @@ export type MemberStatus = {
   dirty: number;             // uncommitted files across the stored and the real worktree
   dirtyWorktrees: string[];  // realpaths of those worktrees that are dirty
   unpushed: boolean;
+  live: boolean;             // open PR, unpushed commits or a dirty worktree: work the workset still describes
   cwdOf: string | null;
   prunable: boolean; reason: string;
 };
@@ -116,7 +117,7 @@ export function memberStatuses(ws: Workset, deps: TriageDeps = {}): MemberStatus
       unpushed = ahead !== null ? ahead > 0 : (git.revListCount(m.repo, `${diffBase(m, config)}..${m.branch}`) ?? 0) > 0;
     }
     const done = (rest: Pick<MemberStatus, "prunable" | "reason">): MemberStatus =>
-      ({ ...base, dirty, dirtyWorktrees, unpushed, cwdOf, ...rest });
+      ({ ...base, dirty, dirtyWorktrees, unpushed, live: pr === "open" || unpushed || dirty > 0, cwdOf, ...rest });
 
     if (cwdOf) return done({ prunable: false, reason: `cwd of open session ${cwdOf}` });
     if (dirty > 0) return done({ prunable: false, reason: `dirty, ${dirty} ${dirty === 1 ? "file" : "files"}` });
@@ -175,10 +176,12 @@ export function summarize(ws: Workset, deps: TriageDeps = {}): WorksetSummary {
   const dirtyWorktrees = new Set<string>();
   for (const s of members) { prMix[s.pr]++; for (const w of s.dirtyWorktrees) dirtyWorktrees.add(w); }
   const { counts, keys, hasOpen } = sessionInfo(ws, deps.nowMs);
+  // "prune" means a prune would delete the workset: an unnamed one is forgotten once nothing in it is live, a named
+  // one only once every record is prunable. "name" marks an unnamed workset that still describes live work.
   let action: Action = "-";
   if (loadLock(ws.name) || keys.some((k) => unreadCount(k) > 0)) action = "review";
-  else if (!hasOpen && (members.length === 0 ? !named : members.every((s) => s.prunable))) action = "prune";
-  else if (!named && members.some((s) => s.pr === "open" || s.unpushed || s.dirty > 0)) action = "name";
+  else if (!hasOpen && (named ? members.length > 0 && members.every((s) => s.prunable) : members.every((s) => !s.live))) action = "prune";
+  else if (!named && members.some((s) => s.live)) action = "name";
   return { name: ws.name, named, members, prMix, dirty: dirtyWorktrees.size, sessions: counts, action };
 }
 

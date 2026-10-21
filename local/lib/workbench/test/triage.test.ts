@@ -481,3 +481,15 @@ test("summarize: an all-prunable workset with an open bound session is not prune
   pointer("live", cwd, { workset: "cinf-o" }); transcript(cwd, "live", Date.now());
   expect(summarize(wsOf("cinf-o", [merged, goneUp], ["claude-live"])).action).toBe("-");
 });
+
+test("summarize: an anonymous workset with no live member prunes even when a record is not dead; a named one does not", () => {
+  const f = fixture();
+  const [merged, closed, , , localOnly] = f.members;
+  // "closed" is a pushed branch with a closed PR and commits not in main: not dead, not live.
+  const s = summarize(wsOf(DEFAULT_NAME, [merged, closed]));
+  expect(s.members.map((m) => [m.member.branch, m.prunable, m.live])).toEqual([["merged", true, false], ["closed", false, false]]);
+  expect(s.action).toBe("prune");
+  expect(summarize(wsOf(DEFAULT_NAME, [merged, localOnly])).members[1].live).toBe(true); // unpushed commits
+  expect(summarize(wsOf(DEFAULT_NAME, [merged, localOnly])).action).toBe("name");
+  expect(summarize(wsOf("cinf-1", [merged, closed])).action).toBe("-");
+});

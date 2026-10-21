@@ -25,12 +25,24 @@ _Avoid_: chain, train
 The ref a member's diff is taken against: its pull request's base, else its declared base, else the repo's default branch.
 
 **Unclaimed**:
-A branch, worktree or pull request of yours that derivation found and no workset claims. Adopted, ignored or pruned.
+A branch, worktree or pull request of yours that derivation found and no workset claims. Adopted or ignored; its branch is `git cleanup`'s to delete.
 _Avoid_: orphan, stray
 
 **Prunable member**:
-A member whose branch and worktree are safe to delete: merged (the local tip is within the PR head), upstream gone with nothing beyond the default branch, branch or repo gone. Never one with uncommitted changes or an open session in its recorded worktree or in the worktree that has its branch checked out, an open or closed PR, a merged PR whose head does not contain the local tip, or other unmerged work.
-_Avoid_: dead (informal)
+A member whose record is safe to drop from a workset because its branch no longer carries work the workset tracks: merged (the local tip is within the PR head), upstream gone or PR closed with nothing beyond the default branch, branch or repo gone. Never one with uncommitted changes or an open session in its recorded worktree or in the worktree that has its branch checked out, an open PR, or other unmerged work. Pruning drops the record; the branch and worktree are `git cleanup`'s to delete.
+_Avoid_: dead (informal), deletable
+
+**Live member**:
+A member that still describes work in progress: an open pull request, unpushed commits or a dirty worktree. A live member keeps an unnamed workset from being forgotten.
+_Avoid_: active, in-flight
+
+**Forgotten**:
+An unnamed workset deleted by pruning while records that are neither prunable nor live are still in it. Its branches stay; only the grouping is lost.
+_Avoid_: swept (the act), garbage-collected
+
+**Sweep**:
+A prune with no workset named: every unnamed workset with no live member and no open session is forgotten.
+_Avoid_: gc, cleanup (that is `git cleanup`, which deletes branches)
 
 **Named**:
 A workset whose name was chosen by a person, as opposed to the default name derived from a session. Only unnamed worksets are swept; a named one is pruned by naming it.
