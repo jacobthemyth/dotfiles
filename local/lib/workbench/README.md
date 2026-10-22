@@ -20,10 +20,11 @@ Glossary: [CONTEXT.md](CONTEXT.md). Design: [docs/superpowers/specs/2026-10-10-w
 | `workbench workset show <name> \| create <name>` | Show or create a workset. |
 | `workbench workset add <name> --repo <p> --branch <b> [--worktree <p>] [--base <ref>] [--order <n>] [--role work\|throwaway]` | Declare a member. |
 | `workbench workset rm <name> <member-id>` | Remove a member. |
-| `workbench workset use <name> [--session <key>]` | Bind a session to a workset (creates it if missing). |
+| `workbench workset use <name> [--session <key>] [--move \| --keep]` | Bind a session to a workset (creates it if missing). When the session leaves an unnamed workset that still lists members, `--move` carries them into the new workset and forgets the old one, `--keep` leaves it; with neither a terminal is asked, and a non-terminal run prints a hint. Forgetting is refused while another session is open on the old workset. |
 | `workbench workset adopt <name> <id> [--role ...]` / `ignore <name> <id>` | Claim or ignore an unclaimed item from `scan`. |
 | `workbench workset rename <old> <new>` | Rename a workset (naming is the pin: named worksets are never swept by `prune`). Refused while a review is open. |
 | `workbench workset prune [<name>] [--yes]` | Prune workset records; never a git command. Prunable records (merged, upstream gone, branch gone) leave the workset and bases that pointed at them are re-pointed. An unnamed workset with nothing live (no open PR, unpushed commits or dirty worktree) and no open session is forgotten whole, its remaining records with it; with no name, that is the sweep. A named workset is deleted only once it is empty. The dropped members' branches and worktrees stay for `git cleanup`. Refused while a review is open or unread. Dry run without `--yes`. |
+| `workbench workset delete <name> [--yes]` | Forget a workset whole, named or not, live members included; the record, its pointers, inbox and notes go, its branches and worktrees stay. Refused while a review is open or unread, or a session is open on it. Dry run without `--yes`. |
 | `workbench scan [--json]` | Derive branches, worktrees and PRs; list claimed, unclaimed and prunable. |
 | `workbench open <workset> [--allow-dirty] [--no-attach]` | Open a review: lock the work worktrees, build the `wb-<workset>` tmux session. |
 | `workbench submit <workset> [-m\|--message <m>]` | Commit your edits, deliver the review to bound sessions' inboxes, release the lock, kill the review window. |

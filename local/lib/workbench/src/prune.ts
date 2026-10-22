@@ -57,16 +57,19 @@ function newBase(repo: string, from: string, prBase: string | null, dropped: Mem
 const refusedPlan = (ws: Workset, refused: string): PrunePlan =>
   ({ workset: ws.name, refused, dropped: [], forgotten: [], kept: [], rebase: [], deleteWorkset: false, keepReason: null, pointers: { close: [], delete: [] } });
 
-export function planPrune(ws: Workset, deps: TriageDeps = {}): PrunePlan {
+// `all` forgets the workset whole whatever its name or members hold (the `delete` command); an open session then
+// refuses the plan instead of keeping the workset.
+export function planPrune(ws: Workset, deps: TriageDeps = {}, { all = false } = {}): PrunePlan {
   if (loadLock(ws.name)) return refusedPlan(ws, "locked");
   if (boundKeys(ws).some((k) => unreadCount(k) > 0)) return refusedPlan(ws, "unread review");
-  const statuses = memberStatuses(ws, deps);
   const ptr = pointerPlan(ws, deps.nowMs);
+  if (all && ptr.open) return refusedPlan(ws, `open session ${ptr.open.key}`);
+  const statuses = memberStatuses(ws, deps);
   const dropped = statuses.filter((s) => s.prunable);
   const rest = statuses.filter((s) => !s.prunable);
   const live = rest.some((s) => s.live);
   // An unnamed workset with nothing live and no open session is forgotten whole; otherwise only prunable records leave.
-  const forgetAll = !isNamed(ws.name) && !live && !ptr.open;
+  const forgetAll = all || (!isNamed(ws.name) && !live && !ptr.open);
   const forgotten = forgetAll ? rest : [];
   const kept = forgetAll ? [] : rest;
 
@@ -80,7 +83,7 @@ export function planPrune(ws: Workset, deps: TriageDeps = {}): PrunePlan {
   }
 
   const openSession = ptr.open ? `open session ${ptr.open.key}` : null;
-  const keepReason = isNamed(ws.name)
+  const keepReason = all ? null : isNamed(ws.name)
     ? (kept.length > 0 ? "members remain" : openSession)
     : (live ? "live members" : openSession);
   return {
@@ -136,6 +139,8 @@ export function executePrune(plan: PrunePlan, log: (line: string) => void): bool
   }
   return true;
 }
+
+export const planDelete = (ws: Workset, deps: TriageDeps = {}) => planPrune(ws, deps, { all: true });
 
 // Default-named worksets that would be deleted outright: nothing live, nothing open, not locked or unread.
 export function sweepable(deps: TriageDeps = {}): PrunePlan[] {

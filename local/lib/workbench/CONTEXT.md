@@ -37,7 +37,7 @@ A member that still describes work in progress: an open pull request, unpushed c
 _Avoid_: active, in-flight
 
 **Forgotten**:
-An unnamed workset deleted by pruning while records that are neither prunable nor live are still in it. Its branches stay; only the grouping is lost.
+A workset deleted with records still in it: by the sweep when it is unnamed with nothing live, or whole on request. Its branches stay; only the grouping is lost.
 _Avoid_: swept (the act), garbage-collected
 
 **Sweep**:

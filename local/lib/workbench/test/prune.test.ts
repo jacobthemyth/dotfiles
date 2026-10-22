@@ -11,7 +11,7 @@ import { transcriptPath } from "../src/harness/claude";
 import { archiveFile } from "../src/review";
 import { loadWorkset, saveWorkset, type Member, type Workset } from "../src/workset";
 import { summarize } from "../src/triage";
-import { planPrune, executePrune, sweepable, renderPlan } from "../src/prune";
+import { planPrune, planDelete, executePrune, sweepable, renderPlan } from "../src/prune";
 import { run as worksetRun } from "../src/cmd/workset";
 
 const ENV = {
@@ -543,4 +543,51 @@ test("workset rename: prints old -> new; wrong arity is a usage error", async ()
   const miss = await capture(() => worksetRun(["rename", "a", "c"]));
   expect(miss.code).toBe(1);
   expect(miss.err).toBe('workbench: no workset "a"');
+});
+
+test("planDelete forgets a workset whole, live members included; branches stay", () => {
+  const f = stacked(DEFAULT_NAME2); // s1 merged, s2 open PR, s3 unmerged
+  const plan = planDelete(loadWorkset(DEFAULT_NAME2)!);
+  expect(plan.refused).toBeNull();
+  expect(branches(plan, "dropped")).toEqual(["s1"]);
+  expect(plan.forgotten.map((s) => [s.member.branch, s.reason])).toEqual([["s2", "open PR"], ["s3", "unmerged work"]]);
+  expect(plan.kept).toEqual([]);
+  expect(plan.rebase).toEqual([]);
+  expect(plan.deleteWorkset).toBe(true);
+  expect(renderPlan(plan)).toContain(`  forget ${f.m2.id}: open PR`);
+  expect(executePrune(plan, () => {})).toBe(true);
+  expect(loadWorkset(DEFAULT_NAME2)).toBeNull();
+  expect(hasBranch(f.repo, "s1")).toBe(true);
+  expect(hasBranch(f.repo, "s2")).toBe(true);
+});
+
+test("planDelete takes a named workset too, and is refused while a session is open on it", () => {
+  const f = stacked("cinf-del");
+  expect(planDelete(loadWorkset("cinf-del")!).deleteWorkset).toBe(true);
+  const cwd = join(tmp, "cwd");
+  mkdirSync(cwd);
+  pointer("o", cwd, { workset: "cinf-del" }); transcript(cwd, "o", Date.now());
+  const plan = planDelete(loadWorkset("cinf-del")!);
+  expect(plan.refused).toBe("open session claude-o");
+  expect(executePrune(plan, () => {})).toBe(false);
+  expect(loadWorkset("cinf-del")!.members.length).toBe(3);
+  void f;
+});
+
+test("delete command: dry run changes nothing, --yes forgets the workset, unknown name fails", async () => {
+  const f = stacked(DEFAULT_NAME2);
+  const dry = await capture(() => worksetRun(["delete", DEFAULT_NAME2]));
+  expect(dry.code).toBe(0);
+  expect(dry.out).toContain(`forget ${f.m2.id}: open PR`);
+  expect(dry.out).toContain("delete workset");
+  expect(loadWorkset(DEFAULT_NAME2)!.members.length).toBe(3);
+  const yes = await capture(() => worksetRun(["delete", DEFAULT_NAME2, "--yes"]));
+  expect(yes.code).toBe(0);
+  expect(yes.out).toContain("deleted workset");
+  expect(loadWorkset(DEFAULT_NAME2)).toBeNull();
+  expect(hasBranch(f.repo, "s2")).toBe(true);
+  const miss = await capture(() => worksetRun(["delete", "nope", "--yes"]));
+  expect(miss.code).toBe(1);
+  expect(miss.err).toBe('workbench: no workset "nope"');
+  expect((await capture(() => worksetRun(["delete"]))).code).toBe(2);
 });
