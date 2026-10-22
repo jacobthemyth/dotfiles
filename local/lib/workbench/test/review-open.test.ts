@@ -109,6 +109,24 @@ test("open refuses a workset with no work member that has a worktree", () => {
   expect(loadReview("ws1")).toBeNull();
 });
 
+test("the diff base is the base's upstream when the local branch has fallen behind it", () => {
+  // Local main is one commit behind origin/main; feat forked from the newer tip. Against local main the merge
+  // base would be local main itself, and the diff would carry origin's commit as if feat had made it.
+  const bare = join(tmp, "origin.git");
+  sh(tmp, "init", "-q", "--bare", bare);
+  sh(repo, "remote", "add", "origin", bare);
+  writeFileSync(join(repo, "f.txt"), "b\n");
+  sh(repo, "commit", "-q", "-am", "advance");
+  sh(repo, "push", "-q", "-u", "origin", "main");
+  sh(repo, "reset", "-q", "--hard", "HEAD~1");
+  const wt = worktree("feat", "origin/main");
+  workset([{ branch: "feat", worktree: wt }]);
+  const r = openReview("ws1", { allowDirty: false });
+  const upstreamBase = sh(wt, "merge-base", "origin/main", "feat");
+  expect(upstreamBase).not.toBe(sh(wt, "merge-base", "main", "feat"));
+  expect(r.commands!).toContain(`tmux respawn-pane -k -t %1 -c ${wt} hunk diff ${upstreamBase} --watch`);
+});
+
 test("dry run records new-session, hunk diff against the merge base, then split-window", () => {
   const wt = worktree("feat");
   workset([{ branch: "feat", worktree: wt }]);

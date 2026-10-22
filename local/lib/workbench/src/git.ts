@@ -92,6 +92,13 @@ export function dirtyFiles(path: string): string[] | null {
 }
 
 export const mergeBase = (cwd: string, a: string, b: string) => git(cwd, "merge-base", a, b);
+// The upstream of a local branch (`origin/main`), or null when it has none, it is gone, or `branch` is not a local branch.
+export function upstreamOf(cwd: string, branch: string): string | null {
+  const out = git(cwd, "for-each-ref", "--format=%(upstream:short)|%(upstream:track)", `refs/heads/${branch}`);
+  if (!out) return null;
+  const [upstream, track = ""] = out.split("|");
+  return upstream && track !== "[gone]" ? upstream : null;
+}
 
 const zList = (out: string | null) => (out === null ? null : out.split("\0").filter(Boolean));
 // Tracked paths that differ from HEAD (staged or not, deletions included); null on failure.

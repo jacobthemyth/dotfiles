@@ -78,8 +78,13 @@ export function snapshotNotes(r: Review, m: Member): hunk.RawNote[] {
 const real = (p: string) => { try { return realpathSync(p); } catch { return p; } };
 const SIDEBAR = (ws: string) => `workbench sidebar ${ws}`;
 
-// Working tree against the merge base, so uncommitted edits show; the plain range when merge-base fails.
-export const diffRef = (wt: string, base: string, branch: string) => git.mergeBase(wt, base, branch) ?? `${base}...${branch}`;
+// Working tree against the merge base, so uncommitted edits show; the plain range when merge-base fails. The base is
+// taken at its upstream when it has one: a local default branch that has fallen behind would make the merge base
+// itself, and the diff would carry every commit between it and the branch's fork point as the member's own.
+export function diffRef(wt: string, base: string, branch: string): string {
+  const ref = git.upstreamOf(wt, base) ?? base;
+  return git.mergeBase(wt, ref, branch) ?? `${ref}...${branch}`;
+}
 
 // A fresh hunk holds none of the reviewer's notes: re-show `m`'s snapshotted ones as agent comments by "you".
 // normaliseNotes keeps only source "user", so these are never delivered. A note already live is skipped

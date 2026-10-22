@@ -22,7 +22,7 @@ The ordering of a workset's members in one repo by pull request base, where one 
 _Avoid_: chain, train
 
 **Diff base**:
-The ref a member's diff is taken against: its pull request's base, else its declared base, else the repo's default branch.
+The ref a member's diff is taken against: its pull request's base, else its declared base, else the repo's default branch; resolved to that branch's upstream when it has one that is not gone, so the merge base is the branch's real fork point even when the local base has fallen behind.
 
 **Unclaimed**:
 A branch, worktree or pull request of yours that derivation found and no workset claims. Adopted or ignored; its branch is `git cleanup`'s to delete.
