@@ -127,6 +127,25 @@ test("the diff base is the base's upstream when the local branch has fallen behi
   expect(r.commands!).toContain(`tmux respawn-pane -k -t %1 -c ${wt} hunk diff ${upstreamBase} --watch`);
 });
 
+test("the diff base stays local when the base branch is ahead of its upstream", () => {
+  // feat has an unpushed commit and feat2 is stacked on it. Taking feat at origin/feat would show that
+  // commit as feat2's own; the later of the two merge bases is the local tip.
+  const bare = join(tmp, "origin.git");
+  sh(tmp, "init", "-q", "--bare", bare);
+  sh(repo, "remote", "add", "origin", bare);
+  const a = worktree("feat");
+  sh(a, "push", "-q", "-u", "origin", "feat");
+  writeFileSync(join(a, "more.txt"), "more\n");
+  sh(a, "add", ".");
+  sh(a, "commit", "-q", "-m", "unpushed");
+  const b = worktree("feat2", "feat");
+  workset([{ branch: "feat2", worktree: b, base: "feat" }]);
+  const r = openReview("ws1", { allowDirty: false });
+  const localBase = sh(b, "merge-base", "feat", "feat2");
+  expect(localBase).not.toBe(sh(b, "merge-base", "origin/feat", "feat2"));
+  expect(r.commands!).toContain(`tmux respawn-pane -k -t %1 -c ${b} hunk diff ${localBase} --watch`);
+});
+
 test("dry run records new-session, hunk diff against the merge base, then split-window", () => {
   const wt = worktree("feat");
   workset([{ branch: "feat", worktree: wt }]);

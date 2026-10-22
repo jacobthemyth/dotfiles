@@ -79,11 +79,15 @@ const real = (p: string) => { try { return realpathSync(p); } catch { return p; 
 const SIDEBAR = (ws: string) => `workbench sidebar ${ws}`;
 
 // Working tree against the merge base, so uncommitted edits show; the plain range when merge-base fails. The base is
-// taken at its upstream when it has one: a local default branch that has fallen behind would make the merge base
-// itself, and the diff would carry every commit between it and the branch's fork point as the member's own.
+// read both as the local branch and at its upstream, and the later of the two merge bases wins: a local main that
+// has fallen behind would make the merge base itself and the diff would carry every commit up to the branch's fork
+// point; a stacked base with unpushed commits would, at its upstream, show those commits as the member's own.
 export function diffRef(wt: string, base: string, branch: string): string {
-  const ref = git.upstreamOf(wt, base) ?? base;
-  return git.mergeBase(wt, ref, branch) ?? `${ref}...${branch}`;
+  const local = git.mergeBase(wt, base, branch);
+  const upstream = git.upstreamOf(wt, base);
+  const remote = upstream ? git.mergeBase(wt, upstream, branch) : null;
+  if (local && remote) return git.isAncestor(wt, local, remote) ? remote : local;
+  return local ?? remote ?? `${base}...${branch}`;
 }
 
 // A fresh hunk holds none of the reviewer's notes: re-show `m`'s snapshotted ones as agent comments by "you".

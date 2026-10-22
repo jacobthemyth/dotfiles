@@ -51,7 +51,7 @@ A session records nothing until it is bound with `workbench workset use <name>`;
 ## Review flow
 
 1. `workbench open <workset>`: the work worktrees are locked and the review window opens (sidebar left, hunk right). Each work member's worktree must have that member's branch checked out; `open` refuses otherwise, because submit commits on the branch the worktree has checked out. If `open` fails after taking the lock, `workbench close <workset>` releases it.
-2. Select a member in the sidebar (`⏎`) to show its diff (working tree against the merge base with its diff base, taken at the base's upstream when it has one, so a local `main` left behind does not widen the diff).
+2. Select a member in the sidebar (`⏎`) to show its diff (working tree against the merge base with its diff base, the later of the merge bases with the local base and with its upstream, so neither a local `main` left behind nor an unpushed commit on a stacked base widens the diff).
 3. Comment in hunk with `c`, text, `Ctrl-S`: `? ` makes a question, `// ` a note, anything else a change request.
 4. Edit with hunk's `e`: neovim on the real file; the diff refreshes when you quit.
 5. Submit (`s` in the sidebar, or `workbench submit`): one commit per touched member, authored by you, with `Workset:` and `Review:` trailers; the review goes to every open bound session's inbox, the notes snapshots are cleared and the review window is killed.
