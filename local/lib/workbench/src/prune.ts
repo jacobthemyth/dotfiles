@@ -4,7 +4,7 @@ import * as git from "./git";
 import { removeInbox, removePidFile, unreadCount } from "./inbox";
 import { clearNotes, loadLock } from "./review";
 import { closeStale, listPointers, loadPointer, pointerState, removePointer, type Pointer } from "./session";
-import { boundKeys, isNamed, memberStatuses, type MemberStatus, type TriageDeps } from "./triage";
+import { boundKeys, memberStatuses, type MemberStatus, type TriageDeps } from "./triage";
 import { deleteWorkset, listWorksets, loadWorkset, removeMember, saveWorkset, type Member, type Workset } from "./workset";
 
 // Prune edits workset records and session pointers only. It never runs a git command: a dropped member's branch and
@@ -13,10 +13,10 @@ export type Rebase = { member: Member; from: string; to: string; viaPr: boolean 
 export type PrunePlan = {
   workset: string; refused: string | null;                    // "locked" | "unread review"
   dropped: MemberStatus[];                                    // prunable records that leave the workset
-  forgotten: MemberStatus[];                                  // neither prunable nor live; dropped with an unnamed workset
+  forgotten: MemberStatus[];                                  // not prunable, dropped anyway because the workset is deleted whole
   kept: MemberStatus[];                                       // records that stay, with reason
   rebase: Rebase[];                                           // base rewrites for kept members whose base is dropped
-  deleteWorkset: boolean; keepReason: string | null;          // "live members" | "members remain" | "open session <key>"
+  deleteWorkset: boolean; keepReason: string | null;          // "members remain" | "open session <key>"
   pointers: { close: Pointer[]; delete: Pointer[] };          // stale → closed; closed-and-bound-only-here → deleted only when the workset is deleted
 };
 
@@ -34,7 +34,7 @@ function pointerPlan(ws: Workset, nowMs?: number): { close: Pointer[]; delete: P
     const state = pointerState(p, nowMs);
     if (state === "open") { open ??= p; continue; }
     if (state === "stale") close.push(p);
-    const shared = otherNames.has(p.workset) || others.some((w) => w.sessions.includes(p.key));
+    const shared = (p.workset !== null && otherNames.has(p.workset)) || others.some((w) => w.sessions.includes(p.key));
     if (!shared) del.push(p);
   }
   return { close, delete: del, open };
@@ -57,7 +57,7 @@ function newBase(repo: string, from: string, prBase: string | null, dropped: Mem
 const refusedPlan = (ws: Workset, refused: string): PrunePlan =>
   ({ workset: ws.name, refused, dropped: [], forgotten: [], kept: [], rebase: [], deleteWorkset: false, keepReason: null, pointers: { close: [], delete: [] } });
 
-// `all` forgets the workset whole whatever its name or members hold (the `delete` command); an open session then
+// `all` forgets the workset whole whatever its members hold (the `delete` command); an open session then
 // refuses the plan instead of keeping the workset.
 export function planPrune(ws: Workset, deps: TriageDeps = {}, { all = false } = {}): PrunePlan {
   if (loadLock(ws.name)) return refusedPlan(ws, "locked");
@@ -67,11 +67,9 @@ export function planPrune(ws: Workset, deps: TriageDeps = {}, { all = false } = 
   const statuses = memberStatuses(ws, deps);
   const dropped = statuses.filter((s) => s.prunable);
   const rest = statuses.filter((s) => !s.prunable);
-  const live = rest.some((s) => s.live);
-  // An unnamed workset with nothing live and no open session is forgotten whole; otherwise only prunable records leave.
-  const forgetAll = all || (!isNamed(ws.name) && !live && !ptr.open);
-  const forgotten = forgetAll ? rest : [];
-  const kept = forgetAll ? [] : rest;
+  // Only prunable records leave; the workset itself goes once nothing remains and no session is open on it.
+  const forgotten = all ? rest : [];
+  const kept = all ? [] : rest;
 
   const rebase: Rebase[] = [];
   const droppedMembers = dropped.map((s) => s.member);
@@ -83,9 +81,7 @@ export function planPrune(ws: Workset, deps: TriageDeps = {}, { all = false } = 
   }
 
   const openSession = ptr.open ? `open session ${ptr.open.key}` : null;
-  const keepReason = all ? null : isNamed(ws.name)
-    ? (kept.length > 0 ? "members remain" : openSession)
-    : (live ? "live members" : openSession);
+  const keepReason = all ? null : kept.length > 0 ? "members remain" : openSession;
   return {
     workset: ws.name, refused: null, dropped, forgotten, kept, rebase,
     deleteWorkset: keepReason === null, keepReason, pointers: { close: ptr.close, delete: ptr.delete },
@@ -142,14 +138,14 @@ export function executePrune(plan: PrunePlan, log: (line: string) => void): bool
 
 export const planDelete = (ws: Workset, deps: TriageDeps = {}) => planPrune(ws, deps, { all: true });
 
-// Default-named worksets that would be deleted outright: nothing live, nothing open, not locked or unread.
-export function sweepable(deps: TriageDeps = {}): PrunePlan[] {
+// Every workset whose prune would do something: drop a record or delete the workset. Refusals and no-ops are left out.
+export function pruneAll(deps: TriageDeps = {}): PrunePlan[] {
   const out: PrunePlan[] = [];
   for (const name of listWorksets()) {
     const ws = loadWorkset(name);
-    if (!ws || isNamed(ws.name)) continue;
+    if (!ws) continue;
     const plan = planPrune(ws, deps);
-    if (!plan.refused && plan.deleteWorkset) out.push(plan);
+    if (!plan.refused && (plan.dropped.length > 0 || plan.deleteWorkset)) out.push(plan);
   }
   return out;
 }

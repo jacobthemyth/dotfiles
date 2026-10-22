@@ -188,7 +188,7 @@ test("workset adopt creates the workset and adds the item; ignore appends once",
 
 test("scan groups claimed, unclaimed and prunable; --json is structured", async () => {
   const { a, id } = setup();
-  const w = createWorkset("w", "hand"); w.members.push({ id: idOf(a, "live") } as never); saveWorkset(w);
+  const w = createWorkset("w"); w.members.push({ id: idOf(a, "live") } as never); saveWorkset(w);
   const j = JSON.parse((await capture(() => scanRun(["--json"]))).out);
   expect(j.claimed.map((c: { workset: string }) => c.workset)).toEqual(["w"]);
   expect(j.unclaimed.map((x: Found) => x.branch)).toEqual(["gone"]);

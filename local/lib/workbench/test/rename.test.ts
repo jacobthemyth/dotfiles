@@ -16,7 +16,8 @@ const lockPath = (ws: string) => join(sub("locks"), `${ws}.json`);
 const inboxPath = (key: string, id: string) => join(sub("inbox"), key, `${id}.json`);
 
 test("renameWorkset moves the file, pointers, review archives and inbox files", () => {
-  const ws = createWorkset("claude-abc", "claude-1");
+  const ws = createWorkset("claude-abc");
+  ws.sessions = ["claude-1"];
   saveWorkset(ws);
   savePointer(ptr("p1", "claude-abc")); savePointer(ptr("p2", "claude-abc")); savePointer(ptr("p3", "other"));
   writeJson(archiveFile("claude-abc", "x"), { id: "x" });
@@ -33,7 +34,7 @@ test("renameWorkset moves the file, pointers, review archives and inbox files", 
 });
 
 test("renameWorkset refuses and moves nothing", () => {
-  saveWorkset(createWorkset("a", "hand")); saveWorkset(createWorkset("b", "hand"));
+  saveWorkset(createWorkset("a")); saveWorkset(createWorkset("b"));
   savePointer(ptr("p1", "a"));
   expect(() => renameWorkset("a", "b")).toThrow('workbench: workset "b" exists');
   expect(() => renameWorkset("a", "Bad Name")).toThrow('workbench: invalid workset name "Bad Name"');
@@ -49,7 +50,7 @@ test("renameWorkset refuses and moves nothing", () => {
 });
 
 test("renameWorkset refuses a stale reviews destination and moves nothing", () => {
-  saveWorkset(createWorkset("a", "hand"));
+  saveWorkset(createWorkset("a"));
   savePointer(ptr("p1", "a"));
   writeJson(archiveFile("a", "x"), { id: "x" });
   writeJson(archiveFile("c", "x"), { id: "stale" });
@@ -62,7 +63,7 @@ test("renameWorkset refuses a stale reviews destination and moves nothing", () =
 });
 
 test("renameWorkset skips a stray file under inbox/", () => {
-  saveWorkset(createWorkset("a", "hand"));
+  saveWorkset(createWorkset("a"));
   writeJson(join(sub("inbox"), "stray.json"), {});
   renameWorkset("a", "b");
   expect(loadWorkset("b")).not.toBeNull();

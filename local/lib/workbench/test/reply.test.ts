@@ -175,7 +175,7 @@ test("opening a review rehydrates replies once the hunk session registers", () =
   const git = (...a: string[]) => Bun.spawnSync(["git", "-C", repo, ...a], { env: { ...process.env, GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t", GIT_CONFIG_GLOBAL: "/dev/null" } });
   git("init", "-q", "-b", "main"); writeFileSync(join(repo, "f.txt"), "a\n"); git("add", "f.txt"); git("commit", "-q", "-m", "init");
   git("checkout", "-q", "-b", "feat");
-  const ws = createWorkset("ws1", "hand");
+  const ws = createWorkset("ws1");
   const m = addMember(ws, { repo, branch: "feat", worktree: repo, added_by: "hand" });
   saveWorkset(ws);
   deliver({ ...reviewFile("rv1", [comment("user:1", { member: m.id, replies: [{ at: "t1", by: KEY, text: "done" }] })]) });

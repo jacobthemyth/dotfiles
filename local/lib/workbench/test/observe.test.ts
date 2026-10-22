@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, readdirSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { handle } from "../src/hook";
+import { useWorkset } from "../src/session";
 import { addMember, loadWorkset, saveWorkset } from "../src/workset";
 import { sub } from "../src/paths";
 
@@ -24,6 +25,7 @@ beforeEach(() => {
   sh(repo, "git", "remote", "add", "origin", "git@github.com:o/r.git");
   sh(repo, "git", "commit", "--allow-empty", "-m", "init");
   handle({ kind: "sessionStarted", harness: "claude", session: "s1", cwd: repo, resumed: false });
+  useWorkset("claude-s1", "spike");
 });
 
 // Runs `act` between the before and after events of one Bash call whose text is `command`.
@@ -33,7 +35,7 @@ function bash(command: string, cwd: string, act: () => void) {
   act();
   handle({ kind: "afterCommand", harness: "claude", session: "s1", cwd, command, output: "", toolUseId });
 }
-const members = () => loadWorkset("claude-s1")!.members;
+const members = () => loadWorkset("spike")!.members;
 
 test("a branch created inside a shell loop is recorded, whatever the command text says", () => {
   bash("for b in a; do git branch feat/$b; done", repo, () => sh(repo, "git", "branch", "feat/a"));
@@ -72,7 +74,7 @@ test("a repo named in the command is observed when the cwd is elsewhere", () => 
 
 test("a hand-declared member gets its worktree filled in instead of a duplicate", () => {
   sh(repo, "git", "branch", "feat/h");
-  const ws = loadWorkset("claude-s1")!;
+  const ws = loadWorkset("spike")!;
   addMember(ws, { repo, branch: "feat/h", added_by: "hand", base: "main", base_source: "declared", order: 1 });
   saveWorkset(ws);
   const wt = join(root, "wt-h");
@@ -100,7 +102,7 @@ test("bases are inferred from the nearest member the branch descends from", () =
 test("an inferred base is never written over a declared one", () => {
   sh(repo, "git", "branch", "s/one");
   sh(repo, "git", "commit", "--allow-empty", "-m", "on main");
-  const ws = loadWorkset("claude-s1")!;
+  const ws = loadWorkset("spike")!;
   addMember(ws, { repo, branch: "s/one", added_by: "hand" });
   addMember(ws, { repo, branch: "s/two", added_by: "hand", base: "main", base_source: "declared" });
   saveWorkset(ws);
@@ -114,7 +116,7 @@ test("an inferred base is never written over a declared one", () => {
 });
 
 test("ignored items are not recorded", () => {
-  const ws = loadWorkset("claude-s1")!;
+  const ws = loadWorkset("spike")!;
   ws.ignored.push("o/r#feat/i");
   saveWorkset(ws);
   bash("git branch feat/i", repo, () => sh(repo, "git", "branch", "feat/i"));

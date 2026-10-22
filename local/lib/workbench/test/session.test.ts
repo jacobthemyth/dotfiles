@@ -3,19 +3,21 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { handle } from "../src/hook";
-import { bindSession, loadPointer, pointerKey } from "../src/session";
-import { addMember, createWorkset, loadWorkset, saveWorkset } from "../src/workset";
+import { bindSession, loadPointer, pointerKey, useWorkset } from "../src/session";
+import { listWorksets, loadWorkset } from "../src/workset";
 
 beforeEach(() => {
   process.env.WORKBENCH_STATE_DIR = mkdtempSync(join(tmpdir(), "wb-"));
   delete process.env.WORKBENCH_SESSION; delete process.env.CLAUDE_CODE_SESSION_ID;
 });
 
-test("session start creates a pointer and a default workset", () => {
-  handle({ kind: "sessionStarted", harness: "claude", session: "abc", cwd: "/w", resumed: false });
+test("session start creates an unbound pointer and no workset", () => {
+  const out = handle({ kind: "sessionStarted", harness: "claude", session: "abc", cwd: "/w", resumed: false });
   const p = loadPointer(pointerKey("claude", "abc"))!;
-  expect(p.workset).toBe("claude-abc");
-  expect(loadWorkset("claude-abc")).not.toBeNull();
+  expect(p.workset).toBeNull();
+  expect(listWorksets()).toEqual([]);
+  expect(out.context).toContain("not bound to a workset");
+  expect(out.context).toContain("workbench workset use <name>");
 });
 test("resume keeps an existing binding", () => {
   handle({ kind: "sessionStarted", harness: "claude", session: "abc", cwd: "/w", resumed: false });
@@ -23,11 +25,12 @@ test("resume keeps an existing binding", () => {
   handle({ kind: "sessionStarted", harness: "claude", session: "abc", cwd: "/w", resumed: true });
   expect(loadPointer(pointerKey("claude", "abc"))!.workset).toBe("spike");
 });
-test("session end closes the pointer and deletes an empty default workset", () => {
+test("session end closes the pointer and leaves the bound workset alone, even empty", () => {
   handle({ kind: "sessionStarted", harness: "claude", session: "abc", cwd: "/w", resumed: false });
+  useWorkset(pointerKey("claude", "abc"), "spike");
   handle({ kind: "sessionEnded", harness: "claude", session: "abc" });
   expect(loadPointer(pointerKey("claude", "abc"))!.closed).not.toBeNull();
-  expect(loadWorkset("claude-abc")).toBeNull();
+  expect(loadWorkset("spike")!.members).toEqual([]);
 });
 test("session end for an unknown session is a no-op", () => {
   expect(handle({ kind: "sessionEnded", harness: "claude", session: "zzz" })).toEqual({});
@@ -45,24 +48,6 @@ test("workset use binds the session, creating the workset", async () => {
 });
 
 const start = () => handle({ kind: "sessionStarted", harness: "claude", session: "abc", cwd: "/w", resumed: false });
-const end = () => handle({ kind: "sessionEnded", harness: "claude", session: "abc" });
-
-test("rebound session: empty default workset is deleted on end, bound workset survives", () => {
-  start();
-  bindSession(pointerKey("claude", "abc"), "spike");
-  const spike = createWorkset("spike", "claude-abc");
-  end();
-  expect(loadWorkset("claude-abc")).toBeNull();
-  expect(loadWorkset(spike.name)).not.toBeNull();
-});
-test("default workset with a member survives session end", () => {
-  start();
-  const ws = loadWorkset("claude-abc")!;
-  addMember(ws, { repo: "/r", branch: "b", added_by: "claude-abc" });
-  saveWorkset(ws);
-  end();
-  expect(loadWorkset("claude-abc")).not.toBeNull();
-});
 
 test("workset use leaves the previous workset's sessions", async () => {
   const { run } = await import("../src/cmd/workset");
@@ -71,7 +56,6 @@ test("workset use leaves the previous workset's sessions", async () => {
   expect(await run(["use", "spike", "--session", key])).toBe(0);
   expect(await run(["use", "other", "--session", key])).toBe(0);
   expect(loadWorkset("spike")!.sessions).not.toContain(key);
-  expect(loadWorkset("claude-abc")!.sessions).not.toContain(key);
   expect(loadWorkset("other")!.sessions).toEqual([key]);
   expect(loadPointer(key)!.workset).toBe("other");
 });
@@ -114,82 +98,4 @@ test("closeStale records closed and closed_reason and round-trips", () => {
   const back = loadPointer("claude-s1")!;
   expect(back.closed).not.toBeNull();
   expect(back.closed_reason).toBe("stale");
-});
-
-// `workset use <named>` and the default workset left behind.
-const SID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", DEF = `claude-${SID}`;
-const SID2 = "aaaaaaaa-bbbb-cccc-dddd-ffffffffffff", DEF2 = `claude-${SID2}`;
-async function captureRun(args: string[], io?: { confirm?: (q: string) => Promise<boolean> }) {
-  const { run } = await import("../src/cmd/workset");
-  const o: string[] = [], e: string[] = [];
-  const lo = console.log, le = console.error;
-  console.log = (...a) => o.push(a.join(" ")); console.error = (...a) => e.push(a.join(" "));
-  try { return { code: await run(args, io), out: o.join("\n"), err: e.join("\n") }; } finally { console.log = lo; console.error = le; }
-}
-function defaultWithMembers() {
-  handle({ kind: "sessionStarted", harness: "claude", session: SID, cwd: "/w", resumed: false });
-  const ws = loadWorkset(DEF)!;
-  addMember(ws, { repo: "/r", branch: "b1", base: "main", role: "throwaway", added_by: DEF });
-  addMember(ws, { repo: "/r", branch: "b2", base: "b1", added_by: DEF });
-  saveWorkset(ws);
-  return pointerKey("claude", SID);
-}
-
-test("use --move carries the default workset's members into the named one and forgets it", async () => {
-  const key = defaultWithMembers();
-  const r = await captureRun(["use", "spike", "--session", key, "--move"]);
-  expect(r.code).toBe(0);
-  expect(loadPointer(key)!.workset).toBe("spike");
-  const spike = loadWorkset("spike")!;
-  expect(spike.members.map((m) => [m.branch, m.base, m.role])).toEqual([["b1", "main", "throwaway"], ["b2", "b1", "work"]]);
-  expect(loadWorkset(DEF)).toBeNull();
-  expect(r.out).toContain(`moved 2 members from ${DEF} into spike`);
-  expect(r.out).toContain("deleted workset");
-});
-
-test("use --keep leaves the default workset alone", async () => {
-  const key = defaultWithMembers();
-  const r = await captureRun(["use", "spike", "--session", key, "--keep"]);
-  expect(r.code).toBe(0);
-  expect(loadWorkset(DEF)!.members.length).toBe(2);
-  expect(loadWorkset("spike")!.members).toEqual([]);
-  expect(r.out).not.toContain("moved");
-});
-
-test("use without a flag asks when it can, and otherwise prints the hint and keeps the workset", async () => {
-  const key = defaultWithMembers();
-  let asked = "";
-  const yes = await captureRun(["use", "spike", "--session", key], { confirm: async (q) => { asked = q; return true; } });
-  expect(yes.code).toBe(0);
-  expect(asked).toContain(`Move 2 members from ${DEF} into spike and forget it?`);
-  expect(loadWorkset(DEF)).toBeNull();
-  expect(loadWorkset("spike")!.members.length).toBe(2);
-
-  const key2 = (() => { handle({ kind: "sessionStarted", harness: "claude", session: SID2, cwd: "/w", resumed: false }); const ws = loadWorkset(DEF2)!; addMember(ws, { repo: "/r", branch: "b3", added_by: DEF2 }); saveWorkset(ws); return pointerKey("claude", SID2); })();
-  const no = await captureRun(["use", "spike", "--session", key2], { confirm: async () => false });
-  expect(no.code).toBe(0);
-  expect(loadWorkset(DEF2)!.members.length).toBe(1);
-
-  const SID3 = "aaaaaaaa-bbbb-cccc-dddd-000000000003", DEF3 = `claude-${SID3}`;
-  handle({ kind: "sessionStarted", harness: "claude", session: SID3, cwd: "/w", resumed: false });
-  const ws3 = loadWorkset(DEF3)!; addMember(ws3, { repo: "/r", branch: "b4", added_by: DEF3 }); saveWorkset(ws3);
-  const hint = await captureRun(["use", "other", "--session", pointerKey("claude", SID3)]); // no confirm and no TTY under bun test
-  expect(hint.code).toBe(0);
-  expect(hint.err).toContain(`${DEF3} still has 1 member; rerun with --move to move it into other and forget ${DEF3}, or --keep`);
-  expect(loadWorkset(DEF3)!.members.length).toBe(1);
-});
-
-test("use --move keeps the default workset when another session is open on it, and offers nothing for a named or empty one", async () => {
-  const key = defaultWithMembers();
-  savePointer({ key: "claude-other", harness: "claude", session: "other", workset: DEF, cwd: "/w", opened: "t", closed: null });
-  const r = await captureRun(["use", "spike", "--session", key, "--move"]);
-  expect(r.code).toBe(0);
-  expect(loadWorkset("spike")!.members.length).toBe(2);
-  expect(loadWorkset(DEF)!.members.length).toBe(2);
-  expect(r.out).toContain("refused: open session claude-other");
-  // from a named workset, or an empty default one, there is nothing to offer
-  const quiet = await captureRun(["use", "third", "--session", key]);
-  expect(quiet.code).toBe(0);
-  expect(quiet.err).toBe("");
-  expect(quiet.out).toBe(`${key} -> third`);
 });

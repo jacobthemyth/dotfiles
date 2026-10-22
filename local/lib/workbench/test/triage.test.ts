@@ -10,7 +10,7 @@ import { savePointer, type Pointer } from "../src/session";
 import { transcriptPath } from "../src/harness/claude";
 import { inboxFile } from "../src/submit";
 import { saveWorkset, type Member, type Workset } from "../src/workset";
-import { isNamed, memberStatuses, refreshStoredPr, summarize, summarizeAll } from "../src/triage";
+import { memberStatuses, refreshStoredPr, summarize, summarizeAll } from "../src/triage";
 
 const ENV = {
   ...process.env, GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t",
@@ -123,12 +123,6 @@ function fixture(): Fix {
 }
 const byBranch = (s: ReturnType<typeof memberStatuses>) => Object.fromEntries(s.map((x) => [x.member.branch, x]));
 
-test("isNamed rejects only the default agent-session name", () => {
-  expect(isNamed(DEFAULT_NAME)).toBe(false);
-  expect(isNamed("cinf-1")).toBe(true);
-  expect(isNamed("claude-s1")).toBe(true);
-});
-
 test("memberStatuses classifies each member", () => {
   const f = fixture();
   const ghost = mem(f.alpha, "ghost");
@@ -236,16 +230,17 @@ test("a gh failure falls back to the stored PR state and never prunes on it", ()
   expect(JSON.stringify(ws)).toBe(before);
 });
 
-test("summarize: all-prunable default workset prunes, an open PR asks for a name, a name settles it", () => {
+test("summarize: an all-prunable workset prunes, whatever its name; an open PR keeps it", () => {
   const f = fixture();
   const [merged, , open, goneUp] = f.members;
   expect(summarize(wsOf(DEFAULT_NAME, [merged, goneUp])).action).toBe("prune");
-  expect(summarize(wsOf(DEFAULT_NAME, [merged, goneUp, open])).action).toBe("name");
+  expect(summarize(wsOf("cinf-1", [merged, goneUp])).action).toBe("prune");
+  expect(summarize(wsOf(DEFAULT_NAME, [merged, goneUp, open])).action).toBe("-");
   expect(summarize(wsOf("cinf-1", [merged, goneUp, open])).action).toBe("-");
   const s = summarize(wsOf(DEFAULT_NAME, [merged, open, f.members[4], f.members[5]]));
   expect(s.prMix).toEqual({ merged: 2, closed: 0, open: 1, nopr: 1 });
   expect(s.dirty).toBe(1);
-  expect(s.named).toBe(false);
+  expect("named" in s).toBe(false);
 });
 
 test("summarize: a review lock or an unread review wins over everything", () => {
@@ -258,10 +253,10 @@ test("summarize: a review lock or an unread review wins over everything", () => 
   expect(summarize(wsOf("cinf-2", [merged, goneUp], ["claude-s1"])).action).toBe("review");
 });
 
-test("summarize: empty default workset prunes unless a session is open on it", () => {
-  const empty = wsOf(DEFAULT_NAME, []);
+test("summarize: an empty workset prunes unless a session is open on it", () => {
+  const empty = wsOf("cinf-empty", []);
   expect(summarize(empty).action).toBe("prune");
-  pointer("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", tmp);
+  pointer("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", tmp, { workset: "cinf-empty" });
   transcript(tmp, "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", Date.now());
   expect(summarize(empty).action).toBe("-");
 });
@@ -482,14 +477,14 @@ test("summarize: an all-prunable workset with an open bound session is not prune
   expect(summarize(wsOf("cinf-o", [merged, goneUp], ["claude-live"])).action).toBe("-");
 });
 
-test("summarize: an anonymous workset with no live member prunes even when a record is not dead; a named one does not", () => {
+test("summarize: a record that is neither dead nor live keeps the workset from pruning", () => {
   const f = fixture();
   const [merged, closed, , , localOnly] = f.members;
   // "closed" is a pushed branch with a closed PR and commits not in main: not dead, not live.
   const s = summarize(wsOf(DEFAULT_NAME, [merged, closed]));
   expect(s.members.map((m) => [m.member.branch, m.prunable, m.live])).toEqual([["merged", true, false], ["closed", false, false]]);
-  expect(s.action).toBe("prune");
+  expect(s.action).toBe("-");
   expect(summarize(wsOf(DEFAULT_NAME, [merged, localOnly])).members[1].live).toBe(true); // unpushed commits
-  expect(summarize(wsOf(DEFAULT_NAME, [merged, localOnly])).action).toBe("name");
+  expect(summarize(wsOf(DEFAULT_NAME, [merged, localOnly])).action).toBe("-");
   expect(summarize(wsOf("cinf-1", [merged, closed])).action).toBe("-");
 });

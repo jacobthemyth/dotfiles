@@ -33,20 +33,12 @@ A member whose record is safe to drop from a workset because its branch no longe
 _Avoid_: dead (informal), deletable
 
 **Live member**:
-A member that still describes work in progress: an open pull request, unpushed commits or a dirty worktree. A live member keeps an unnamed workset from being forgotten.
+A member that still describes work in progress: an open pull request, unpushed commits or a dirty worktree. It is never prunable.
 _Avoid_: active, in-flight
 
 **Forgotten**:
-A workset deleted with records still in it: by the sweep when it is unnamed with nothing live, or whole on request. Its branches stay; only the grouping is lost.
-_Avoid_: swept (the act), garbage-collected
-
-**Sweep**:
-A prune with no workset named: every unnamed workset with no live member and no open session is forgotten.
-_Avoid_: gc, cleanup (that is `git cleanup`, which deletes branches)
-
-**Named**:
-A workset whose name was chosen by a person, as opposed to the default name derived from a session. Only unnamed worksets are swept; a named one is pruned by naming it.
-_Avoid_: custom
+A workset deleted whole on request, records still in it. Its branches stay; only the grouping is lost.
+_Avoid_: swept, garbage-collected
 
 **Stale**:
 A pointer that is not closed but whose session has shown no activity for a day. Pruning closes it with reason `stale` before deleting it.
@@ -66,7 +58,8 @@ _Avoid_: agent (the thing inside it), CLI
 One run of a harness, identified by the harness's own session id and bound to exactly one workset.
 
 **Pointer**:
-The per-session record that says which workset a session is bound to. Created at session start, closed at session end.
+The per-session record that says which workset a session is bound to. Created unbound at session start, bound by `workset use`, closed at session end. An unbound session records nothing and receives no reviews.
+_Avoid_: default workset (there is none; every workset is named by a person)
 _Avoid_: binding, link
 
 **Adapter**:

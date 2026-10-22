@@ -1,6 +1,6 @@
 import type { Event, Outcome } from "./events";
 import { openPointer, closePointer, pointerKey, currentWorkset, joinWorkset } from "./session";
-import { createWorkset, loadWorkset, deleteWorkset, saveWorkset, addMember } from "./workset";
+import { loadWorkset, saveWorkset, addMember } from "./workset";
 import { stopWatcher, unreadCount } from "./inbox";
 import { recognise } from "./record";
 import { applyChanges, saveSnapshot, snapshot, takeSnapshot } from "./observe";
@@ -13,16 +13,12 @@ export function handle(e: Event): Outcome {
   switch (e.kind) {
     case "sessionStarted": {
       const p = openPointer(e.harness, e.session, e.cwd);
-      joinWorkset(p.key, p.workset);
+      if (!p.workset) return { context: `workbench: this session is "${p.key}", not bound to a workset. Run \`workbench workset use <name>\` to record its branches and receive reviews.` };
       return { context: `workbench: this session is "${p.key}", bound to workset "${p.workset}". Change it with \`workbench workset use <name>\`.` };
     }
     case "sessionEnded": {
-      const p = closePointer(pointerKey(e.harness, e.session));
+      closePointer(pointerKey(e.harness, e.session));
       stopWatcher(pointerKey(e.harness, e.session));
-      if (p) {
-        const ws = loadWorkset(p.key);
-        if (ws && ws.members.length === 0) deleteWorkset(p.key);
-      }
       return {};
     }
     case "afterCommand": {
@@ -31,7 +27,7 @@ export function handle(e: Event): Outcome {
       const recorded = recognise(e.command, e.output);
       const name = currentWorkset(key);
       if (!name || (!snap && recorded.length === 0)) return {};
-      const ws = loadWorkset(name) ?? createWorkset(name, key);
+      const ws = loadWorkset(name) ?? joinWorkset(key, name);
       if (snap) applyChanges(ws, snap, key);
       for (const r of recorded) {
         if (r.kind === "push") {

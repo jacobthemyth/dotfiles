@@ -28,14 +28,13 @@ export type MemberStatus = {
   cwdOf: string | null;
   prunable: boolean; reason: string;
 };
-export type Action = "review" | "prune" | "name" | "-";
+export type Action = "review" | "prune" | "-";
 export type WorksetSummary = {
-  name: string; named: boolean; members: MemberStatus[];
+  name: string; members: MemberStatus[];
   prMix: Record<PrState, number>; dirty: number;
   sessions: { open: number; stale: number; closed: number; last: string | null };
   action: Action;
 };
-export const isNamed = (name: string) => !/^[a-z]+-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(name);
 export type TriageDeps = { prs?: typeof gh.prsForBranches; nowMs?: number };
 
 const STORED: Record<string, PrState> = { MERGED: "merged", CLOSED: "closed", OPEN: "open" };
@@ -171,21 +170,18 @@ function sessionInfo(ws: Workset, nowMs?: number): { counts: WorksetSummary["ses
 
 export function summarize(ws: Workset, deps: TriageDeps = {}): WorksetSummary {
   const members = memberStatuses(ws, deps);
-  const named = isNamed(ws.name);
   const prMix: Record<PrState, number> = { merged: 0, closed: 0, open: 0, nopr: 0 };
   const dirtyWorktrees = new Set<string>();
   for (const s of members) { prMix[s.pr]++; for (const w of s.dirtyWorktrees) dirtyWorktrees.add(w); }
   const { counts, keys, hasOpen } = sessionInfo(ws, deps.nowMs);
-  // "prune" means a prune would delete the workset: an unnamed one is forgotten once nothing in it is live, a named
-  // one only once every record is prunable. "name" marks an unnamed workset that still describes live work.
+  // "prune" means a prune would delete the workset: every record is prunable (or there is none) and no session is open.
   let action: Action = "-";
   if (loadLock(ws.name) || keys.some((k) => unreadCount(k) > 0)) action = "review";
-  else if (!hasOpen && (named ? members.length > 0 && members.every((s) => s.prunable) : members.every((s) => !s.live))) action = "prune";
-  else if (!named && members.some((s) => s.live)) action = "name";
-  return { name: ws.name, named, members, prMix, dirty: dirtyWorktrees.size, sessions: counts, action };
+  else if (!hasOpen && members.every((s) => s.prunable)) action = "prune";
+  return { name: ws.name, members, prMix, dirty: dirtyWorktrees.size, sessions: counts, action };
 }
 
-const RANK: Record<Action, number> = { review: 0, prune: 1, name: 2, "-": 3 };
+const RANK: Record<Action, number> = { review: 0, prune: 1, "-": 2 };
 export function summarizeAll(deps: TriageDeps = {}): WorksetSummary[] {
   const out = listWorksets().map((n) => loadWorkset(n)).filter((w): w is Workset => !!w).map((w) => summarize(w, deps));
   const t = (s: WorksetSummary) => (s.sessions.last ? Date.parse(s.sessions.last) : -Infinity);

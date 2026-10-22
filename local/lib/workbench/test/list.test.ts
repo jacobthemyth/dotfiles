@@ -69,7 +69,7 @@ const stub = (map: Record<string, unknown>) => {
   process.env.WORKBENCH_GH_STUB = f;
 };
 
-// "done" holds a merged PR (default-named, prune); "cinf-1" holds an open PR; "extra" is claimed by nobody.
+// "done" holds a merged PR (prune); "cinf-1" holds an open PR; "extra" is claimed by nobody.
 function fixture() {
   const a = mkRepo("a");
   const merged = mkWorktree(a, "merged");
@@ -89,14 +89,12 @@ test("list prints one row per workset in action order with the pr mix, and no un
   const r = await capture(() => worksetRun(["list"]));
   expect(r.code).toBe(0);
   const lines = r.out.split("\n");
-  expect(lines[0].split(/\s+/).slice(0, 8)).toEqual(["action", "name", "kind", "members", "pr", "dirty", "sessions", "last"]);
+  expect(lines[0].split(/\s+/).slice(0, 7)).toEqual(["action", "name", "members", "pr", "dirty", "sessions", "last"]);
   expect(lines[1]).toMatch(/^prune\s+/);
   expect(lines[1]).toContain(DEFAULT_NAME);
-  expect(lines[1]).toMatch(/\sdefault\s/);
   expect(lines[1]).toContain("1m 0c 0o 0n");
   expect(lines[1]).toContain("0 open / 0 stale / 0 closed");
   expect(lines[2]).toContain("cinf-1");
-  expect(lines[2]).toMatch(/\snamed\s/);
   expect(lines[2]).toContain("0m 0c 1o 0n");
   expect(lines[2].trimEnd()).toMatch(/ -$/);
   expect(lines).toHaveLength(3);

@@ -16,15 +16,15 @@ Glossary: [CONTEXT.md](CONTEXT.md). Design: [docs/superpowers/specs/2026-10-10-w
 | Command | What it does |
 | --- | --- |
 | `workbench config` | Print the loaded config as JSON. |
-| `workbench workset list [--json] [--unclaimed]` | Overview: one row per workset with PR mix, dirty worktrees, session state and a suggested action: `review`, `prune` (a prune would delete the workset record), `name` (an unnamed workset still describes live work; naming pins it). `--unclaimed` adds the unclaimed count per repo below; it derives every repo root, so it takes tens of seconds. |
+| `workbench workset list [--json] [--unclaimed]` | Overview: one row per workset with PR mix, dirty worktrees, session state and a suggested action: `review`, or `prune` (a prune would delete the workset record). `--unclaimed` adds the unclaimed count per repo below; it derives every repo root, so it takes tens of seconds. |
 | `workbench workset show <name> \| create <name>` | Show or create a workset. |
 | `workbench workset add <name> --repo <p> --branch <b> [--worktree <p>] [--base <ref>] [--order <n>] [--role work\|throwaway]` | Declare a member. |
 | `workbench workset rm <name> <member-id>` | Remove a member. |
-| `workbench workset use <name> [--session <key>] [--move \| --keep]` | Bind a session to a workset (creates it if missing). When the session leaves an unnamed workset that still lists members, `--move` carries them into the new workset and forgets the old one, `--keep` leaves it; with neither a terminal is asked, and a non-terminal run prints a hint. Forgetting is refused while another session is open on the old workset. |
+| `workbench workset use <name> [--session <key>]` | Bind a session to a workset (creates it if missing). A new session is bound to nothing: until it runs `use`, its branches are not recorded and reviews cannot reach it. |
 | `workbench workset adopt <name> <id> [--role ...]` / `ignore <name> <id>` | Claim or ignore an unclaimed item from `scan`. |
-| `workbench workset rename <old> <new>` | Rename a workset (naming is the pin: named worksets are never swept by `prune`). Refused while a review is open. |
-| `workbench workset prune [<name>] [--yes]` | Prune workset records; never a git command. Prunable records (merged, upstream gone, branch gone) leave the workset and bases that pointed at them are re-pointed. An unnamed workset with nothing live (no open PR, unpushed commits or dirty worktree) and no open session is forgotten whole, its remaining records with it; with no name, that is the sweep. A named workset is deleted only once it is empty. The dropped members' branches and worktrees stay for `git cleanup`. Refused while a review is open or unread. Dry run without `--yes`. |
-| `workbench workset delete <name> [--yes]` | Forget a workset whole, named or not, live members included; the record, its pointers, inbox and notes go, its branches and worktrees stay. Refused while a review is open or unread, or a session is open on it. Dry run without `--yes`. |
+| `workbench workset rename <old> <new>` | Rename a workset. Refused while a review is open. |
+| `workbench workset prune [<name>] [--yes]` | Prune workset records; never a git command. Prunable records (merged, upstream gone, branch gone) leave the workset and bases that pointed at them are re-pointed. A workset is deleted once it is empty and no session is open on it. With no name, every workset that would drop a record or be deleted is planned. The dropped members' branches and worktrees stay for `git cleanup`. Refused while a review is open or unread. Dry run without `--yes`. |
+| `workbench workset delete <name> [--yes]` | Forget a workset whole, live members included; the record, its pointers, inbox and notes go, its branches and worktrees stay. Refused while a review is open or unread, or a session is open on it. Dry run without `--yes`. |
 | `workbench scan [--json]` | Derive branches, worktrees and PRs; list claimed, unclaimed and prunable. |
 | `workbench open <workset> [--allow-dirty] [--no-attach]` | Open a review: lock the work worktrees, build the `wb-<workset>` tmux session. |
 | `workbench submit <workset> [-m\|--message <m>]` | Commit your edits, deliver the review to bound sessions' inboxes, release the lock, kill the review window. |
@@ -38,7 +38,7 @@ Inside Claude Code the session key comes from `CLAUDE_CODE_SESSION_ID` (`claude-
 
 ## How members are recorded
 
-A bound session's members are observed, not parsed. Before each Bash command the hook snapshots the local branches and worktrees of the command's repo, and of any repo whose path the command names (`git -C <repo>`, `cd <repo> && ...`). After the command it compares:
+A session records nothing until it is bound with `workbench workset use <name>`; the SessionStart hook says so in the session's context. A bound session's members are observed, not parsed. Before each Bash command the hook snapshots the local branches and worktrees of the command's repo, and of any repo whose path the command names (`git -C <repo>`, `cd <repo> && ...`). After the command it compares:
 
 - A branch created or moved, or checked out in a new worktree, joins the workset with its worktree. Loops, variables, scripts and aliases make no difference.
 - Commits on the default branch, detached worktrees, and switching an existing worktree to an existing branch record nothing.

@@ -53,7 +53,7 @@ function worktree(branch: string, base = "main"): string {
 }
 
 function workset(members: { branch: string; worktree: string; base?: string }[], sessions: string[] = []) {
-  const ws = createWorkset("ws1", "hand");
+  const ws = createWorkset("ws1");
   ws.sessions = sessions;
   for (const m of members) addMember(ws, { repo, branch: m.branch, worktree: m.worktree, base: m.base, added_by: "hand" });
   saveWorkset(ws);

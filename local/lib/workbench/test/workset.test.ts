@@ -7,7 +7,7 @@ import { createWorkset, loadWorkset, addMember, saveWorkset, listWorksets, remov
 beforeEach(() => { process.env.WORKBENCH_STATE_DIR = mkdtempSync(join(tmpdir(), "wb-state-")); });
 
 test("create, add member, reload", () => {
-  const ws = createWorkset("spike", "hand");
+  const ws = createWorkset("spike");
   const m = addMember(ws, { repo: "/r/infra", slug: "abridgeai/infrastructure", branch: "jakesmith/spike", worktree: "/r/infra/.worktrees/spike", added_by: "hand" });
   saveWorkset(ws);
   const back = loadWorkset("spike")!;
@@ -19,7 +19,7 @@ test("create, add member, reload", () => {
 });
 
 test("adding the same branch twice updates instead of duplicating", () => {
-  const ws = createWorkset("spike", "hand");
+  const ws = createWorkset("spike");
   addMember(ws, { repo: "/r", slug: null, branch: "b", worktree: null, added_by: "hand" });
   addMember(ws, { repo: "/r", slug: null, branch: "b", worktree: "/r/.worktrees/b", added_by: "claude-1" });
   expect(ws.members).toHaveLength(1);
@@ -27,7 +27,7 @@ test("adding the same branch twice updates instead of duplicating", () => {
 });
 
 test("a branch declared by path and recorded by slug is one member", () => {
-  const ws = createWorkset("spike", "hand");
+  const ws = createWorkset("spike");
   addMember(ws, { repo: "/r", slug: null, branch: "b", added_by: "hand" });
   addMember(ws, { repo: "/r", slug: "o/r", branch: "b", worktree: "/r/.worktrees/b", added_by: "claude-1" });
   expect(ws.members).toHaveLength(1);
@@ -35,12 +35,12 @@ test("a branch declared by path and recorded by slug is one member", () => {
 });
 
 test("remove member", () => {
-  const ws = createWorkset("spike", "hand");
+  const ws = createWorkset("spike");
   const m = addMember(ws, { repo: "/r", slug: null, branch: "b", worktree: null, added_by: "hand" });
   removeMember(ws, m.id);
   expect(ws.members).toHaveLength(0);
 });
 
 test("invalid name rejected", () => {
-  expect(() => createWorkset("bad name!", "hand")).toThrow();
+  expect(() => createWorkset("bad name!")).toThrow();
 });

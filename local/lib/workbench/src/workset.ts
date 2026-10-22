@@ -21,10 +21,10 @@ export function listWorksets(): string[] { return listJson(dir()); }
 export function loadWorkset(name: string): Workset | null { return readJson<Workset>(file(name)); }
 export function saveWorkset(ws: Workset): void { writeJson(file(ws.name), ws); }
 export function deleteWorkset(name: string): void { removeFile(file(name)); }
-export function createWorkset(name: string, by: string): Workset {
+export function createWorkset(name: string): Workset {
   if (!NAME.test(name)) throw new Error(`workbench: invalid workset name "${name}"`);
   if (loadWorkset(name)) throw new Error(`workbench: workset "${name}" exists`);
-  const ws: Workset = { name, created: now(), members: [], sessions: by.startsWith("hand") ? [] : [by], ignored: [] };
+  const ws: Workset = { name, created: now(), members: [], sessions: [], ignored: [] };
   saveWorkset(ws);
   return ws;
 }

@@ -3,6 +3,7 @@ import { mkdtempSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { handle } from "../src/hook";
+import { useWorkset } from "../src/session";
 import { loadWorkset, listWorksets } from "../src/workset";
 
 const gitEnv = { ...process.env, GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@e.x", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@e.x" };
@@ -23,21 +24,27 @@ beforeEach(() => {
   wt = join(root, "wt");
   sh(repo, "git", "worktree", "add", wt, "-b", "feat/x");
   handle({ kind: "sessionStarted", harness: "claude", session: "s1", cwd: repo, resumed: false });
+  useWorkset("claude-s1", "spike");
 });
 const after = (command: string, cwd: string, output = "") => handle({ kind: "afterCommand", harness: "claude", session: "s1", cwd, command, output });
 
+test("an unbound session records nothing", () => {
+  handle({ kind: "sessionStarted", harness: "claude", session: "s2", cwd: repo, resumed: false });
+  handle({ kind: "afterCommand", harness: "claude", session: "s2", cwd: wt, command: "git push -u origin feat/x", output: "" });
+  expect(listWorksets()).not.toContain("claude-s2");
+});
 test("rtk-prefixed commands are recorded too", () => {
   after("rtk git push -u origin feat/x", wt);
-  expect(loadWorkset("claude-s1")!.members).toHaveLength(1);
+  expect(loadWorkset("spike")!.members).toHaveLength(1);
 });
 test("git push -u records the branch at the cwd", () => {
   after("git push -u origin feat/x", wt);
-  expect(loadWorkset("claude-s1")!.members[0]).toMatchObject({ repo, branch: "feat/x", worktree: wt });
+  expect(loadWorkset("spike")!.members[0]).toMatchObject({ repo, branch: "feat/x", worktree: wt });
 });
 test("a push of a branch that does not exist locally records nothing", () => {
   after(`python3 - <<'X'\ns.replace("git push -u origin feat/x", wt)\nX`, wt);
   after("git push -u origin no/such-branch", wt);
-  expect(loadWorkset("claude-s1")!.members).toEqual([]);
+  expect(loadWorkset("spike")!.members).toEqual([]);
 });
 test("gh pr create records the PR using the gh stub", () => {
   const stub = join(process.env.WORKBENCH_STATE_DIR!, "gh.json");
@@ -45,11 +52,11 @@ test("gh pr create records the PR using the gh stub", () => {
   writeFileSync(stub, JSON.stringify({ prForBranch: { pr, base: "main" } }));
   process.env.WORKBENCH_GH_STUB = stub;
   after("gh pr create --draft", wt, "https://github.com/o/r/pull/12\n");
-  expect(loadWorkset("claude-s1")!.members[0]).toMatchObject({ branch: "feat/x", pr, base: "main", worktree: wt });
+  expect(loadWorkset("spike")!.members[0]).toMatchObject({ branch: "feat/x", pr, base: "main", worktree: wt });
 });
 test("unrecognised commands change nothing", () => {
   after("git status", repo);
-  expect(loadWorkset("claude-s1")!.members).toEqual([]);
+  expect(loadWorkset("spike")!.members).toEqual([]);
 });
 test("no pointer for the session returns {} and creates nothing", () => {
   const before = listWorksets();

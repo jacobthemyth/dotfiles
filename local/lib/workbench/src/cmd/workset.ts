@@ -1,14 +1,12 @@
 import { parseArgs } from "node:util";
-import { createInterface } from "node:readline/promises";
 import { expandHome } from "../paths";
 import { loadConfig, type Config } from "../config";
 import { derive, foundId, unclaimed } from "../derive";
 import * as gh from "../gh";
 import { refreshStoredPr, summarizeAll, type WorksetSummary } from "../triage";
-import { planPrune, planDelete, executePrune, renderPlan, sweepable, type PrunePlan } from "../prune";
+import { planPrune, planDelete, executePrune, renderPlan, pruneAll, type PrunePlan } from "../prune";
 import { sessionKeyFromEnv } from "../session-key";
 import { loadPointer, useWorkset } from "../session";
-import { isNamed } from "../triage";
 import { baseSource, diffBase, orderMembers } from "../stack";
 import { renameWorkset } from "../rename";
 import { addMember, createWorkset, listWorksets, loadWorkset, removeMember, saveWorkset, type Member, type Role, type Workset } from "../workset";
@@ -19,42 +17,12 @@ const USAGE = `usage: workbench workset <subcommand>
   create <name>
   add <name> --repo <path> --branch <b> [--worktree <p>] [--base <ref>] [--order <n>] [--role work|throwaway]
   rm <name> <member-id>
-  use <name> [--session <key>] [--move | --keep]
+  use <name> [--session <key>]
   adopt <name> <id> [--role work|throwaway]
   ignore <name> <id>
   rename <old> <new>
   prune [<name>] [--yes]
   delete <name> [--yes]`;
-
-export type Io = { confirm?: (question: string) => Promise<boolean> };
-async function ttyConfirm(question: string): Promise<boolean> {
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
-  try { return /^y(es)?$/i.test((await rl.question(`${question} [y/N] `)).trim()); } finally { rl.close(); }
-}
-
-// After `use` rebinds a session away from a default workset that still lists members: move them into the new
-// workset and forget the old one, keep it, or ask. Agents run `use` without a terminal, so no answer means a hint.
-async function offerMove(prev: Workset, name: string, values: { move?: boolean; keep?: boolean }, io: Io): Promise<void> {
-  const n = prev.members.length;
-  const members = `${n} member${n === 1 ? "" : "s"}`;
-  let move = values.move === true;
-  if (!move && !values.keep) {
-    const confirm = io.confirm ?? (process.stdin.isTTY ? ttyConfirm : null);
-    if (!confirm) { console.error(`workbench: ${prev.name} still has ${members}; rerun with --move to move ${n === 1 ? "it" : "them"} into ${name} and forget ${prev.name}, or --keep`); return; }
-    move = await confirm(`Move ${members} from ${prev.name} into ${name} and forget it?`);
-  }
-  if (!move) return;
-  const target = loadWorkset(name)!;
-  for (const m of prev.members) {
-    const { id: _id, added_at: _at, ...fields } = m;
-    addMember(target, fields);
-  }
-  saveWorkset(target);
-  console.log(`moved ${members} from ${prev.name} into ${name}`);
-  const plan = planDelete(loadWorkset(prev.name)!);
-  console.log(`${prev.name}:`);
-  executePrune(plan, (line) => console.log(`  ${line}`));
-}
 
 const fail = (msg: string, code = 1) => { console.error(msg); return code; };
 
@@ -69,11 +37,11 @@ function table(rows: string[][]): string {
 
 function listTable(summaries: WorksetSummary[]): string {
   const rows = summaries.map((s) => [
-    s.action, s.name, s.named ? "named" : "default", String(s.members.length),
+    s.action, s.name, String(s.members.length),
     `${s.prMix.merged}m ${s.prMix.closed}c ${s.prMix.open}o ${s.prMix.nopr}n`, String(s.dirty),
     `${s.sessions.open} open / ${s.sessions.stale} stale / ${s.sessions.closed} closed`, s.sessions.last?.slice(0, 10) ?? "-",
   ]);
-  return table([["action", "name", "kind", "members", "pr", "dirty", "sessions", "last"], ...rows]);
+  return table([["action", "name", "members", "pr", "dirty", "sessions", "last"], ...rows]);
 }
 
 function show(ws: Workset): void {
@@ -88,7 +56,7 @@ function show(ws: Workset): void {
   console.log(table([["order", "role", "member", "worktree", "pr", "base", "source"], ...rows]));
 }
 
-export async function run(args: string[], io: Io = {}): Promise<number> {
+export async function run(args: string[]): Promise<number> {
   const [sub, ...rest] = args;
   try {
     switch (sub) {
@@ -130,7 +98,7 @@ export async function run(args: string[], io: Io = {}): Promise<number> {
       case "create": {
         const { positionals } = parseArgs({ args: rest, allowPositionals: true, options: {} });
         if (positionals.length !== 1) return fail("usage: workbench workset create <name>", 2);
-        createWorkset(positionals[0], "hand");
+        createWorkset(positionals[0]);
         return 0;
       }
       case "add": {
@@ -168,17 +136,15 @@ export async function run(args: string[], io: Io = {}): Promise<number> {
         return 0;
       }
       case "use": {
-        const { positionals, values } = parseArgs({ args: rest, allowPositionals: true, options: { session: { type: "string" }, move: { type: "boolean" }, keep: { type: "boolean" } } });
-        if (positionals.length !== 1 || (values.move && values.keep)) return fail("usage: workbench workset use <name> [--session <key>] [--move | --keep]", 2);
+        const { positionals, values } = parseArgs({ args: rest, allowPositionals: true, options: { session: { type: "string" } } });
+        if (positionals.length !== 1) return fail("usage: workbench workset use <name> [--session <key>]", 2);
         const key = sessionKeyFromEnv(values);
         if (!key) return fail("workbench: no session key; set WORKBENCH_SESSION or pass --session <key>", 2);
         const pointer = loadPointer(key);
         if (!pointer) return fail(`workbench: no session ${key}`);
         const name = positionals[0];
-        const prev = pointer.workset !== name ? loadWorkset(pointer.workset) : null;
         useWorkset(key, name);
         console.log(`${key} -> ${name}`);
-        if (prev && !isNamed(prev.name) && prev.members.length > 0) await offerMove(prev, name, values, io);
         return 0;
       }
       case "adopt": {
@@ -187,7 +153,7 @@ export async function run(args: string[], io: Io = {}): Promise<number> {
         if (values.role !== undefined && values.role !== "work" && values.role !== "throwaway") return fail(`workbench: --role must be work or throwaway`);
         const item = derive(loadConfig()).find((f) => foundId(f) === positionals[1]);
         if (!item) return fail(`workbench: nothing found with id "${positionals[1]}"`);
-        const ws = loadWorkset(positionals[0]) ?? createWorkset(positionals[0], "hand");
+        const ws = loadWorkset(positionals[0]) ?? createWorkset(positionals[0]);
         const m = addMember(ws, {
           repo: item.repo, slug: item.slug, branch: item.branch, worktree: item.worktree, pr: item.pr, base: item.base, base_source: item.base ? "pr" : undefined,
           role: values.role as Role | undefined, added_by: "hand",
@@ -231,7 +197,7 @@ export async function run(args: string[], io: Io = {}): Promise<number> {
           if (!ws) return fail(`workbench: no workset "${positionals[0]}"`);
           plans = [planPrune(ws)];
         } else {
-          plans = sweepable();
+          plans = pruneAll();
         }
         if (gh.lastGhError) console.error("gh not available: PR state from stored members");
         if (plans.length === 0) { console.log("nothing to prune"); return 0; }

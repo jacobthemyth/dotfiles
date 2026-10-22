@@ -11,7 +11,7 @@ import { transcriptPath } from "../src/harness/claude";
 import { archiveFile } from "../src/review";
 import { loadWorkset, saveWorkset, type Member, type Workset } from "../src/workset";
 import { summarize } from "../src/triage";
-import { planPrune, planDelete, executePrune, sweepable, renderPlan } from "../src/prune";
+import { planPrune, planDelete, executePrune, pruneAll, renderPlan } from "../src/prune";
 import { run as worksetRun } from "../src/cmd/workset";
 
 const ENV = {
@@ -211,7 +211,7 @@ test("an anonymous workset of dead records is deleted; its branches and worktree
   expect(existsSync(d.w.path)).toBe(true);
 });
 
-test("an anonymous workset forgets records that are neither dead nor live", () => {
+test("a session-named workset is an ordinary workset: records that are neither dead nor live are kept, never forgotten", () => {
   const repo = mkRepo("forget");
   const w = mkWorktree(repo, "fm");
   stub({ fm: { pr: pr("MERGED", 5), base: "main", headRefOid: w.tip } });
@@ -219,29 +219,26 @@ test("an anonymous workset forgets records that are neither dead nor live", () =
   saveWorkset(wsOf(DEFAULT_NAME, [mem(repo, "fm", { worktree: w.path }), pushed]));
   const plan = planPrune(loadWorkset(DEFAULT_NAME)!);
   expect(branches(plan, "dropped")).toEqual(["fm"]);
-  expect(plan.forgotten.map((s) => [s.member.branch, s.reason])).toEqual([["pushed", "unmerged work"]]);
-  expect(plan.kept).toEqual([]);
+  expect(plan.forgotten).toEqual([]);
+  expect(plan.kept.map((s) => [s.member.branch, s.reason])).toEqual([["pushed", "unmerged work"]]);
   expect(plan.rebase).toEqual([]);
-  expect(plan.deleteWorkset).toBe(true);
-  expect(renderPlan(plan)).toContain(`  forget ${pushed.id}: unmerged work`);
-  const lines: string[] = [];
-  expect(executePrune(plan, (l) => lines.push(l))).toBe(true);
-  expect(lines).toContain(`forgot ${pushed.id}: unmerged work`);
-  expect(loadWorkset(DEFAULT_NAME)).toBeNull();
-  expect(hasBranch(repo, "pushed")).toBe(true);
+  expect(plan.deleteWorkset).toBe(false);
+  expect(plan.keepReason).toBe("members remain");
+  expect(executePrune(plan, () => {})).toBe(true);
+  expect(loadWorkset(DEFAULT_NAME)!.members.map((m) => m.branch)).toEqual(["pushed"]);
   expect(hasBranch(repo, "fm")).toBe(true);
 });
 
-test("an anonymous workset with a live member keeps every record but the dead ones", () => {
+test("a workset with a live member keeps every record but the dead ones", () => {
   const f = stacked(DEFAULT_NAME2); // s2 has an open PR
   const plan = planPrune(loadWorkset(DEFAULT_NAME2)!);
   expect(branches(plan, "dropped")).toEqual(["s1"]);
   expect(branches(plan, "forgotten")).toEqual([]);
   expect(branches(plan, "kept")).toEqual(["s2", "s3"]);
   expect(plan.deleteWorkset).toBe(false);
-  expect(plan.keepReason).toBe("live members");
+  expect(plan.keepReason).toBe("members remain");
   const text = renderPlan(plan);
-  expect(text).toContain("  keep workset: live members");
+  expect(text).toContain("  keep workset: members remain");
   expect(text).toContain(`  kept ${f.m2.id}: open PR\n`);                 // the reason already says why it is live
   expect(text).toContain(`  kept ${f.m3.id}: unmerged work, unpushed\n`); // the reason alone would not
   expect(executePrune(plan, () => {})).toBe(true);
@@ -311,7 +308,7 @@ test("pointers: stale is closed, closed and stale are deleted, open keeps the wo
   expect(loadWorkset(DEFAULT_NAME)).toBeNull();
 });
 
-test("an open session keeps an anonymous workset even when nothing in it is live; non-dead records stay", () => {
+test("an open session is reported as the keep reason only once no member remains", () => {
   const cwd = join(tmp, "cwd");
   mkdirSync(cwd);
   pointer("o", cwd); transcript(cwd, "o", Date.now());
@@ -322,9 +319,11 @@ test("an open session keeps an anonymous workset even when nothing in it is live
   expect(branches(plan, "dropped")).toEqual(["ghost"]);
   expect(branches(plan, "kept")).toEqual(["op"]);
   expect(plan.forgotten).toEqual([]);
-  expect(plan.keepReason).toBe("open session claude-o");
+  expect(plan.keepReason).toBe("members remain");
   expect(executePrune(plan, () => {})).toBe(true);
   expect(loadWorkset(DEFAULT_NAME)!.members.map((m) => m.branch)).toEqual(["op"]);
+  saveWorkset(wsOf(DEFAULT_NAME, [mem(repo, "ghost")], ["claude-o"]));
+  expect(planPrune(loadWorkset(DEFAULT_NAME)!).keepReason).toBe("open session claude-o");
 });
 
 test("pointer bound to two worksets is kept", () => {
@@ -349,31 +348,29 @@ test("refused when locked", () => {
   expect(plan.refused).toBe("locked");
   expect(executePrune(plan, () => {})).toBe(false);
   expect(loadWorkset(DEFAULT_NAME)!.members.length).toBe(2);
-  expect(sweepable().length).toBe(0);
+  expect(pruneAll().length).toBe(0);
 });
 
-test("sweepable", () => {
-  dead(DEFAULT_NAME);                                       // default all-dead: in
-  dead("named-dead", "named-done");                         // named all-dead: out
-  stacked(DEFAULT_NAME2);                                   // default with a live member (open PR): out
+test("pruneAll plans every workset that would drop a record or be deleted, and skips no-ops and refusals", () => {
+  dead(DEFAULT_NAME);                                       // all-dead: in (deleted)
+  dead("named-dead", "named-done");                         // all-dead, any name: in (deleted)
+  stacked(DEFAULT_NAME2);                                   // a dead record beside live ones: in (dropped, kept)
   const repo = mkRepo("emp");
-  const FORGET_NAME = "claude-dddddddd-bbbb-cccc-dddd-eeeeeeeeeeee";
-  saveWorkset(wsOf(FORGET_NAME, [pushedOnly(repo, "sw-pushed")]));           // default, nothing live: in (forgotten)
-  saveWorkset(wsOf("claude-bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeeeee", []));  // default empty, no pointers: in
+  const KEEP_NAME = "claude-dddddddd-bbbb-cccc-dddd-eeeeeeeeeeee";
+  saveWorkset(wsOf(KEEP_NAME, [pushedOnly(repo, "sw-pushed")]));           // nothing dead, nothing live: out (no-op)
+  saveWorkset(wsOf("claude-bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeeeee", []));  // empty, no pointers: in (deleted)
   const cwd = join(tmp, "cwd");
   mkdirSync(cwd);
   pointer("o", cwd); transcript(cwd, "o", Date.now());
   saveWorkset(wsOf("claude-cccccccc-bbbb-cccc-dddd-eeeeeeeeeeee", [], ["claude-o"])); // empty with open pointer: out
-  const names = sweepable().map((p) => p.workset).sort();
-  expect(names).toContain(DEFAULT_NAME);
-  expect(names).toContain(FORGET_NAME);
-  expect(names).toContain("claude-bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeeeee");
-  expect(names).not.toContain("named-dead");
-  expect(names).not.toContain(DEFAULT_NAME2);
-  expect(names).not.toContain("claude-cccccccc-bbbb-cccc-dddd-eeeeeeeeeeee");
+  const plans = pruneAll();
+  const names = plans.map((p) => p.workset).sort();
+  expect(names).toEqual([DEFAULT_NAME, DEFAULT_NAME2, "claude-bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeeeee", "named-dead"].sort());
+  expect(plans.find((p) => p.workset === DEFAULT_NAME2)!.deleteWorkset).toBe(false);
+  expect(plans.find((p) => p.workset === "named-dead")!.deleteWorkset).toBe(true);
 });
 
-test("list's prune action and the sweep agree", () => {
+test("list's prune action means a prune would delete the workset", () => {
   const cases: [string, () => void][] = [
     [DEFAULT_NAME, () => { dead(DEFAULT_NAME); }],
     [DEFAULT_NAME2, () => {                                // a dead record and a record that is neither dead nor live
@@ -396,27 +393,28 @@ test("list's prune action and the sweep agree", () => {
       saveWorkset(ws);
       writeJson(join(sub("inbox"), "claude-reader", "r1.json"), { id: "r1", read: false });
     }],
-    ["claude-eeeeeeee-bbbb-cccc-dddd-eeeeeeeeeeee", () => { // a live member: named, not swept
+    ["claude-eeeeeeee-bbbb-cccc-dddd-eeeeeeeeeeee", () => { // a live member: kept
       const repo = mkRepo("agree-live");
       mkBranch(repo, "unpushed", false);
       saveWorkset(wsOf("claude-eeeeeeee-bbbb-cccc-dddd-eeeeeeeeeeee", [mem(repo, "unpushed")]));
     }],
   ];
-  const expected = [true, true, true, false, false, false];
+  const expected = [true, false, true, false, false, false];
   cases.forEach(([name, setup], i) => {
     setup();
     const ws = loadWorkset(name)!;
-    const swept = sweepable().some((p) => p.workset === name);
-    expect(summarize(ws).action === "prune").toBe(swept);
-    expect(swept).toBe(expected[i]);
+    const plan = planPrune(ws);
+    const deletes = !plan.refused && plan.deleteWorkset;
+    expect(summarize(ws).action === "prune").toBe(deletes);
+    expect(deletes).toBe(expected[i]);
   });
   expect(summarize(loadWorkset(UNREAD_NAME)!).action).toBe("review");
   expect(planPrune(loadWorkset(UNREAD_NAME)!).refused).toBe("unread review");
   expect(planPrune(loadWorkset(OPEN_NAME)!).keepReason).toBe("open session claude-live");
-  expect(summarize(loadWorkset("claude-eeeeeeee-bbbb-cccc-dddd-eeeeeeeeeeee")!).action).toBe("name");
+  expect(summarize(loadWorkset("claude-eeeeeeee-bbbb-cccc-dddd-eeeeeeeeeeee")!).action).toBe("-");
 });
 
-test("prune command: sweep dry run changes nothing, --yes executes and runs no git", async () => {
+test("prune command with no name: dry run changes nothing, --yes executes and runs no git", async () => {
   const d = dead(DEFAULT_NAME);
   const dry = await capture(() => worksetRun(["prune"]));
   expect(dry.code).toBe(0);
@@ -433,8 +431,11 @@ test("prune command: sweep dry run changes nothing, --yes executes and runs no g
   expect(loadWorkset(DEFAULT_NAME)).toBeNull();
 });
 
-test("prune command by name: dry run, --yes, and named worksets", async () => {
+test("prune command by name: dry run, --yes; with no name every workset is planned", async () => {
   const f = stacked("cinf-1");
+  const all = await capture(() => worksetRun(["prune"]));
+  expect(all.out).toContain(`drop ${f.m1.id}: merged`);
+  expect(loadWorkset("cinf-1")!.members.length).toBe(3);
   const dry = await capture(() => worksetRun(["prune", "cinf-1"]));
   expect(dry.code).toBe(0);
   expect(dry.out).toContain(`drop ${f.m1.id}: merged`);
@@ -445,9 +446,9 @@ test("prune command by name: dry run, --yes, and named worksets", async () => {
   expect(yes.code).toBe(0);
   expect(hasBranch(f.repo, "s1")).toBe(true);
   expect(loadWorkset("cinf-1")!.members.length).toBe(2);
-  // a named workset is excluded from the sweep
-  const sweep = await capture(() => worksetRun(["prune"]));
-  expect(sweep.out).not.toContain("cinf-1");
+  // with nothing left to drop, a no-name prune has nothing to say about it
+  const again = await capture(() => worksetRun(["prune"]));
+  expect(again.out).not.toContain("cinf-1");
 });
 
 test("prune says so on stderr when gh is down", async () => {
