@@ -92,6 +92,20 @@ else
   echo "  SKIP: test/git_cleanup_test.sh not present yet"
 fi
 
+echo "==> mdprint unit test"
+if [ -x test/mdprint_test.sh ]; then
+  test/mdprint_test.sh || fail=1
+else
+  echo "  SKIP: test/mdprint_test.sh not present yet"
+fi
+
+echo "==> pr-to-md unit test"
+if [ -x test/pr_to_md_test.sh ]; then
+  test/pr_to_md_test.sh || fail=1
+else
+  echo "  SKIP: test/pr_to_md_test.sh not present yet"
+fi
+
 echo "==> papersync lint + tests"
 if command -v uv >/dev/null 2>&1; then
   (

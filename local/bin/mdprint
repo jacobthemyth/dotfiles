@@ -41,6 +41,7 @@ set -- "$pandoc_input" \
   --defaults="$support_dir/print.yaml" \
   --lua-filter="$support_dir/responsive-tables.lua" \
   --lua-filter="$support_dir/unresolved-links.lua" \
+  --lua-filter="$support_dir/diff-blocks.lua" \
   --include-in-header="$support_dir/print.typ" \
   --include-before-body="$support_dir/print-body.typ" \
   --resource-path="$input_dir" \

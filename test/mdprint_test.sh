@@ -108,6 +108,10 @@ grep -Fqx "arg=--lua-filter=$expected_support/responsive-tables.lua" "$capture" 
   echo "FAIL: mdprint did not load the responsive-table filter"
   exit 1
 }
+grep -Fqx "arg=--lua-filter=$expected_support/diff-blocks.lua" "$capture" || {
+  echo "FAIL: mdprint did not load the diff-blocks filter"
+  exit 1
+}
 grep -Fqx "arg=--include-in-header=$expected_support/print.typ" "$capture" || {
   echo "FAIL: mdprint did not load the Typst header"
   exit 1
@@ -181,7 +185,8 @@ echo "  PASS"
 
 if command -v pandoc >/dev/null 2>&1 \
   && command -v typst >/dev/null 2>&1 \
-  && command -v pdftotext >/dev/null 2>&1; then
+  && command -v pdftotext >/dev/null 2>&1 \
+  && command -v pdfinfo >/dev/null 2>&1; then
   echo "==> unresolved internal links warn instead of failing the render"
   broken_anchor_input="$fixture/broken-anchor.md"
   broken_anchor_output="$fixture/broken-anchor.pdf"
@@ -216,7 +221,144 @@ EOF
   }
   echo "  PASS"
 
-  echo "==> real render stacks wide tables and preserves compact tables"
+  echo "==> diff-blocks filter scopes a diff-line show rule around language-fenced blocks"
+  diff_input="$fixture/diff-blocks.md"
+  diff_typst="$fixture/diff-blocks.typ"
+  cat > "$diff_input" <<'EOF'
+Plain language block:
+
+```ts
+const a = 1;
+```
+
+Plain diff block:
+
+```diff
+-old
++new
+```
+
+Combined block:
+
+```{.ts .diff}
+@@ -1 +1 @@
+-const timeout = 1000;
++const timeout = 5000;
+```
+
+Combined block whose body contains a fence:
+
+```{.md .diff}
++```sh
++echo hi
++```
+```
+
+Whole-file blocks:
+
+```{.ts .diff-added}
+export const added = true;
+```
+
+```{.diff-deleted}
+plain text, no language
+```
+EOF
+  pandoc "$diff_input" -t typst \
+    --lua-filter="$dotfiles_root/local/share/mdprint/diff-blocks.lua" > "$diff_typst"
+  [ "$(grep -c '#show raw.line: diff-line' "$diff_typst")" -eq 2 ] || {
+    echo "FAIL: expected exactly the two combined blocks to get the diff-line show rule"
+    cat "$diff_typst"
+    exit 1
+  }
+  if ! grep -Fq 'const a = 1;' "$diff_typst" || grep -B2 -F 'const a = 1;' "$diff_typst" | grep -Fq 'diff-line'; then
+    echo "FAIL: the plain ts block was altered"
+    cat "$diff_typst"
+    exit 1
+  fi
+  grep -Fqx '```ts' "$diff_typst" || {
+    echo "FAIL: combined block is not fenced with its language for Typst"
+    cat "$diff_typst"
+    exit 1
+  }
+  grep -Fqx '````md' "$diff_typst" || {
+    echo "FAIL: combined block containing a fence was not given a longer fence"
+    cat "$diff_typst"
+    exit 1
+  }
+  grep -Fqx '#diff-file("added")[' "$diff_typst" || {
+    echo "FAIL: a diff-added block did not get the added-file wrapper"
+    cat "$diff_typst"
+    exit 1
+  }
+  grep -A1 -Fx '#diff-file("added")[' "$diff_typst" | grep -Fqx '```ts' || {
+    echo "FAIL: a diff-added block lost its language fence"
+    cat "$diff_typst"
+    exit 1
+  }
+  grep -A1 -Fx '#diff-file("deleted")[' "$diff_typst" | grep -Fqx '```' || {
+    echo "FAIL: a diff-deleted block without a language did not get a bare fence"
+    cat "$diff_typst"
+    exit 1
+  }
+  echo "  PASS"
+
+  echo "==> real render of a combined diff block keeps every line"
+  diff_output="$fixture/diff-blocks.pdf"
+  diff_text="$fixture/diff-blocks.txt"
+  diff_log="$fixture/diff-blocks.log"
+  "$mdprint" "$diff_input" "$diff_output" 2> "$diff_log" || {
+    echo "FAIL: a combined diff block broke the render"
+    cat "$diff_log"
+    exit 1
+  }
+  pdftotext -layout "$diff_output" "$diff_text"
+  for needle in '@@ -1 +1 @@' '-const timeout = 1000;' '+const timeout = 5000;' '+echo hi' '-old' 'const a = 1;' \
+    'Added file' 'export const added = true;' 'Deleted file' 'plain text, no language'; do
+    grep -Fq -- "$needle" "$diff_text" || {
+      echo "FAIL: rendered PDF is missing: $needle"
+      cat "$diff_text"
+      exit 1
+    }
+  done
+  echo "  PASS"
+
+  echo "==> a whole-file block longer than a page breaks across pages instead of clipping"
+  long_input="$fixture/long-added.md"
+  long_output="$fixture/long-added.pdf"
+  long_text="$fixture/long-added.txt"
+  {
+    printf '# Long added file\n\n### src/long.ts\n\n```{.ts .diff-added}\n'
+    line_number=1
+    while [ "$line_number" -le 150 ]; do
+      printf 'export const line%d = %d;\n' "$line_number" "$line_number"
+      line_number=$((line_number + 1))
+    done
+    printf 'export const LAST_LINE_MARKER = true;\n```\n'
+  } > "$long_input"
+  "$mdprint" "$long_input" "$long_output"
+  pdftotext -layout "$long_output" "$long_text"
+  grep -Fq 'LAST_LINE_MARKER' "$long_text" || {
+    echo "FAIL: the end of a long whole-file block was clipped off the page"
+    exit 1
+  }
+  [ "$(pdfinfo "$long_output" | awk '/^Pages:/{print $2}')" -ge 2 ] || {
+    echo "FAIL: a 150-line file should span at least two pages"
+    exit 1
+  }
+  # The heading must share a page with the start of the file, not sit alone.
+  first_page="$(pdftotext -layout -f 1 -l 1 "$long_output" -)"
+  printf '%s' "$first_page" | grep -Fq 'src/long.ts' || {
+    echo "FAIL: file heading is missing from page 1"
+    exit 1
+  }
+  printf '%s' "$first_page" | grep -Fq 'export const line1 = 1;' || {
+    echo "FAIL: the file heading was orphaned on a page without the file"
+    exit 1
+  }
+  echo "  PASS"
+
+
   render_input="$fixture/responsive.md"
   render_image="$fixture/wide-image.svg"
   render_output="$fixture/responsive.pdf"
@@ -320,7 +462,7 @@ EOF
   }
   echo "  PASS"
 else
-  echo "SKIP: real render requires pandoc, typst, and pdftotext"
+  echo "SKIP: real render requires pandoc, typst, pdftotext, and pdfinfo"
 fi
 
 echo "mdprint test: OK"

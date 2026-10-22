@@ -1,0 +1,154 @@
+#!/usr/bin/env bash
+# Write a GitHub pull request (metadata, description, diff) to one Markdown file
+# suitable for mdprint. The diff is split into one block per file, fenced as
+# {.<lang> .diff} so mdprint can highlight the language and the diff together.
+
+set -eo pipefail
+
+usage() {
+  echo "Usage: pr-to-md <PR_URL> [OUTPUT.md]" >&2
+  echo "Example: pr-to-md https://github.com/owner/repo/pull/123" >&2
+  exit 2
+}
+
+[ "$#" -ge 1 ] && [ "$#" -le 2 ] || usage
+
+pr_url=$1
+if [[ $pr_url =~ github\.com/([^/]+)/([^/]+)/pull/([0-9]+) ]]; then
+  owner=${BASH_REMATCH[1]}
+  repo=${BASH_REMATCH[2]}
+  number=${BASH_REMATCH[3]}
+else
+  echo "pr-to-md: not a GitHub pull request URL: $pr_url" >&2
+  usage
+fi
+
+output=${2:-${repo}-${number}.md}
+
+pr_json=$(gh pr view "$pr_url" --json \
+  title,author,state,number,url,body,labels,createdAt,updatedAt,reviewDecision,additions,deletions,changedFiles)
+
+field() { jq -r "$1" <<< "$pr_json"; }
+
+title=$(field '.title')
+author=$(field '.author.login')
+state=$(field '.state')
+review=$(field '.reviewDecision // "" | if . == "" then "none" else . end')
+created=$(field '.createdAt')
+updated=$(field '.updatedAt')
+additions=$(field '.additions')
+deletions=$(field '.deletions')
+changed_files=$(field '.changedFiles')
+labels=$(field '[.labels[]?.name] | join(", ")')
+body=$(field '.body // "No description provided."' | tr -d '\r')
+
+diff_tmp=$(mktemp)
+trap 'rm -f "$diff_tmp"' EXIT
+gh pr diff "$pr_url" > "$diff_tmp"
+
+{
+  printf '# %s\n\n' "$title"
+  printf -- '- **Repository:** %s/%s\n' "$owner" "$repo"
+  printf -- '- **Pull request:** #%s (%s)\n' "$number" "$pr_url"
+  printf -- '- **Author:** @%s\n' "$author"
+  printf -- '- **State:** %s, review %s\n' "$state" "$review"
+  printf -- '- **Changes:** %s files, +%s −%s\n' "$changed_files" "$additions" "$deletions"
+  [ -z "$labels" ] || printf -- '- **Labels:** %s\n' "$labels"
+  printf -- '- **Created:** %s\n' "$created"
+  printf -- '- **Updated:** %s\n' "$updated"
+  printf '\n## Description\n\n%s\n\n## Diff\n' "$body"
+
+  # One fenced block per file. A diff header names the new path (b/...); the
+  # fence language comes from its extension, falling back to a plain diff
+  # block. A file that is added or deleted whole is emitted as its plain
+  # contents, fenced {.<lang> .diff-added} or {.<lang> .diff-deleted}, so
+  # mdprint shows it as ordinary source under a colored header instead of a
+  # wall of +/- lines. Each fence is longer than any backtick run in its file.
+  awk '
+    function language(path,    base, ext) {
+      base = path
+      sub(/.*\//, "", base)
+      if (base == "Dockerfile" || base ~ /^Dockerfile\./) return "dockerfile"
+      if (base == "Makefile") return "make"
+      if (base !~ /\./) return ""
+      ext = base
+      sub(/.*\./, "", ext)
+      ext = tolower(ext)
+      if (ext in langs) return langs[ext]
+      return ""
+    }
+
+    function open_block(path, whole,    lang, classes) {
+      printf "\n### %s\n\n", path
+      lang = language(path)
+      if (whole != "") {
+        classes = (lang == "" ? "" : "." lang " ") ".diff-" whole
+        print fence "{" classes "}"
+      } else if (lang == "") {
+        print fence "diff"
+      } else {
+        print fence "{." lang " .diff}"
+      }
+      inside = 1
+    }
+
+    function close_block() {
+      if (inside) print fence
+      inside = 0
+    }
+
+    BEGIN {
+      split("ts tsx js jsx mjs cjs py rb go rs java kt kts swift c h cc cpp hpp cs " \
+            "sh bash zsh fish yaml yml json toml md markdown html htm css scss sass " \
+            "sql lua typ xml proto graphql gql tf hcl tfvars php pl r scala ex exs " \
+            "erl hs ml clj dart vue svelte ini cfg conf txt diff patch", keys, " ")
+      split("ts tsx js jsx js js py ruby go rust java kotlin kotlin swift c c cpp cpp cpp csharp " \
+            "bash bash zsh fish yaml yaml json toml md md html html css scss sass " \
+            "sql lua typ xml proto graphql graphql hcl hcl hcl php perl r scala elixir elixir " \
+            "erlang haskell ocaml clojure dart vue svelte ini ini ini txt diff diff", values, " ")
+      for (i in keys) langs[keys[i]] = values[i]
+    }
+
+    # Pass 1 (FNR == NR): per file, the longest backtick run decides the fence
+    # length, and "new file mode" / "deleted file mode" marks a whole-file change.
+    FNR == NR {
+      if (/^diff --git /) file++
+      if (match($0, /`+/) && RLENGTH > max_ticks[file]) max_ticks[file] = RLENGTH
+      if (/^new file mode /) whole[file] = "added"
+      if (/^deleted file mode /) whole[file] = "deleted"
+      next
+    }
+
+    FNR == 1 { file = 0 }
+
+    /^diff --git / {
+      close_block()
+      file++
+      fence = "```"
+      while (length(fence) <= max_ticks[file]) fence = fence "`"
+      path = $0
+      sub(/^diff --git "?a\/.* "?b\//, "", path)
+      sub(/"$/, "", path)
+      open_block(path, whole[file])
+      if (whole[file] == "") print
+      next
+    }
+
+    # Whole-file blocks carry the file contents only: drop the diff header and
+    # hunk lines, and strip the +/- marker from each content line.
+    whole[file] != "" {
+      if (/^(new file mode |deleted file mode |index |--- |\+\+\+ |@@ |\\ No newline at end of file)/) next
+      if (/^[-+]/) $0 = substr($0, 2)
+      print
+      next
+    }
+
+    { print }
+
+    END {
+      close_block()
+    }
+  ' "$diff_tmp" "$diff_tmp"
+} > "$output"
+
+echo "pr-to-md: wrote $output"
