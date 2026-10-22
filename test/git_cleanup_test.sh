@@ -225,6 +225,8 @@ test_dry_run_skips_current_and_main_checkout() {
 test_yes_executes_plan() {
   mk_repo
   git -C "$repo" cleanup --yes > "$out" || fail "cleanup --yes exited non-zero"
+  grep -q "^\$ git " "$out" || fail "commands should echo with a \$ prefix"
+  if grep -q "^+ " "$out"; then fail "+ is the worktree marker, not a command prefix"; fi
 
   local b
   for b in merged-ancestry merged-squash zero-ahead elsewhere; do
@@ -497,11 +499,48 @@ test_help() {
   (cd "$repo" && git-cleanup --help) > "$out"
   local n
   n="$(wc -l < "$out" | tr -d ' ')"
-  [ "$n" -ge 4 ] && [ "$n" -le 6 ] || fail "help should be 4-6 lines, got $n"
+  [ "$n" -ge 4 ] && [ "$n" -le 7 ] || fail "help should be 4-7 lines, got $n"
   grep -Fq -- "--closed" "$out" || fail "help should mention --closed"
 }
 
+# --color=always renders the plan like `git branch`: * and color.branch.current
+# for the current branch, + and color.branch.worktree for one checked out
+# elsewhere, delete in red, the worktree path relative to the repo in parentheses.
+test_color_renders_like_git_branch() {
+  mk_repo
+  git -C "$repo" config color.branch.worktree blue
+  git -C "$repo" checkout -q -b main-feature
+  git -C "$repo/.worktrees/zero-ahead" cleanup --color=always > "$out"
+  git -C "$repo" checkout -q main
+  local e=$'\e'
+  grep -Eq "^\* skip +${e}\[32mzero-ahead${e}\[m +\(\.worktrees/zero-ahead\) +current$" "$out" ||
+    fail "current branch should be '* ' and green"
+  grep -Eq "^\+ ${e}\[31mdelete${e}\[m +${e}\[34mmerged-squash${e}\[m +\(\.worktrees/merged-squash\) +squash-merged$" "$out" ||
+    fail "other-worktree branch should be '+ ' and color.branch.worktree, delete red"
+  grep -Eq "^\+ skip +${e}\[34mmain-feature${e}\[m +\($repo\) +checked out in $repo$" "$out" ||
+    fail "main worktree seen from a linked one should be '+ ' with its absolute path"
+  grep -Eq "^  skip +unmerged +unmerged work$" "$out" ||
+    fail "branch without a worktree should have a blank marker and no path"
+  grep -Eq "^\+ ${e}\[33mworktree${e}\[m " "$out" && fail "no worktree disposition expected without gh"
+  true
+}
+
+# Piped or --color=never output is the tab-separated plan, with no escapes.
+test_color_never_is_tab_separated() {
+  mk_repo
+  git -C "$repo" cleanup --color=never > "$out"
+  if grep -q $'\e' "$out"; then fail "--color=never should not emit escapes"; fi
+  assert_line delete merged-squash "squash-merged"
+  NO_COLOR=1 git -C "$repo" cleanup --color=always > "$out"
+  grep -q $'\e' "$out" || fail "--color=always should win over NO_COLOR"
+  local status=0
+  git -C "$repo" cleanup --color=sometimes > "$out" 2> "$err" || status=$?
+  [ "$status" -eq 2 ] || fail "bad --color value should exit 2, got $status"
+}
+
 run_tests test_dry_run_plans_from_main \
+  test_color_renders_like_git_branch \
+  test_color_never_is_tab_separated \
   test_dry_run_skips_current_and_main_checkout \
   test_dirty_ignores_user_config \
   test_default_branch_unresolvable_exits_2 \

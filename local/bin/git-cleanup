@@ -4,18 +4,23 @@
 
 set -eo pipefail
 
-usage="usage: git cleanup [--yes] [--closed]
+usage="usage: git cleanup [--yes] [--closed] [--color[=always|auto|never]]
   Dry run by default: prints a plan, changes nothing. --yes carries it out.
   --closed also deletes the branches of closed PRs (otherwise only their worktrees go).
   A dry run may fetch PR heads (refs/pull/N/head) from origin.
-  Dispositions: delete (branch and worktree), worktree (worktree only), skip (left alone)."
+  Dispositions: delete (branch and worktree), worktree (worktree only), skip (left alone).
+  On a terminal the plan is shown like git branch (* current, + other worktree); piped, it is tab-separated."
 
 yes=0
 closed=0
+color=auto
 for arg in "$@"; do
   case "$arg" in
     --yes) yes=1 ;;
     --closed) closed=1 ;;
+    --color | --color=always) color=always ;;
+    --color=auto) color=auto ;;
+    --color=never) color=never ;;
     -h | --help)
       echo "$usage"
       exit 0
@@ -298,12 +303,100 @@ classify() {
   fi
 }
 
+# Whether the plan is colored: --color decides outright; auto asks git about
+# color.branch (so color.ui applies) for whether stdout is a terminal, and
+# NO_COLOR turns it off.
+use_color() {
+  case "$color" in
+    always) return 0 ;;
+    never) return 1 ;;
+  esac
+  [ -z "${NO_COLOR:-}" ] || return 1
+  local tty=false
+  [ ! -t 1 ] || tty=true
+  [ "$(git -C "$main_wt" config --get-colorbool color.branch "$tty")" = true ]
+}
+
+# The worktree column: nothing for "-", else the path in parentheses, relative
+# to the repository when it lives inside it.
+wt_display() {
+  case "$1" in
+    -) ;;
+    "$main_wt"/*) echo "(${1#"$main_wt"/})" ;;
+    *) echo "($1)" ;;
+  esac
+}
+
+pad() {
+  printf '%*s' "$1" ''
+}
+
+# Print <text> colored when <color> is non-empty, then pad to <width>.
+cell() {
+  if [ -n "$2" ]; then
+    printf '%s%s%s' "$2" "$1" "$c_reset"
+  else
+    printf '%s' "$1"
+  fi
+  pad $(($3 - ${#1}))
+}
+
+# Print the plan lines as git branch would: "* " and color.branch.current for
+# the branch checked out here, "+ " and color.branch.worktree for one checked
+# out in another worktree; delete red, worktree yellow; columns aligned.
+render_plan() {
+  local cur line disposition branch wt reason shown marker name_color disp_color
+  local w_disp=0 w_branch=0 w_wt=0
+  local c_cur c_wt c_del c_wto
+  c_cur="$(git -C "$main_wt" config --get-color color.branch.current green)"
+  c_wt="$(git -C "$main_wt" config --get-color color.branch.worktree cyan)"
+  c_del="$(git -C "$main_wt" config --get-color "" red)"
+  c_wto="$(git -C "$main_wt" config --get-color "" yellow)"
+  c_reset="$(git -C "$main_wt" config --get-color "" reset)"
+  cur="$(current_branch)"
+  for line in "$@"; do
+    IFS=$'\t' read -r disposition branch wt reason <<< "$line"
+    shown="$(wt_display "$wt")"
+    [ "${#disposition}" -le "$w_disp" ] || w_disp="${#disposition}"
+    [ "${#branch}" -le "$w_branch" ] || w_branch="${#branch}"
+    [ "${#shown}" -le "$w_wt" ] || w_wt="${#shown}"
+  done
+  for line in "$@"; do
+    IFS=$'\t' read -r disposition branch wt reason <<< "$line"
+    shown="$(wt_display "$wt")"
+    marker="  "
+    name_color=""
+    if [ "$branch" = "$cur" ]; then
+      marker="* "
+      name_color="$c_cur"
+    elif [ "$wt" != "-" ]; then
+      marker="+ "
+      name_color="$c_wt"
+    fi
+    case "$disposition" in
+      delete) disp_color="$c_del" ;;
+      worktree) disp_color="$c_wto" ;;
+      *) disp_color="" ;;
+    esac
+    printf '%s' "$marker"
+    cell "$disposition" "$disp_color" "$w_disp"
+    printf ' '
+    cell "$branch" "$name_color" "$w_branch"
+    printf ' '
+    if [ "$w_wt" -gt 0 ]; then
+      cell "$shown" "" "$w_wt"
+      printf ' '
+    fi
+    printf '%s\n' "$reason"
+  done
+}
+
 failures=0
 
 # Echo a command and run it; a failure is counted and returned, never fatal.
 run() {
   local status=0
-  echo "+ $*"
+  echo "\$ $*"
   "$@" || status=$?
   [ "$status" -eq 0 ] || failures=$((failures + 1))
   return "$status"
@@ -347,7 +440,13 @@ for branch in ${branches[@]+"${branches[@]}"}; do
   [ -z "$line" ] || plan+=("$line")
 done
 
-[ "${#plan[@]}" -eq 0 ] || printf '%s\n' "${plan[@]}"
+if [ "${#plan[@]}" -gt 0 ]; then
+  if use_color; then
+    render_plan "${plan[@]}"
+  else
+    printf '%s\n' "${plan[@]}"
+  fi
+fi
 
 if [ "$yes" -eq 1 ]; then
   for line in ${plan[@]+"${plan[@]}"}; do
