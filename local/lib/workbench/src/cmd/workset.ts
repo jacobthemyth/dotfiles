@@ -3,6 +3,7 @@ import { expandHome } from "../paths";
 import { loadConfig, type Config } from "../config";
 import { derive, foundId, unclaimed } from "../derive";
 import * as gh from "../gh";
+import * as git from "../git";
 import { refreshStoredPr, summarizeAll, type WorksetSummary } from "../triage";
 import { planPrune, planDelete, executePrune, renderPlan, pruneAll, type PrunePlan } from "../prune";
 import { sessionKeyFromEnv } from "../session-key";
@@ -116,8 +117,10 @@ export async function run(args: string[]): Promise<number> {
         }
         const ws = loadWorkset(positionals[0]);
         if (!ws) return fail(`workbench: no workset "${positionals[0]}"`);
+        // The slug is what PR lookups are keyed by; a member without one is never asked about on GitHub.
+        const repo = expandHome(values.repo);
         const m = addMember(ws, {
-          repo: expandHome(values.repo), branch: values.branch, added_by: "hand",
+          repo, slug: git.remoteSlug(repo), branch: values.branch, added_by: "hand",
           worktree: values.worktree ? expandHome(values.worktree) : undefined,
           base: values.base, base_source: values.base ? "declared" : undefined, order, role: values.role as Role | undefined,
         });

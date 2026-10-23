@@ -154,3 +154,15 @@ test("list says so on stderr when gh is down and keeps the stored pr", async () 
   } finally { process.env.PATH = oldPath; }
   expect(loadWorkset("cinf-1")!.members[0].pr).toEqual(stored);
 });
+
+test("workset add derives the member's slug from the repo's origin", async () => {
+  const a = mkRepo("a");
+  mkWorktree(a, "feat/a");
+  saveWorkset(wsOf("spike", []));
+  const r = await capture(() => worksetRun(["add", "spike", "--repo", a, "--branch", "feat/a", "--base", "main"]));
+  expect(r.code).toBe(0);
+  const m = loadWorkset("spike")!.members[0];
+  expect(m.slug).toBe(remoteSlug(a));
+  expect(m.id).toBe(`${remoteSlug(a)}#feat/a`);
+  expect(r.out).toBe(m.id);
+});
