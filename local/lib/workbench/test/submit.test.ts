@@ -7,7 +7,7 @@ import { savePointer } from "../src/session";
 import { CLOSE_WARNING, confirmClose } from "../src/sidebar-review";
 import { closeReview, submitReview, type ReviewFile } from "../src/submit";
 import { drainRecorded } from "../src/spawn";
-import { addMember, createWorkset, saveWorkset } from "../src/workset";
+import { addMember, createWorkset, loadWorkset, saveWorkset } from "../src/workset";
 
 const GIT_ENV = {
   GIT_AUTHOR_NAME: "Rev Iewer", GIT_AUTHOR_EMAIL: "r@t", GIT_COMMITTER_NAME: "Rev Iewer", GIT_COMMITTER_EMAIL: "r@t",
@@ -369,4 +369,18 @@ test("close clears a lock left without a review file and prints one line", async
   try { expect(await run(["ws1"])).toBe(0); } finally { console.log = orig; }
   expect(loadLock("ws1")).toBeNull();
   expect(out).toEqual(["closed r-orphan for ws1: lock released, comments kept"]);
+});
+
+test("submit still commits for a member whose id the workset rewrote after open", async () => {
+  const a = worktree("feat");
+  workset([{ branch: "feat", worktree: a }]);
+  openReview("ws1", { allowDirty: false });
+  const ws = loadWorkset("ws1")!;
+  ws.members[0].slug = "org/repo"; ws.members[0].id = "org/repo#feat";
+  saveWorkset(ws);
+  writeFileSync(join(a, "f.txt"), "edited\n");
+  const out = await submitReview("ws1", { message: "m", log });
+  expect(logs.join("\n")).not.toContain("joined after open");
+  expect(out.edits.map((e) => [e.branch, e.files])).toEqual([["feat", ["f.txt"]]]);
+  expect(sh(a, "status", "--porcelain")).toBe("");
 });

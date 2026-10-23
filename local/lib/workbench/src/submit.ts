@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { normaliseNotes, type Comment } from "./comments";
 import * as git from "./git";
 import { sub } from "./paths";
-import { archiveFile, clearNotes, hasWorktree, killWindow, loadLock, loadNotes, loadReview, releaseReview, snapshotNotes, type Review } from "./review";
+import { archiveFile, clearNotes, hasWorktree, killWindow, loadLock, loadNotes, loadReview, reconcileIds, releaseReview, saveReview, snapshotNotes, type Review } from "./review";
 import { loadPointer, pointerKeys } from "./session";
 import { now, writeJson } from "./store";
 import { loadWorkset, type Member, type Workset } from "./workset";
@@ -33,6 +33,7 @@ function open(name: string): { ws: Workset; review: Review } {
   if (!ws) throw new Error(`workbench: no workset "${name}"`);
   const review = loadReview(name);
   if (!review) throw new Error(`workbench: no open review for "${name}"`);
+  if (reconcileIds(review, ws)) saveReview(review);
   return { ws, review };
 }
 
@@ -146,7 +147,7 @@ export function closeReview(name: string): string {
     if (lock) { releaseReview(name); return lock.review; }
     throw new Error(ws ? `workbench: no open review for "${name}"` : `workbench: no workset "${name}"`);
   }
-  if (ws) snapshotCurrent(ws, review, console.error);
+  if (ws) { reconcileIds(review, ws); snapshotCurrent(ws, review, console.error); }
   releaseReview(name);
   return review.id;
 }

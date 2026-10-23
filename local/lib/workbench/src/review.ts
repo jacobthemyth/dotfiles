@@ -1,4 +1,4 @@
-import { existsSync, realpathSync, rmSync } from "node:fs";
+import { existsSync, realpathSync, renameSync, rmSync } from "node:fs";
 import { userInfo } from "node:os";
 import { join } from "node:path";
 import { loadConfig, type Config } from "./config";
@@ -78,6 +78,38 @@ export function snapshotNotes(r: Review, m: Member): hunk.RawNote[] {
 const real = (p: string) => { try { return realpathSync(p); } catch { return p; } };
 const SIDEBAR = (ws: string) => `workbench sidebar ${ws}`;
 
+// A member's id can change under an open review (a migration giving it a slug in place of the repo path, or
+// `workset add` learning the slug). The review keys its current member, its snapshot and its notes files by id,
+// so re-key them to the ids the workset has now: a stale id matches the member with that branch whose repo path
+// or slug is the id's prefix; the current member also by the worktree the hunk pane runs in. True when anything
+// changed, so the caller saves.
+export function reconcileIds(r: Review, ws: Workset): boolean {
+  const ids = new Set(ws.members.map((m) => m.id));
+  const byStale = (id: string): Member | undefined => {
+    const i = id.indexOf("#");
+    if (i < 0) return undefined;
+    const prefix = id.slice(0, i), branch = id.slice(i + 1);
+    return ws.members.find((m) => m.branch === branch && (prefix === m.repo || prefix === m.slug || real(prefix) === real(m.repo)));
+  };
+  let changed = false;
+  for (const old of Object.keys(r.snapshot)) {
+    if (ids.has(old)) continue;
+    const m = byStale(old);
+    if (!m || r.snapshot[m.id]) continue;
+    r.snapshot[m.id] = r.snapshot[old];
+    delete r.snapshot[old];
+    const from = notesFile(r.workset, old), to = notesFile(r.workset, m.id);
+    if (existsSync(from) && !existsSync(to)) renameSync(from, to);
+    changed = true;
+  }
+  if (r.current && !ids.has(r.current)) {
+    const byCwd = r.hunkPaneCwd ? ws.members.find((m) => hasWorktree(m) && real(m.worktree!) === real(r.hunkPaneCwd!)) : undefined;
+    const m = byStale(r.current) ?? byCwd;
+    if (m) { r.current = m.id; changed = true; }
+  }
+  return changed;
+}
+
 // Working tree against the merge base, so uncommitted edits show; the plain range when merge-base fails. The base is
 // read both as the local branch and at its upstream, and the later of the two merge bases wins: a local main that
 // has fallen behind would make the merge base itself and the diff would carry every commit up to the branch's fork
@@ -128,6 +160,7 @@ function startHunk(r: Review, m: Member, base: string, pane = r.hunkPaneId): boo
 // Points the reviewer at another member (or a whole stack: base...top branch). hunk can only reload within
 // the worktree it started in, so a member in another worktree gets a fresh hunk in the same pane.
 export function repoint(r: Review, ws: Workset, to: Member, base: string): boolean {
+  reconcileIds(r, ws);
   const live = ws.members.find((m) => m.id === r.current);
   if (live && hasWorktree(live)) snapshotNotes(r, live);
   const same = !!r.hunkPaneCwd && real(r.hunkPaneCwd) === real(to.worktree!);
@@ -186,6 +219,7 @@ export function openReview(name: string, opts: { allowDirty: boolean }): Review 
 
   const existing = loadReview(name);
   if (existing) {
+    reconcileIds(existing, ws);
     const live = ws.members.find((m) => m.id === existing.current);
     if (live && hasWorktree(live)) snapshotNotes(existing, live);
     openWindow(existing, ws, work[0], cfg);

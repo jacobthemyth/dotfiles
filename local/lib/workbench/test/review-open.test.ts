@@ -4,6 +4,7 @@ import { writeJson } from "../src/store";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openReview, loadReview, loadLock, loadNotes, repoint } from "../src/review";
+import { loadWorkset } from "../src/workset";
 import { existsSync } from "node:fs";
 import { addMember, createWorkset, saveWorkset } from "../src/workset";
 
@@ -320,4 +321,28 @@ test("a snapshotted note already live in hunk is not re-added", () => {
   const adds = ownAdds(loadReview("ws1")!.commands!.slice(n));
   expect(adds).toHaveLength(1);
   expect(adds[0]).toContain("--file src/old.ts");
+});
+
+test("reopen follows member ids the workset rewrote after open: current, snapshot and notes", () => {
+  const wt = worktree("feat");
+  workset([{ branch: "feat", worktree: wt }]);
+  const r = openReview("ws1", { allowDirty: false });
+  const old = `${repo}#feat`;
+  expect(r.current).toBe(old);
+  const tip = r.snapshot[old].tip;
+  // Notes snapshotted under the old id, then a migration gives the member a slug-based id.
+  const notes = join(tmp, "state", "reviews", "ws1", "notes");
+  mkdirSync(notes, { recursive: true });
+  writeFileSync(join(notes, `${old.replace(/[/#]/g, "_")}.json`), JSON.stringify([{ noteId: "n1", body: "keep me" }]));
+  const ws = loadWorkset("ws1")!;
+  ws.members[0].slug = "org/repo"; ws.members[0].id = "org/repo#feat";
+  saveWorkset(ws);
+  const again = openReview("ws1", { allowDirty: false });
+  expect(again.id).toBe(r.id);
+  expect(again.current).toBe("org/repo#feat");
+  expect(again.snapshot["org/repo#feat"]?.tip).toBe(tip);
+  expect(again.snapshot[old]).toBeUndefined();
+  expect(loadNotes("ws1", "org/repo#feat").map((n) => n.noteId)).toEqual(["n1"]);
+  expect(loadReview("ws1")?.current).toBe("org/repo#feat");
+  expect(loadLock("ws1")?.review).toBe(r.id);
 });
