@@ -48,9 +48,9 @@ function worktree(branch: string, base = "main"): string {
   return wt;
 }
 
-function workset(members: { branch: string; worktree: string | null; role?: "work" | "throwaway"; base?: string }[]) {
+function workset(members: { branch: string; worktree: string | null; role?: "work" | "throwaway"; base?: string; paths?: string[] }[]) {
   const ws = createWorkset("ws1");
-  for (const m of members) addMember(ws, { repo, branch: m.branch, worktree: m.worktree ?? undefined, role: m.role, base: m.base, added_by: "hand" });
+  for (const m of members) addMember(ws, { repo, branch: m.branch, worktree: m.worktree ?? undefined, role: m.role, base: m.base, paths: m.paths, added_by: "hand" });
   saveWorkset(ws);
   return ws;
 }
@@ -345,4 +345,24 @@ test("reopen follows member ids the workset rewrote after open: current, snapsho
   expect(loadNotes("ws1", "org/repo#feat").map((n) => n.noteId)).toEqual(["n1"]);
   expect(loadReview("ws1")?.current).toBe("org/repo#feat");
   expect(loadLock("ws1")?.review).toBe(r.id);
+});
+
+test("a member's paths follow -- on the hunk command, at open and on reload", () => {
+  const wt = worktree("feat");
+  const ws = workset([{ branch: "feat", worktree: wt, paths: ["docs/", "feat.txt"] }]);
+  const r = openReview("ws1", { allowDirty: false });
+  const mb = sh(wt, "merge-base", "main", "feat");
+  expect(r.commands!).toContain(`tmux respawn-pane -k -t %1 -c ${wt} hunk diff ${mb} --watch -- docs/ feat.txt`);
+  const n = r.commands!.length;
+  expect(repoint(r, ws, ws.members[0], "main")).toBe(true);
+  expect(loadReview("ws1")!.commands!.slice(n)).toContain(`hunk session reload --session-path ${wt} --source ${wt} --json -- diff ${mb} -- docs/ feat.txt`);
+});
+
+test("a member without paths keeps the bare hunk command", () => {
+  const wt = worktree("feat");
+  workset([{ branch: "feat", worktree: wt }]);
+  const r = openReview("ws1", { allowDirty: false });
+  const mb = sh(wt, "merge-base", "main", "feat");
+  expect(r.commands!.some((c) => c.endsWith(`hunk diff ${mb} --watch`))).toBe(true);
+  expect(r.commands!.some((c) => c.includes(" -- "))).toBe(false);
 });

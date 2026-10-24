@@ -44,3 +44,13 @@ test("remove member", () => {
 test("invalid name rejected", () => {
   expect(() => createWorkset("bad name!")).toThrow();
 });
+
+test("paths persist on a member, and an empty list means none", () => {
+  const ws = createWorkset("spike");
+  addMember(ws, { repo: "/r", slug: null, branch: "a", paths: ["docs/", "README.md"], added_by: "hand" });
+  addMember(ws, { repo: "/r", slug: null, branch: "b", paths: [], added_by: "hand" });
+  saveWorkset(ws);
+  const back = loadWorkset("spike")!;
+  expect(back.members[0].paths).toEqual(["docs/", "README.md"]);
+  expect(back.members[1].paths).toBeNull();
+});

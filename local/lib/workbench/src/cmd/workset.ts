@@ -16,7 +16,7 @@ const USAGE = `usage: workbench workset <subcommand>
   list [--json] [--unclaimed]
   show <name>
   create <name>
-  add <name> --repo <path> --branch <b> [--worktree <p>] [--base <ref>] [--order <n>] [--role work|throwaway]
+  add <name> --repo <path> --branch <b> [--worktree <p>] [--base <ref>] [--path <pathspec>]... [--order <n>] [--role work|throwaway]
   rm <name> <member-id>
   use <name> [--session <key>]
   adopt <name> <id> [--role work|throwaway]
@@ -52,9 +52,9 @@ function show(ws: Workset): void {
   try { config = loadConfig(); } catch { config = { default_branch: "main" } as Config; }
   const rows = orderMembers(ws.members).map((m) => [
     m.order === null ? "-" : String(m.order), m.role, `${m.slug ?? m.repo}#${m.branch}`, m.worktree ?? "-", prCell(m),
-    diffBase(m, config), baseSource(m),
+    diffBase(m, config), baseSource(m), m.paths?.length ? m.paths.join(" ") : "-",
   ]);
-  console.log(table([["order", "role", "member", "worktree", "pr", "base", "source"], ...rows]));
+  console.log(table([["order", "role", "member", "worktree", "pr", "base", "source", "paths"], ...rows]));
 }
 
 export async function run(args: string[]): Promise<number> {
@@ -105,10 +105,11 @@ export async function run(args: string[]): Promise<number> {
       case "add": {
         const { positionals, values } = parseArgs({
           args: rest, allowPositionals: true,
-          options: { repo: { type: "string" }, branch: { type: "string" }, worktree: { type: "string" }, base: { type: "string" }, order: { type: "string" }, role: { type: "string" } },
+          options: { repo: { type: "string" }, branch: { type: "string" }, worktree: { type: "string" }, base: { type: "string" }, path: { type: "string", multiple: true }, order: { type: "string" }, role: { type: "string" } },
         });
         if (positionals.length !== 1) return fail("usage: workbench workset add <name> --repo <path> --branch <b> [...]", 2);
         if (!values.repo || !values.branch) return fail("workbench: --repo and --branch are required");
+        if (values.path?.some((p) => !p.trim())) return fail("workbench: --path must not be empty");
         if (values.role !== undefined && values.role !== "work" && values.role !== "throwaway") return fail(`workbench: --role must be work or throwaway`);
         let order: number | undefined;
         if (values.order !== undefined) {
@@ -122,7 +123,7 @@ export async function run(args: string[]): Promise<number> {
         const m = addMember(ws, {
           repo, slug: git.remoteSlug(repo), branch: values.branch, added_by: "hand",
           worktree: values.worktree ? expandHome(values.worktree) : undefined,
-          base: values.base, base_source: values.base ? "declared" : undefined, order, role: values.role as Role | undefined,
+          base: values.base, base_source: values.base ? "declared" : undefined, paths: values.path, order, role: values.role as Role | undefined,
         });
         saveWorkset(ws);
         console.log(m.id);

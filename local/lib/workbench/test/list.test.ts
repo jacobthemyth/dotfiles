@@ -166,3 +166,17 @@ test("workset add derives the member's slug from the repo's origin", async () =>
   expect(m.id).toBe(`${remoteSlug(a)}#feat/a`);
   expect(r.out).toBe(m.id);
 });
+
+test("workset add records each --path, and show lists them", async () => {
+  const a = mkRepo("a");
+  mkWorktree(a, "feat/a");
+  saveWorkset(wsOf("spike", []));
+  const r = await capture(() => worksetRun(["add", "spike", "--repo", a, "--branch", "feat/a", "--path", "docs/", "--path", "spec.md"]));
+  expect(r.code).toBe(0);
+  expect(loadWorkset("spike")!.members[0].paths).toEqual(["docs/", "spec.md"]);
+  const shown = await capture(() => worksetRun(["show", "spike"]));
+  expect(shown.out).toContain("docs/ spec.md");
+  const bad = await capture(() => worksetRun(["add", "spike", "--repo", a, "--branch", "feat/a", "--path", " "]));
+  expect(bad.code).toBe(1);
+  expect(bad.err).toContain("--path must not be empty");
+});

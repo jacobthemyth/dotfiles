@@ -18,7 +18,7 @@ Glossary: [CONTEXT.md](CONTEXT.md). Design: [docs/superpowers/specs/2026-10-10-w
 | `workbench config` | Print the loaded config as JSON. |
 | `workbench workset list [--json] [--unclaimed]` | Overview: one row per workset with PR mix, dirty worktrees, session state and a suggested action: `review`, or `prune` (a prune would delete the workset record). `--unclaimed` adds the unclaimed count per repo below; it derives every repo root, so it takes tens of seconds. |
 | `workbench workset show <name> \| create <name>` | Show or create a workset. |
-| `workbench workset add <name> --repo <p> --branch <b> [--worktree <p>] [--base <ref>] [--order <n>] [--role work\|throwaway]` | Declare a member. |
+| `workbench workset add <name> --repo <p> --branch <b> [--worktree <p>] [--base <ref>] [--path <pathspec>]... [--order <n>] [--role work\|throwaway]` | Declare a member. `--path` (repeatable) limits its review diff to those pathspecs; without it the whole tree is reviewed. |
 | `workbench workset rm <name> <member-id>` | Remove a member. |
 | `workbench workset use <name> [--session <key>]` | Bind a session to a workset (creates it if missing). A new session is bound to nothing: until it runs `use`, its branches are not recorded and reviews cannot reach it. |
 | `workbench workset adopt <name> <id> [--role ...]` / `ignore <name> <id>` | Claim or ignore an unclaimed item from `scan`. |
@@ -51,7 +51,7 @@ A session records nothing until it is bound with `workbench workset use <name>`;
 ## Review flow
 
 1. `workbench open <workset>`: the work worktrees are locked and the review window opens (sidebar left, hunk right). Each work member's worktree must have that member's branch checked out; `open` refuses otherwise, because submit commits on the branch the worktree has checked out. If `open` fails after taking the lock, `workbench close <workset>` releases it.
-2. Select a member in the sidebar (`⏎`) to show its diff (working tree against the merge base with its diff base, the later of the merge bases with the local base and with its upstream, so neither a local `main` left behind nor an unpushed commit on a stacked base widens the diff).
+2. Select a member in the sidebar (`⏎`) to show its diff (working tree against the merge base with its diff base, the later of the merge bases with the local base and with its upstream, so neither a local `main` left behind nor an unpushed commit on a stacked base widens the diff). A member declared with `--path` shows only those pathspecs.
 3. Comment in hunk with `c`, text, `Ctrl-S`: `? ` makes a question, `// ` a note, anything else a change request.
 4. Edit with hunk's `e`: neovim on the real file; the diff refreshes when you quit.
 5. Submit (`s` in the sidebar, or `workbench submit`): one commit per touched member, authored by you, with `Workset:` and `Review:` trailers; the review goes to every open bound session's inbox, the notes snapshots are cleared and the review window is killed.

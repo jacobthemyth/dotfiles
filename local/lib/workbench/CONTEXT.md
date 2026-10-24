@@ -11,7 +11,7 @@ Every branch, worktree and pull request that one piece of work produced, across 
 _Avoid_: stack, project, session, PR set
 
 **Member**:
-One branch of a workset, with its repo, worktree, diff base, pull request and role.
+One branch of a workset, with its repo, worktree, diff base, review paths, pull request and role.
 _Avoid_: entry, item, target
 
 **Role**:
@@ -23,6 +23,9 @@ _Avoid_: chain, train
 
 **Diff base**:
 The ref a member's diff is taken against: its pull request's base, else its declared base, else the repo's default branch; read both as the local branch and at its upstream when it has one, taking whichever merge base is the later, so the diff starts at the branch's real fork point whether the local base has fallen behind or carries unpushed commits.
+
+**Review paths**:
+The pathspecs a member's review diff is limited to, declared with `workset add --path`; a member without them is reviewed whole.
 
 **Unclaimed**:
 A branch, worktree or pull request of yours that derivation found and no workset claims. Adopted or ignored; its branch is `git cleanup`'s to delete.

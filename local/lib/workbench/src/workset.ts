@@ -8,6 +8,8 @@ export type Pr = { number: number; url: string; draft: boolean; state: string };
 export type Member = {
   id: string; repo: string; slug: string | null; branch: string; worktree: string | null;
   base: string | null; base_source: BaseSource | null; pr: Pr | null; order: number | null; role: Role; added_by: string; added_at: string;
+  // Pathspecs the review diff is limited to; absent or empty means the whole tree. Records written before this field lack it.
+  paths?: string[] | null;
 };
 export type Workset = { name: string; created: string; members: Member[]; sessions: string[]; ignored: string[] };
 
@@ -45,6 +47,7 @@ export function addMember(ws: Workset, input: MemberInput): Member {
   const m: Member = {
     id, repo: input.repo, slug, branch: input.branch, worktree: input.worktree ?? null, base: input.base ?? null, base_source: input.base_source ?? null,
     pr: input.pr ?? null, order: input.order ?? null, role: input.role ?? "work", added_by: input.added_by, added_at: now(),
+    paths: input.paths?.length ? input.paths : null,
   };
   ws.members.push(m);
   return m;

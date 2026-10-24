@@ -15,8 +15,10 @@ export type Target = { id: string | null; path: string };
 const address = (t: Target) => (t.id ? [t.id] : ["--repo", t.path]);
 
 // ref is a single revision (the merge base, so the working tree shows) or a `<base>...<branch>` range.
-export function start(pane: string, worktree: string, ref: string): boolean {
-  return tmux.respawn(pane, worktree, ["hunk", "diff", ref, "--watch"]);
+// paths, when given, follow `--` and limit the diff to those pathspecs (`hunk diff [target] [-- <pathspec...>]`).
+const pathspec = (paths: string[]) => (paths.length ? ["--", ...paths] : []);
+export function start(pane: string, worktree: string, ref: string, paths: string[] = []): boolean {
+  return tmux.respawn(pane, worktree, ["hunk", "diff", ref, "--watch", ...pathspec(paths)]);
 }
 
 type Listed = { sessionId: string; terminal?: { locations?: { source: string; paneId?: string }[] } };
@@ -40,9 +42,9 @@ export function waitForSession(pane: string, timeoutMs = 5000): string | null {
 }
 
 // hunk 0.23 refuses a --source outside the session's initial root: this only re-points within one worktree.
-export function reload(t: Target, worktree: string, ref: string): boolean {
+export function reload(t: Target, worktree: string, ref: string, paths: string[] = []): boolean {
   const who = t.id ? [t.id] : ["--session-path", t.path];
-  return run(["hunk", "session", "reload", ...who, "--source", worktree, "--json", "--", "diff", ref]).code === 0;
+  return run(["hunk", "session", "reload", ...who, "--source", worktree, "--json", "--", "diff", ref, ...pathspec(paths)]).code === 0;
 }
 
 export function userComments(t: Target): RawNote[] {
