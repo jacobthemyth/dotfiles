@@ -5,7 +5,8 @@ import { join } from "node:path";
 import type { Comment, Reply } from "../src/comments";
 import { run as replyCli } from "../src/cmd/reply";
 import { addReply, rehydrateReplies, testHooks } from "../src/reply";
-import { archiveFile, openReview, type Review } from "../src/review";
+import { archiveFile, openReview } from "../src/review";
+import type { Window } from "../src/window";
 import { drainRecorded } from "../src/spawn";
 import { readJson, writeJson } from "../src/store";
 import { inboxFile, type ReviewFile } from "../src/submit";
@@ -44,11 +45,10 @@ function deliver(f: ReviewFile) {
 }
 const inboxCopy = (id: string) => readJson<ReviewFile>(inboxFile(KEY, id))!;
 const archiveCopy = (id: string) => readJson<ReviewFile>(archiveFile("ws1", id))!;
-const openFile = (over: Partial<Review> = {}): Review => ({
-  id: "r-open", workset: "ws1", opened: "2026-10-10T12:00:00.000Z", snapshot: {}, locked: [], current: MEMBER,
-  hunkPaneId: "%1", hunkSessionId: SID, hunkPaneCwd: "/r", ...over,
+const openFile = (over: Partial<Window> = {}): Window => ({
+  workset: "ws1", current: MEMBER, hunkPaneId: "%1", hunkSessionId: SID, hunkPaneCwd: "/r", live: {}, threads: {}, ...over,
 });
-const putOpen = (r: Review) => writeJson(join(tmp, "state", "reviews", "ws1.json"), r);
+const putOpen = (w: Window) => writeJson(join(tmp, "state", "windows", "ws1.json"), w);
 const liveSessions = (...ids: string[]) => {
   process.env.WORKBENCH_DRY_RUN_HUNK_SESSIONS = JSON.stringify({ sessions: ids.map((sessionId) => ({ sessionId, terminal: { locations: [{ source: "tmux", paneId: "%1" }] } })) });
 };
@@ -180,7 +180,7 @@ test("opening a review rehydrates replies once the hunk session registers", () =
   saveWorkset(ws);
   deliver({ ...reviewFile("rv1", [comment("user:1", { member: m.id, replies: [{ at: "t1", by: KEY, text: "done" }] })]) });
   liveSessions(SID);
-  const r = openReview("ws1", { allowDirty: true });
+  const r = openReview("ws1", { allowDirty: true }).window;
   expect(r.hunkSessionId).toBe(SID);
   expect(r.commands!.filter((c) => c.startsWith("hunk session comment add"))).toEqual([
     `hunk session comment add ${SID} --file src/x.ts --new-line 12 --summary ↩ done --rationale re: why this? --author ${KEY} --json`,

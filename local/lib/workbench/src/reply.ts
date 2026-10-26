@@ -2,9 +2,10 @@ import { join } from "node:path";
 import type { Comment, Reply } from "./comments";
 import * as hunk from "./hunk";
 import { sub } from "./paths";
-import { archiveFile, loadReview, type Review } from "./review";
+import { archiveFile } from "./review";
 import { listJson, now, readJson, writeJson } from "./store";
 import { inboxFile, type ReviewFile } from "./submit";
+import { loadWindow, type Window } from "./window";
 import type { Member } from "./workset";
 
 const load = (path: string): ReviewFile | null => { try { return readJson<ReviewFile>(path); } catch { return null; } };
@@ -58,8 +59,8 @@ export function addReply(sessionKey: string, reviewId: string, commentId: string
   if (!c) throw new Error(`workbench: no comment "${commentId}" in review ${reviewId}`);
 
   const reply: Reply = { at: now(), by: sessionKey, text };
-  const open = loadReview(read.workset);
-  const sid = open?.current === c.member ? open.hunkSessionId : null;
+  const w = loadWindow(read.workset);
+  const sid = w?.current === c.member ? w.hunkSessionId : null;
   const shown = !!sid && hunk.hasSession(sid) && show(sid, c, reply, liveNotes(sid));
   if (shown) reply.shown_in = [sid!];
   for (const path of [mine, archiveFile(read.workset, reviewId)]) updateReviewFile(path, appendReply(commentId, reply));
@@ -69,12 +70,12 @@ export function addReply(sessionKey: string, reviewId: string, commentId: string
 // Shows, in the review's current hunk session, every archived reply to this member's comments that the
 // session has not shown yet. Each shown reply is recorded at once (archive, then each inbox copy), so a
 // crash part-way leaves at most the reply in flight unrecorded.
-export function rehydrateReplies(review: Review, member: Member): void {
-  const sid = review.hunkSessionId;
+export function rehydrateReplies(w: Window, member: Member): void {
+  const sid = w.hunkSessionId;
   if (!sid) return;
   let live: Set<string> | null = null;
-  for (const id of listJson(join(sub("reviews"), review.workset))) {
-    const path = archiveFile(review.workset, id);
+  for (const id of listJson(join(sub("reviews"), w.workset))) {
+    const path = archiveFile(w.workset, id);
     const archive = load(path);
     if (!archive) continue;
     for (const c of archive.comments.filter((x) => x.member === member.id)) {

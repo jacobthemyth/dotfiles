@@ -72,7 +72,7 @@ test("submit commits only files changed since open, one commit per branch, with 
   workset([{ branch: "feat", worktree: a }, { branch: "feat2", worktree: b, base: "feat" }, { branch: "feat3", worktree: c, base: "feat2" }]);
   writeFileSync(join(a, "scratch.txt"), "agent wip\n"); // dirty before open: never committed by submit
   writeFileSync(join(a, "feat.txt"), "agent wip\n");
-  const r = openReview("ws1", { allowDirty: true });
+  const r = openReview("ws1", { allowDirty: true, review: true }).review!;
   const cTip = sh(c, "rev-parse", "HEAD");
 
   writeFileSync(join(a, "f.txt"), "edited\n");
@@ -98,7 +98,7 @@ test("submit commits only files changed since open, one commit per branch, with 
 test("submit without a message uses the default commit message and records no overall message", async () => {
   const a = worktree("feat");
   workset([{ branch: "feat", worktree: a }]);
-  openReview("ws1", { allowDirty: false });
+  openReview("ws1", { allowDirty: false, review: true });
   writeFileSync(join(a, "f.txt"), "edited\n");
   const out = await submitReview("ws1", { log });
   expect(sh(a, "log", "-1", "--format=%s")).toBe("Review edits (workbench)");
@@ -111,7 +111,7 @@ test("submit writes the review to every bound session's inbox and releases the l
   pointer("claude-one");
   pointer("claude-two");
   pointer("claude-gone", "2026-10-10T01:00:00Z");
-  const r = openReview("ws1", { allowDirty: false });
+  const r = openReview("ws1", { allowDirty: false, review: true }).review!;
   writeFileSync(join(a, "f.txt"), "edited\n");
   const out = await submitReview("ws1", { message: "m", log });
 
@@ -133,7 +133,7 @@ test("submit skips a member whose worktree vanished", async () => {
   const a = worktree("feat");
   const b = worktree("feat2", "feat");
   workset([{ branch: "feat", worktree: a }, { branch: "feat2", worktree: b, base: "feat" }]);
-  openReview("ws1", { allowDirty: false });
+  openReview("ws1", { allowDirty: false, review: true });
   writeFileSync(join(a, "f.txt"), "edited\n");
   rmSync(b, { recursive: true, force: true });
   const out = await submitReview("ws1", { message: "m", log });
@@ -145,7 +145,7 @@ test("submit skips a member whose worktree vanished", async () => {
 test("submit with no live hunk session treats comments as empty", async () => {
   const a = worktree("feat");
   workset([{ branch: "feat", worktree: a }]);
-  openReview("ws1", { allowDirty: false });
+  openReview("ws1", { allowDirty: false, review: true });
   const out = await submitReview("ws1", { message: "m", log });
   expect(out.comments).toEqual([]);
   expect(out.edits).toEqual([]);
@@ -156,7 +156,7 @@ test("submit collects snapshotted notes of a non-current member, anchored to its
   const a = worktree("feat");
   const b = worktree("feat2", "feat");
   workset([{ branch: "feat", worktree: a }, { branch: "feat2", worktree: b, base: "feat" }]);
-  openReview("ws1", { allowDirty: false }); // current is feat
+  openReview("ws1", { allowDirty: false, review: true }); // current is feat
   const id = `${repo}#feat2`;
   mkdirSync(join(notesPath(id), ".."), { recursive: true });
   writeFileSync(notesPath(id), JSON.stringify(JSON.parse(fixture).comments));
@@ -172,7 +172,7 @@ test("submit collects snapshotted notes of a non-current member, anchored to its
 test("close releases the lock and keeps the review file for rehydration", () => {
   const a = worktree("feat");
   workset([{ branch: "feat", worktree: a }]);
-  const r = openReview("ws1", { allowDirty: false });
+  const r = openReview("ws1", { allowDirty: false, review: true }).review!;
   writeFileSync(join(a, "f.txt"), "edited\n");
   expect(closeReview("ws1")).toBe(r.id);
   expect(loadLock("ws1")).toBeNull();
@@ -185,7 +185,7 @@ test("close releases the lock and keeps the review file for rehydration", () => 
 
 test("the sidebar's close asks first and closes only on yes", async () => {
   workset([{ branch: "feat", worktree: worktree("feat") }]);
-  const r = openReview("ws1", { allowDirty: false });
+  const r = openReview("ws1", { allowDirty: false, review: true }).review!;
   let pauses = 0;
   const pause = async () => { pauses++; };
   for (const answer of ["", "no", "y", "yes please"]) {
@@ -223,7 +223,7 @@ test("a failed commit is reported, the member skipped and submit carries on", as
   const a = worktree("feat");
   workset([{ branch: "feat", worktree: a }], ["claude-one"]);
   pointer("claude-one");
-  openReview("ws1", { allowDirty: false });
+  openReview("ws1", { allowDirty: false, review: true });
   writeFileSync(join(repo, ".git", "hooks", "pre-commit"), "#!/bin/sh\nexit 1\n", { mode: 0o755 });
   writeFileSync(join(a, "f.txt"), "edited\n");
   writeFileSync(join(a, "new.txt"), "new\n");
@@ -240,7 +240,7 @@ test("a failed commit is reported, the member skipped and submit carries on", as
 
 test("close still releases the lock when the workset file is gone", () => {
   workset([{ branch: "feat", worktree: worktree("feat") }]);
-  openReview("ws1", { allowDirty: false });
+  openReview("ws1", { allowDirty: false, review: true });
   rmSync(join(tmp, "state", "worksets", "ws1.json"));
   closeReview("ws1");
   expect(loadLock("ws1")).toBeNull();
@@ -252,7 +252,7 @@ test("a corrupt notes snapshot or pointer file is warned about and cannot abort 
   workset([{ branch: "feat", worktree: a }, { branch: "feat2", worktree: b, base: "feat" }], ["claude-one", "claude-bad"]);
   pointer("claude-one");
   writeFileSync(join(tmp, "state", "sessions", "claude-bad.json"), "{not json");
-  const r = openReview("ws1", { allowDirty: false });
+  const r = openReview("ws1", { allowDirty: false, review: true }).review!;
   const id = `${repo}#feat2`;
   mkdirSync(join(notesPath(id), ".."), { recursive: true });
   writeFileSync(notesPath(id), "[{truncated");
@@ -277,7 +277,7 @@ const seedNotes = (memberId: string) => {
 
 test("submit kills the review window when it exists, after the pause, and records nothing when it does not", async () => {
   workset([{ branch: "feat", worktree: worktree("feat") }]);
-  openReview("ws1", { allowDirty: false });
+  openReview("ws1", { allowDirty: false, review: true });
   drainRecorded();
   process.env.WORKBENCH_DRY_RUN_TMUX = JSON.stringify({ sessions: { "wb-ws1": { panes: [] } } });
   const order: string[] = [];
@@ -286,7 +286,7 @@ test("submit kills the review window when it exists, after the pause, and record
   expect(cmds).toContain("tmux kill-session -t =wb-ws1");
   expect(order).toEqual(["pause with lock released"]);
 
-  openReview("ws1", { allowDirty: false });
+  openReview("ws1", { allowDirty: false, review: true });
   drainRecorded();
   process.env.WORKBENCH_DRY_RUN_TMUX = JSON.stringify({ sessions: {} });
   await submitReview("ws1", { message: "m", log });
@@ -296,21 +296,21 @@ test("submit kills the review window when it exists, after the pause, and record
 test("submit removes the notes snapshots, so the next review does not resend old comments", async () => {
   const a = worktree("feat");
   workset([{ branch: "feat", worktree: a }]);
-  openReview("ws1", { allowDirty: false });
+  openReview("ws1", { allowDirty: false, review: true });
   seedNotes(`${repo}#feat`);
   const first = await submitReview("ws1", { message: "m", log });
   expect(first.comments).toHaveLength(2);
   expect(existsSync(notesDir())).toBe(false);
   expect(existsSync(join(tmp, "state", "reviews", "ws1", `${first.id}.json`))).toBe(true); // the archive stays
 
-  openReview("ws1", { allowDirty: false });
+  openReview("ws1", { allowDirty: false, review: true });
   const second = await submitReview("ws1", { message: "m", log });
   expect(second.comments).toEqual([]);
 });
 
 test("close keeps the notes snapshots for the next review", () => {
   workset([{ branch: "feat", worktree: worktree("feat") }]);
-  openReview("ws1", { allowDirty: false });
+  openReview("ws1", { allowDirty: false, review: true });
   seedNotes(`${repo}#feat`);
   closeReview("ws1");
   expect(JSON.parse(readFileSync(notesPath(`${repo}#feat`), "utf8"))).toHaveLength(3);
@@ -320,7 +320,7 @@ test("submit skips a work member recorded after open: its uncommitted files are 
   const a = worktree("feat");
   const b = worktree("feat2", "feat");
   workset([{ branch: "feat", worktree: a }]);
-  openReview("ws1", { allowDirty: false });
+  openReview("ws1", { allowDirty: false, review: true });
   // The agent's hook records a new worktree into the workset mid-review.
   const ws = JSON.parse(readFileSync(join(tmp, "state", "worksets", "ws1.json"), "utf8"));
   addMember(ws, { repo, branch: "feat2", worktree: b, base: "feat", added_by: "claude-x" });
@@ -338,7 +338,7 @@ test("submit skips a work member recorded after open: its uncommitted files are 
 test("submit skips a member whose worktree switched branch since open", async () => {
   const a = worktree("feat");
   workset([{ branch: "feat", worktree: a }]);
-  openReview("ws1", { allowDirty: false });
+  openReview("ws1", { allowDirty: false, review: true });
   sh(a, "switch", "-q", "-c", "elsewhere");
   const tip = sh(a, "rev-parse", "HEAD");
   writeFileSync(join(a, "f.txt"), "edited\n");
@@ -354,7 +354,7 @@ test("submit delivers only to sessions whose pointer is still bound to the works
   pointer("claude-one");
   savePointer({ key: "claude-moved", harness: "claude", session: "moved", workset: "other", cwd: tmp, opened: "t", closed: null });
   pointer("claude-late"); // bound to ws1 by pointer, never listed in ws.sessions
-  const r = openReview("ws1", { allowDirty: false });
+  const r = openReview("ws1", { allowDirty: false, review: true }).review!;
   const out = await submitReview("ws1", { message: "m", log });
   expect(out.sessions).toEqual(["claude-late", "claude-one"]);
   expect(existsSync(join(tmp, "state", "inbox", "claude-moved", `${r.id}.json`))).toBe(false);
@@ -374,7 +374,7 @@ test("close clears a lock left without a review file and prints one line", async
 test("submit still commits for a member whose id the workset rewrote after open", async () => {
   const a = worktree("feat");
   workset([{ branch: "feat", worktree: a }]);
-  openReview("ws1", { allowDirty: false });
+  openReview("ws1", { allowDirty: false, review: true });
   const ws = loadWorkset("ws1")!;
   ws.members[0].slug = "org/repo"; ws.members[0].id = "org/repo#feat";
   saveWorkset(ws);

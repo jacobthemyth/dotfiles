@@ -1,4 +1,5 @@
-import { config, loadReview, repoint } from "./review";
+import { config, loadReview } from "./review";
+import { loadWindow, repoint } from "./window";
 import * as inbox from "./inbox";
 import { listPointers } from "./session";
 import { closeInPane, submitInPane } from "./sidebar-review";
@@ -23,7 +24,7 @@ export async function runSidebar(name: string): Promise<number> {
     const ws = workset();
     const review = loadReview(name);
     const sessions = listPointers().filter((p) => p.workset === name).map((pointer) => ({ pointer, reviews: inbox.list(pointer.key) }));
-    rows = buildRows(ws, cfg, { showThrowaway, sessions, current: review?.current ?? null });
+    rows = buildRows(ws, cfg, { showThrowaway, sessions, current: loadWindow(name)?.current ?? null });
     sel = clamp(rows, sel);
     const width = process.stdout.columns || 44;
     const fit = (s: string) => (s.length > width ? s.slice(0, width - 1) + "…" : s);
@@ -44,13 +45,13 @@ export async function runSidebar(name: string): Promise<number> {
   };
 
   const show = (r: Row) => {
-    const review = loadReview(name);
-    if (!review) { status = `no open review; run workbench open ${name}`; return; }
+    const w = loadWindow(name);
+    if (!w) { status = `no window; run workbench open ${name}`; return; }
     const ws = workset();
     const [to, base] = r.kind === "stack" ? [r.node.top, r.node.bottomBase] : r.kind === "member" ? [r.member, diffBase(r.member, cfg)] : [null, ""];
     if (!to) return;
     if (!to.worktree) { status = `${to.id} has no worktree`; return; }
-    status = repoint(review, ws, to, base) ? `showing ${base}...${to.branch}` : `hunk reload failed for ${to.id}`;
+    status = repoint(w, ws, to, base) ? `showing ${base}...${to.branch}` : `hunk reload failed for ${to.id}`;
   };
 
   return await new Promise<number>((resolve) => {

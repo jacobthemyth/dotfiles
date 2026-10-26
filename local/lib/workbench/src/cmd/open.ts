@@ -11,9 +11,9 @@ export async function run(args: string[]): Promise<number> {
       args, allowPositionals: true, options: { "allow-dirty": { type: "boolean" }, "no-attach": { type: "boolean" } },
     });
     if (positionals.length !== 1) return fail(USAGE, 2);
-    const r = openReview(positionals[0], { allowDirty: !!values["allow-dirty"] });
-    const session = tmux.sessionName(r.workset);
-    if (values["no-attach"]) { console.log(`${r.id} ${session}`); return 0; }
+    const { window, review } = openReview(positionals[0], { allowDirty: !!values["allow-dirty"], review: true });
+    const session = tmux.sessionName(window.workset);
+    if (values["no-attach"]) { console.log(`${review?.id ?? "watching"} ${session}`); return 0; }
     return tmux.switchOrAttach(session) === 0 ? 0 : fail(`workbench: could not attach to ${session}`);
   } catch (e) {
     if ((e as { code?: string }).code?.startsWith("ERR_PARSE_ARGS")) return fail(`workbench: ${(e as Error).message}`, 2);

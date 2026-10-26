@@ -3,7 +3,8 @@ import { join } from "node:path";
 import { normaliseNotes, type Comment } from "./comments";
 import * as git from "./git";
 import { sub } from "./paths";
-import { archiveFile, clearNotes, hasWorktree, killWindow, loadLock, loadNotes, loadReview, reconcileIds, releaseReview, saveReview, snapshotNotes, type Review } from "./review";
+import { archiveFile, clearNotes, hasWorktree, loadLock, loadNotes, loadReview, reconcileIds, releaseReview, saveReview, type Review } from "./review";
+import { killWindow, loadWindow, saveWindow, snapshotNotes, type Window } from "./window";
 import { loadPointer, pointerKeys } from "./session";
 import { now, writeJson } from "./store";
 import { loadWorkset, type Member, type Workset } from "./workset";
@@ -28,13 +29,14 @@ export async function ttyPrompt(): Promise<string> {
   try { return await rl.question(`Review message (blank for "${DEFAULT_MESSAGE}"): `); } finally { rl.close(); }
 }
 
-function open(name: string): { ws: Workset; review: Review } {
+function open(name: string): { ws: Workset; review: Review; window: Window | null } {
   const ws = loadWorkset(name);
   if (!ws) throw new Error(`workbench: no workset "${name}"`);
   const review = loadReview(name);
   if (!review) throw new Error(`workbench: no open review for "${name}"`);
-  if (reconcileIds(review, ws)) saveReview(review);
-  return { ws, review };
+  const window = loadWindow(name);
+  if (reconcileIds(review, window, ws)) { saveReview(review); if (window) saveWindow(window); }
+  return { ws, review, window };
 }
 
 // A corrupt state file is reported and treated as absent: no single file may abort a submit or close.
@@ -43,9 +45,9 @@ function tolerant<T>(what: string, read: () => T, fallback: T, warn: (s: string)
 }
 
 // hunk holds the live member's notes only in memory; copy them to its snapshot file, the single source.
-function snapshotCurrent(ws: Workset, review: Review, warn: (s: string) => void): void {
-  const live = ws.members.find((m) => m.id === review.current);
-  if (live && hasWorktree(live)) tolerant(`notes snapshot for ${live.id}`, () => snapshotNotes(review, live), [], warn);
+function snapshotCurrent(ws: Workset, w: Window | null, warn: (s: string) => void): void {
+  const live = w && ws.members.find((m) => m.id === w.current);
+  if (w && live && hasWorktree(live)) tolerant(`notes snapshot for ${live.id}`, () => snapshotNotes(w, live), [], warn);
 }
 
 type Outcome = { edit: EditCommit } | { failed: FailedEdit } | null;
@@ -73,12 +75,12 @@ function commitEdits(m: Member, review: Review, message: string, log: (s: string
 
 export async function submitReview(name: string, opts: SubmitOptions = {}): Promise<ReviewFile> {
   const log = opts.log ?? console.log, warn = opts.warn ?? console.error;
-  const { ws, review } = open(name);
+  const { ws, review, window } = open(name);
   const asked = opts.message ?? (process.stdin.isTTY ? await (opts.prompt ?? ttyPrompt)() : "");
   const message = asked.trim() || null;
 
   // 1. Read every state file first: once a commit exists, nothing may throw before delivery.
-  snapshotCurrent(ws, review, warn);
+  snapshotCurrent(ws, window, warn);
   // Only the members this review opened on and locked: one recorded since was never reviewed or locked.
   const reviewed = (m: Member) => !!review.snapshot[m.id] && !!m.worktree && review.locked.includes(m.worktree);
   const work: Member[] = [];
@@ -147,7 +149,11 @@ export function closeReview(name: string): string {
     if (lock) { releaseReview(name); return lock.review; }
     throw new Error(ws ? `workbench: no open review for "${name}"` : `workbench: no workset "${name}"`);
   }
-  if (ws) { reconcileIds(review, ws); snapshotCurrent(ws, review, console.error); }
+  if (ws) {
+    const window = loadWindow(name);
+    if (reconcileIds(review, window, ws) && window) saveWindow(window);
+    snapshotCurrent(ws, window, console.error);
+  }
   releaseReview(name);
   return review.id;
 }
