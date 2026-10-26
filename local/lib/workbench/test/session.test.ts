@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { handle } from "../src/hook";
 import { bindSession, loadPointer, pointerKey, useWorkset } from "../src/session";
-import { listWorksets, loadWorkset } from "../src/workset";
+import { createWorkset, listWorksets, loadWorkset } from "../src/workset";
 
 beforeEach(() => {
   process.env.WORKBENCH_STATE_DIR = mkdtempSync(join(tmpdir(), "wb-"));
@@ -27,6 +27,7 @@ test("resume keeps an existing binding", () => {
 });
 test("session end closes the pointer and leaves the bound workset alone, even empty", () => {
   handle({ kind: "sessionStarted", harness: "claude", session: "abc", cwd: "/w", resumed: false });
+  createWorkset("spike");
   useWorkset(pointerKey("claude", "abc"), "spike");
   handle({ kind: "sessionEnded", harness: "claude", session: "abc" });
   expect(loadPointer(pointerKey("claude", "abc"))!.closed).not.toBeNull();
@@ -36,10 +37,21 @@ test("session end for an unknown session is a no-op", () => {
   expect(handle({ kind: "sessionEnded", harness: "claude", session: "zzz" })).toEqual({});
 });
 
-test("workset use binds the session, creating the workset", async () => {
+test("workset use refuses a workset that does not exist", async () => {
   const { run } = await import("../src/cmd/workset");
   const key = pointerKey("claude", "abc");
   handle({ kind: "sessionStarted", harness: "claude", session: "abc", cwd: "/w", resumed: false });
+  const err = console.error; const lines: string[] = []; console.error = (m: string) => lines.push(m);
+  try { expect(await run(["use", "spike", "--session", key])).toBe(1); } finally { console.error = err; }
+  expect(lines.join("\n")).toContain('no workset "spike"');
+  expect(loadPointer(key)!.workset).toBeNull();
+  expect(listWorksets()).toEqual([]);
+});
+test("workset use binds the session to an existing workset", async () => {
+  const { run } = await import("../src/cmd/workset");
+  const key = pointerKey("claude", "abc");
+  handle({ kind: "sessionStarted", harness: "claude", session: "abc", cwd: "/w", resumed: false });
+  createWorkset("spike");
   expect(await run(["use", "spike", "--session", key])).toBe(0);
   expect(loadPointer(key)!.workset).toBe("spike");
   expect(loadWorkset("spike")!.sessions).toContain(key);
@@ -53,11 +65,33 @@ test("workset use leaves the previous workset's sessions", async () => {
   const { run } = await import("../src/cmd/workset");
   const key = pointerKey("claude", "abc");
   start();
+  createWorkset("spike"); createWorkset("other");
   expect(await run(["use", "spike", "--session", key])).toBe(0);
   expect(await run(["use", "other", "--session", key])).toBe(0);
   expect(loadWorkset("spike")!.sessions).not.toContain(key);
   expect(loadWorkset("other")!.sessions).toEqual([key]);
   expect(loadPointer(key)!.workset).toBe("other");
+});
+
+test("workset unbind clears the binding and leaves the workset's sessions", async () => {
+  const { run } = await import("../src/cmd/workset");
+  const key = pointerKey("claude", "abc");
+  start();
+  createWorkset("spike");
+  expect(await run(["use", "spike", "--session", key])).toBe(0);
+  expect(await run(["unbind", "--session", key])).toBe(0);
+  expect(loadPointer(key)!.workset).toBeNull();
+  expect(loadWorkset("spike")!.sessions).toEqual([]);
+  expect(listWorksets()).toEqual(["spike"]);
+});
+test("workset unbind on an unbound session is a no-op, and fails for an unknown session", async () => {
+  const { run } = await import("../src/cmd/workset");
+  const key = pointerKey("claude", "abc");
+  start();
+  expect(await run(["unbind", "--session", key])).toBe(0);
+  expect(loadPointer(key)!.workset).toBeNull();
+  const err = console.error; console.error = () => {};
+  try { expect(await run(["unbind", "--session", "claude-nope"])).toBe(1); } finally { console.error = err; }
 });
 
 import { mkdirSync as _mkdir, writeFileSync as _wf, utimesSync as _ut } from "node:fs";

@@ -1,11 +1,6 @@
 import type { Event, Outcome } from "./events";
-import { openPointer, closePointer, pointerKey, currentWorkset, joinWorkset } from "./session";
-import { loadWorkset, saveWorkset, addMember } from "./workset";
+import { openPointer, closePointer, pointerKey } from "./session";
 import { stopWatcher, unreadCount } from "./inbox";
-import { recognise } from "./record";
-import { applyChanges, saveSnapshot, snapshot, takeSnapshot } from "./observe";
-import * as git from "./git";
-import * as gh from "./gh";
 import { activeLocks, commandTouches, denyMessage, lockFor, looksLikeWrite } from "./lock";
 import { isAbsolute, resolve } from "node:path";
 
@@ -13,7 +8,7 @@ export function handle(e: Event): Outcome {
   switch (e.kind) {
     case "sessionStarted": {
       const p = openPointer(e.harness, e.session, e.cwd);
-      if (!p.workset) return { context: `workbench: this session is "${p.key}", not bound to a workset. Run \`workbench workset use <name>\` to record its branches and receive reviews.` };
+      if (!p.workset) return { context: `workbench: this session is "${p.key}", not bound to a workset. Run \`workbench workset use <name>\` to receive its reviews.` };
       return { context: `workbench: this session is "${p.key}", bound to workset "${p.workset}". Change it with \`workbench workset use <name>\`.` };
     }
     case "sessionEnded": {
@@ -21,31 +16,8 @@ export function handle(e: Event): Outcome {
       stopWatcher(pointerKey(e.harness, e.session));
       return {};
     }
-    case "afterCommand": {
-      const key = pointerKey(e.harness, e.session);
-      const snap = e.toolUseId ? takeSnapshot(key, e.toolUseId) : null;
-      const recorded = recognise(e.command, e.output);
-      const name = currentWorkset(key);
-      if (!name || (!snap && recorded.length === 0)) return {};
-      const ws = loadWorkset(name) ?? joinWorkset(key, name);
-      if (snap) applyChanges(ws, snap, key);
-      for (const r of recorded) {
-        if (r.kind === "push") {
-          // Text recognition matches push commands quoted in heredocs and strings: keep only a real local branch.
-          const repo = git.repoRoot(e.cwd); if (!repo || !git.revParse(repo, `refs/heads/${r.branch}`)) continue;
-          addMember(ws, { repo: git.mainWorktree(repo), slug: git.remoteSlug(repo), branch: r.branch, worktree: e.cwd, added_by: key });
-        } else {
-          const repo = git.repoRoot(e.cwd);
-          const slug = repo && git.remoteSlug(repo);
-          const branch = repo && git.currentBranch(repo);
-          if (!repo || !slug || !branch) continue;
-          const found = gh.prForBranch(slug, branch);
-          if (found) addMember(ws, { repo: git.mainWorktree(repo), slug, branch, worktree: e.cwd, pr: found.pr, base: found.base, base_source: found.base ? "pr" : undefined, added_by: key });
-        }
-      }
-      saveWorkset(ws);
-      return {};
-    }
+    // Membership is curated by hand (`workset add`, `adopt`, `rm`): a command's effect on branches is never recorded.
+    case "afterCommand": return {};
     case "beforeWrite": {
       const lock = lockFor(isAbsolute(e.path) ? e.path : resolve(e.cwd, e.path));
       return lock ? { deny: denyMessage(lock, lock.matched) } : {};
@@ -56,11 +28,6 @@ export function handle(e: Event): Outcome {
           const hit = commandTouches(e.command, e.cwd, lock.paths);
           if (hit) return { deny: denyMessage(lock, hit) };
         }
-      }
-      const key = pointerKey(e.harness, e.session);
-      // Only a bound session's commands are observed; a failed snapshot must never block the command.
-      if (e.toolUseId && currentWorkset(key)) {
-        try { saveSnapshot(key, e.toolUseId, snapshot(e.command, e.cwd)); } catch (err) { console.error(`workbench hook: ${(err as Error).message}`); }
       }
       return {};
     }

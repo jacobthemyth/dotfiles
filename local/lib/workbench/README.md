@@ -20,7 +20,8 @@ Glossary: [CONTEXT.md](CONTEXT.md). Design: [docs/superpowers/specs/2026-10-10-w
 | `workbench workset show <name> \| create <name>` | Show or create a workset. |
 | `workbench workset add <name> --repo <p> --branch <b> [--worktree <p>] [--base <ref>] [--path <pathspec>]... [--order <n>] [--role work\|throwaway]` | Declare a member. `--path` (repeatable) limits its review diff to those pathspecs; without it the whole tree is reviewed. |
 | `workbench workset rm <name> <member-id>` | Remove a member. |
-| `workbench workset use <name> [--session <key>]` | Bind a session to a workset (creates it if missing). A new session is bound to nothing: until it runs `use`, its branches are not recorded and reviews cannot reach it. |
+| `workbench workset unbind [--session <key>]` | Unbind a session: it leaves its workset's session list and receives no more reviews. The workset stays. |
+| `workbench workset use <name> [--session <key>]` | Bind a session to an existing workset. A new session is bound to nothing: until it runs `use`, reviews cannot reach it. Binding never changes membership. |
 | `workbench workset adopt <name> <id> [--role ...]` / `ignore <name> <id>` | Claim or ignore an unclaimed item from `scan`. |
 | `workbench workset rename <old> <new>` | Rename a workset. Refused while a review is open. |
 | `workbench workset prune [<name>] [--yes]` | Prune workset records; never a git command. Prunable records (merged, upstream gone, branch gone) leave the workset and bases that pointed at them are re-pointed. A workset is deleted once it is empty and no session is open on it. With no name, every workset that would drop a record or be deleted is planned. The dropped members' branches and worktrees stay for `git cleanup`. Refused while a review is open or unread. Dry run without `--yes`. |
@@ -38,15 +39,9 @@ Inside Claude Code the session key comes from `CLAUDE_CODE_SESSION_ID` (`claude-
 
 ## How members are recorded
 
-A session records nothing until it is bound with `workbench workset use <name>`; the SessionStart hook says so in the session's context. A bound session's members are observed, not parsed. Before each Bash command the hook snapshots the local branches and worktrees of the command's repo, and of any repo whose path the command names (`git -C <repo>`, `cd <repo> && ...`). After the command it compares:
+Membership is curated by hand. A member joins a workset only through `workbench workset add` or `workbench workset adopt`, and leaves only through `rm`, `prune` or `delete`. The hooks never change membership: a bound session's branches, worktrees, pushes and pull requests are not observed or recorded, however the command was written. Binding a session (`workset use`) only routes reviews to it and makes it honor locks.
 
-- A branch created or moved, or checked out in a new worktree, joins the workset with its worktree. Loops, variables, scripts and aliases make no difference.
-- Commits on the default branch, detached worktrees, and switching an existing worktree to an existing branch record nothing.
-- A worktree that went away is cleared from its member. A member whose branch and worktree are both gone leaves the workset.
-- A member with no base gets an `inferred` base: the nearest other member its tip descends from. A declared or PR base is never replaced.
-- Ignored ids are never recorded. A branch declared by path (`workset add --repo`) and observed by slug is one member.
-
-`git push -u` and `gh pr create` are still read from the command and its output: they record an existing branch the session published, and the PR it opened. `workbench workset add` remains the explicit form for order, role and declared bases.
+`workbench workset list` is the one command that writes without being asked to: it refreshes each member's stored pull request from GitHub and, for a member whose base was not declared with `--base`, adopts the pull request's base. A declared base is never replaced.
 
 ## Review flow
 
@@ -102,8 +97,6 @@ workbench close spike   # release the lock when done reading
 
 ## Known limitations
 
-- Observation sees only the command's own repo and repos whose paths appear in its text. A script that changes a repo it never names is missed. Another session moving refs in the same repo during the same command is attributed to both sessions.
-- The snapshot costs a few git calls per Bash command: about 35 ms in a repo with 100 branches and 35 worktrees, plus about 150 ms when refs changed and bases are recomputed.
 
 - hunk 0.23 refuses `session reload --source` across worktrees, so showing a member in another worktree restarts hunk in the pane.
 - hunk user notes live only in the TUI's memory and die with it; the sidebar, `close` and `submit` snapshot them to `~/.local/state/workbench/reviews/<workset>/notes/`. Submit clears that directory once the review is delivered; close keeps it.

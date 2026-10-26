@@ -7,7 +7,7 @@ import * as git from "../git";
 import { refreshStoredPr, summarizeAll, type WorksetSummary } from "../triage";
 import { planPrune, planDelete, executePrune, renderPlan, pruneAll, type PrunePlan } from "../prune";
 import { sessionKeyFromEnv } from "../session-key";
-import { loadPointer, useWorkset } from "../session";
+import { loadPointer, unbindWorkset, useWorkset } from "../session";
 import { baseSource, diffBase, orderMembers } from "../stack";
 import { renameWorkset } from "../rename";
 import { addMember, createWorkset, listWorksets, loadWorkset, removeMember, saveWorkset, type Member, type Role, type Workset } from "../workset";
@@ -19,6 +19,7 @@ const USAGE = `usage: workbench workset <subcommand>
   add <name> --repo <path> --branch <b> [--worktree <p>] [--base <ref>] [--path <pathspec>]... [--order <n>] [--role work|throwaway]
   rm <name> <member-id>
   use <name> [--session <key>]
+  unbind [--session <key>]
   adopt <name> <id> [--role work|throwaway]
   ignore <name> <id>
   rename <old> <new>
@@ -149,6 +150,14 @@ export async function run(args: string[]): Promise<number> {
         const name = positionals[0];
         useWorkset(key, name);
         console.log(`${key} -> ${name}`);
+        return 0;
+      }
+      case "unbind": {
+        const { values } = parseArgs({ args: rest, allowPositionals: false, options: { session: { type: "string" } } });
+        const key = sessionKeyFromEnv(values);
+        if (!key) return fail("workbench: no session key; set WORKBENCH_SESSION or pass --session <key>", 2);
+        const p = unbindWorkset(key);
+        console.log(`${p.key} -> (none)`);
         return 0;
       }
       case "adopt": {

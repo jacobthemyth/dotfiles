@@ -61,7 +61,7 @@ _Avoid_: agent (the thing inside it), CLI
 One run of a harness, identified by the harness's own session id and bound to exactly one workset.
 
 **Pointer**:
-The per-session record that says which workset a session is bound to. Created unbound at session start, bound by `workset use`, closed at session end. An unbound session records nothing and receives no reviews.
+The per-session record that says which workset a session is bound to. Created unbound at session start, bound by `workset use` to an existing workset, unbound by `workset unbind`, closed at session end. Binding routes reviews and locks to the session; it never changes membership. An unbound session receives no reviews.
 _Avoid_: default workset (there is none; every workset is named by a person)
 _Avoid_: binding, link
 
