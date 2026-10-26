@@ -4,7 +4,7 @@ import { normaliseNotes, type Comment } from "./comments";
 import * as git from "./git";
 import { sub } from "./paths";
 import { archiveFile, clearNotes, hasWorktree, loadLock, loadNotes, loadReview, reconcileIds, releaseReview, saveReview, type Review } from "./review";
-import { killWindow, loadWindow, saveWindow, snapshotNotes, type Window } from "./window";
+import { loadWindow, saveWindow, snapshotNotes, type Window } from "./window";
 import { loadPointer, pointerKeys } from "./session";
 import { now, writeJson } from "./store";
 import { loadWorkset, type Member, type Workset } from "./workset";
@@ -15,10 +15,8 @@ export type ReviewFile = {
   id: string; workset: string; submitted: string; message: string | null;
   comments: Comment[]; edits: EditCommit[]; failed: FailedEdit[]; sessions: string[];
 };
-// beforeKill runs after delivery and release, just before the review window is killed (the sidebar's pause).
 export type SubmitOptions = {
   message?: string; prompt?: () => Promise<string>; log?: (line: string) => void; warn?: (line: string) => void;
-  beforeKill?: () => Promise<void>;
 };
 
 export const DEFAULT_MESSAGE = "Review edits (workbench)";
@@ -121,8 +119,6 @@ export async function submitReview(name: string, opts: SubmitOptions = {}): Prom
   // 5. Release: the lock goes last. Then the window, which may be the pane running this.
   releaseReview(name);
   log(summary(file));
-  await opts.beforeKill?.();
-  killWindow(name);
   return file;
 }
 

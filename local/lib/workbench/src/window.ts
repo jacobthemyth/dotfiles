@@ -162,8 +162,3 @@ export function ensureWindow(name: string, ws: Workset, cfg: Config): Window {
   return w;
 }
 
-// Removed in the next step (submit returns the window to watching); kept so submit still compiles.
-export function killWindow(ws: string): void {
-  const session = tmux.sessionName(ws);
-  if (tmux.hasSession(session)) tmux.killSession(session);
-}

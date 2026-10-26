@@ -71,7 +71,7 @@ export async function runSidebar(name: string): Promise<number> {
       busy = true;
       try {
         if (key === "c") await closeInPane(name);
-        else if (await submitInPane(name)) return quit();
+        else await submitInPane(name);
       } catch (e) { status = (e as Error).message; }
       busy = false;
       if (done) return;

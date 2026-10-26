@@ -7,6 +7,7 @@ import { savePointer } from "../src/session";
 import { CLOSE_WARNING, confirmClose } from "../src/sidebar-review";
 import { closeReview, submitReview, type ReviewFile } from "../src/submit";
 import { drainRecorded } from "../src/spawn";
+import { loadWindow } from "../src/window";
 import { addMember, createWorkset, loadWorkset, saveWorkset } from "../src/workset";
 
 const GIT_ENV = {
@@ -275,22 +276,30 @@ const seedNotes = (memberId: string) => {
   writeFileSync(notesPath(memberId), JSON.stringify(JSON.parse(fixture).comments));
 };
 
-test("submit kills the review window when it exists, after the pause, and records nothing when it does not", async () => {
+test("submit leaves the window and its hunk session in place and releases the lock", async () => {
   workset([{ branch: "feat", worktree: worktree("feat") }]);
+  process.env.WORKBENCH_DRY_RUN_HUNK_SESSIONS = JSON.stringify({ sessions: [{ sessionId: "sid-1", terminal: { locations: [{ source: "tmux", paneId: "%1" }] } }] });
   openReview("ws1", { allowDirty: false, review: true });
+  expect(loadWindow("ws1")!.hunkSessionId).toBe("sid-1");
   drainRecorded();
   process.env.WORKBENCH_DRY_RUN_TMUX = JSON.stringify({ sessions: { "wb-ws1": { panes: [] } } });
-  const order: string[] = [];
-  await submitReview("ws1", { message: "m", log, beforeKill: async () => { order.push(`pause with lock ${loadLock("ws1") ? "held" : "released"}`); } });
-  const cmds = drainRecorded();
-  expect(cmds).toContain("tmux kill-session -t =wb-ws1");
-  expect(order).toEqual(["pause with lock released"]);
-
-  openReview("ws1", { allowDirty: false, review: true });
-  drainRecorded();
-  process.env.WORKBENCH_DRY_RUN_TMUX = JSON.stringify({ sessions: {} });
   await submitReview("ws1", { message: "m", log });
-  expect(drainRecorded().some((c) => c.includes("kill-session"))).toBe(false);
+  expect(drainRecorded().some((c) => c.includes("kill-session") || c.includes("respawn-pane"))).toBe(false);
+  expect(loadWindow("ws1")!.hunkSessionId).toBe("sid-1");
+  expect(loadReview("ws1")).toBeNull();
+  expect(loadLock("ws1")).toBeNull();
+});
+
+test("submit from the shell with no review open fails with today's message and writes nothing", async () => {
+  workset([{ branch: "feat", worktree: worktree("feat") }]);
+  openReview("ws1", { allowDirty: false });
+  await expect(submitReview("ws1", { message: "m", log })).rejects.toThrow('no open review for "ws1"');
+  expect(loadWindow("ws1")).not.toBeNull();
+  expect(existsSync(join(tmp, "state", "reviews", "ws1"))).toBe(false);
+});
+
+test("the close warning no longer says comments live only in hunk's memory", () => {
+  expect(CLOSE_WARNING).toBe("Close the review without submitting? The lock is released and the window stays up.");
 });
 
 test("submit removes the notes snapshots, so the next review does not resend old comments", async () => {

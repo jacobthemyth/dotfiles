@@ -14,15 +14,18 @@ function takeOver(): void {
   process.stdout.write("\x1b[H\x1b[2J");
 }
 
-// Submits (prompting for the message here); submit pauses on a key, then kills the review window. False when submit failed.
+// Submits (prompting for the message here) and pauses on a key so the summary can be read; the window stays up,
+// watching. False when submit failed.
 export async function submitInPane(name: string): Promise<boolean> {
   takeOver();
-  try { await submitReview(name, { beforeKill: anyKey }); } catch (e) { console.log((e as Error).message); await anyKey(); return false; }
-  return true;
+  let ok = true;
+  try { await submitReview(name); } catch (e) { console.log((e as Error).message); ok = false; }
+  await anyKey();
+  return ok;
 }
 
 export const CLOSE_WARNING =
-  "Close the review without submitting? The lock is released and the window stays up; comments live only in hunk's memory until the next open.";
+  "Close the review without submitting? The lock is released and the window stays up.";
 export const confirmsClose = (answer: string) => answer.trim().toLowerCase() === "yes";
 
 async function askYes(): Promise<string> {
@@ -47,7 +50,7 @@ export async function confirmClose(name: string, opts: CloseOptions = {}): Promi
   return closed;
 }
 
-// Asks, then releases the lock and returns to the sidebar; the window stays (comments live only in hunk's memory).
+// Asks, then releases the lock and returns to the sidebar; the window stays, watching.
 export async function closeInPane(name: string): Promise<boolean> {
   takeOver();
   return confirmClose(name);
