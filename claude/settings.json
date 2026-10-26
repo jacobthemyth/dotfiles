@@ -10,15 +10,6 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "rtk hook claude"
-          }
-        ]
-      },
-      {
         "matcher": "Edit|Write|NotebookEdit|Bash",
         "hooks": [
           {
