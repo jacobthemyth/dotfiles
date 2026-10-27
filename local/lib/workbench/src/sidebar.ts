@@ -1,4 +1,6 @@
-import { config, loadReview, startReview } from "./review";
+import * as hunk from "./hunk";
+import { syncMember } from "./notes";
+import { config, hasWorktree, loadReview, startReview } from "./review";
 import { loadWindow, repoint } from "./window";
 import * as inbox from "./inbox";
 import { listPointers } from "./session";
@@ -37,6 +39,19 @@ export async function runSidebar(name: string): Promise<number> {
     out.push("", fit(status), `\x1b[2m${fit(KEYS)}\x1b[0m`);
     process.stdout.write("\x1b[H\x1b[2J" + out.join("\r\n"));
   };
+  // hunk holds the current member's notes only in memory: snapshot them every tick, so a deletion or a
+  // `/resolve` there takes effect within seconds. Warnings (an unknown thread) become the status line.
+  const sync = () => {
+    if (done || busy) return;
+    try {
+      const w = loadWindow(name);
+      if (!w?.hunkSessionId || !w.current || !hunk.hasSession(w.hunkSessionId)) return;
+      const m = workset().members.find((x) => x.id === w.current);
+      if (!m || !hasWorktree(m)) return;
+      const r = syncMember(w, m);
+      if (r.warnings.length) status = r.warnings[r.warnings.length - 1];
+    } catch (e) { status = (e as Error).message; }
+  };
   // Every paint goes through here: nothing after quit, and an error becomes the status line, not a crash.
   const render = () => {
     if (done || busy) return;
@@ -54,7 +69,7 @@ export async function runSidebar(name: string): Promise<number> {
   };
 
   return await new Promise<number>((resolve) => {
-    const timer = setInterval(render, 5000);
+    const timer = setInterval(() => { sync(); render(); }, 5000);
     const restore = () => { try { process.stdin.setRawMode(false); } catch {} };
     process.on("exit", restore);
     const quit = () => {

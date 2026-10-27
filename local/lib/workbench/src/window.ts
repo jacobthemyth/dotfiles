@@ -3,8 +3,9 @@ import type { Config } from "./config";
 import { normaliseNotes } from "./comments";
 import * as hunk from "./hunk";
 import { sub } from "./paths";
+import { recordProxy, syncMember } from "./notes";
 import { rehydrateReplies } from "./reply";
-import { diffRef, hasWorktree, loadNotes, loadReview, real, reconcileIds, saveNotes, saveReview } from "./review";
+import { diffRef, hasWorktree, loadNotes, loadReview, real, reconcileIds, saveReview } from "./review";
 import { diffBase, orderMembers } from "./stack";
 import { dryRun, drainRecorded } from "./spawn";
 import { readJson, removeFile, writeJson } from "./store";
@@ -48,16 +49,6 @@ const guardEnv = (ws: string) => ({
   EDITOR: "workbench-edit-guard", WORKBENCH_EDIT_WORKSET: ws, WORKBENCH_EDIT_EDITOR: process.env.VISUAL || process.env.EDITOR || "nvim",
 });
 
-// User notes live only in hunk's memory; copy what it holds now for the live member, merged by noteId.
-export function snapshotNotes(w: Window, m: Member): hunk.RawNote[] {
-  const fresh = hunk.userComments(hunkTarget(w, m));
-  const merged = new Map(loadNotes(w.workset, m.id).map((n) => [n.noteId, n]));
-  for (const n of fresh) merged.set(n.noteId, n);
-  const out = [...merged.values()];
-  saveNotes(w.workset, m.id, out);
-  return out;
-}
-
 // A fresh hunk holds none of the reviewer's notes: re-show `m`'s snapshotted ones as agent comments by "you".
 // normaliseNotes keeps only source "user", so these are never delivered. A note already live is skipped
 // (by note id, or a "you:" comment with the same body on the same file); if the live list cannot be
@@ -76,7 +67,8 @@ function reshowOwnNotes(w: Window, m: Member): void {
     const summary = `you: ${body.get(c.id) || c.text}`;
     if (ids.has(c.id) || shown.has(`${c.path}\0${summary}`)) continue;
     const line = c.line.side === "old" ? { oldLine: c.line.start } : { newLine: c.line.start };
-    hunk.addAgentComment(t, { file: c.path, ...line, summary, author: "you" });
+    const id = hunk.addAgentComment(t, { file: c.path, ...line, summary, author: "you" });
+    if (id) recordProxy(w, m.id, id, c.id); // deleting the copy deletes the original
   }
 }
 
@@ -104,7 +96,7 @@ function reconcile(w: Window, ws: Workset): void {
 export function repoint(w: Window, ws: Workset, to: Member, base: string): boolean {
   reconcile(w, ws);
   const live = ws.members.find((m) => m.id === w.current);
-  if (live && hasWorktree(live)) snapshotNotes(w, live);
+  if (live && hasWorktree(live)) syncMember(w, live);
   const same = !!w.hunkPaneCwd && real(w.hunkPaneCwd) === real(to.worktree!);
   let ok = same && hunk.reload(hunkTarget(w, to), to.worktree!, diffRef(to.worktree!, base, to.branch), to.paths ?? []);
   if (ok) { w.current = to.id; rehydrateReplies(w, to); }
@@ -122,7 +114,7 @@ function adoptHunk(w: Window, ws: Workset, pane: string, fallback: Member): void
   w.hunkPaneCwd = m.worktree;
   w.current = m.id;
   setHunkSession(w, hunk.waitForSession(pane));
-  snapshotNotes(w, m);
+  syncMember(w, m);
   reshowOwnNotes(w, m);
   rehydrateReplies(w, m);
 }
@@ -160,7 +152,7 @@ export function ensureWindow(name: string, ws: Workset, cfg: Config): Window {
   const w = (up ? loadWindow(name) : null) ?? newWindow(name);
   reconcile(w, ws);
   const live = ws.members.find((m) => m.id === w.current && hasWorktree(m));
-  if (up && live && w.hunkSessionId) snapshotNotes(w, live);
+  if (up && live && w.hunkSessionId) syncMember(w, live);
   buildOrRepair(w, ws, work[0], cfg);
   saveWindow(w);
   return w;

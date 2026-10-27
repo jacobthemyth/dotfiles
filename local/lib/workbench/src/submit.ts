@@ -4,7 +4,8 @@ import { normaliseNotes, type Comment } from "./comments";
 import * as git from "./git";
 import { sub } from "./paths";
 import { archiveFile, clearNotes, hasWorktree, loadLock, loadNotes, loadReview, reconcileIds, releaseReview, saveReview, type Review } from "./review";
-import { loadWindow, saveWindow, snapshotNotes, type Window } from "./window";
+import { syncMember } from "./notes";
+import { loadWindow, saveWindow, type Window } from "./window";
 import { loadPointer, pointerKeys } from "./session";
 import { now, writeJson } from "./store";
 import { loadWorkset, type Member, type Workset } from "./workset";
@@ -45,7 +46,7 @@ function tolerant<T>(what: string, read: () => T, fallback: T, warn: (s: string)
 // hunk holds the live member's notes only in memory; copy them to its snapshot file, the single source.
 function snapshotCurrent(ws: Workset, w: Window | null, warn: (s: string) => void): void {
   const live = w && ws.members.find((m) => m.id === w.current);
-  if (w && live && hasWorktree(live)) tolerant(`notes snapshot for ${live.id}`, () => snapshotNotes(w, live), [], warn);
+  if (w && live && hasWorktree(live)) tolerant(`notes snapshot for ${live.id}`, () => syncMember(w, live).notes, [], warn);
 }
 
 type Outcome = { edit: EditCommit } | { failed: FailedEdit } | null;

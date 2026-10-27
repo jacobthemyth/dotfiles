@@ -49,16 +49,19 @@ export function reload(t: Target, worktree: string, ref: string, paths: string[]
   return run(["hunk", "session", "reload", ...who, "--source", worktree, "--json", "--", "diff", ref, ...pathspec(paths)]).code === 0;
 }
 
-export function userComments(t: Target): RawNote[] {
-  if (dryRun()) return [];
-  const r = run(["hunk", "session", "comment", "list", ...address(t), "--type", "user", "--json"]);
-  try { return r.code === 0 ? (JSON.parse(r.stdout).comments ?? []) : []; } catch { return []; }
-}
-
 // Every note in the session, user and agent. Dry runs read WORKBENCH_DRY_RUN_HUNK_NOTES (the list --json object).
 export function allNotes(t: Target): RawNote[] {
   const r = run(["hunk", "session", "comment", "list", ...address(t), "--type", "all", "--json"], { dryStdout: process.env.WORKBENCH_DRY_RUN_HUNK_NOTES });
   try { return r.code === 0 ? (JSON.parse(r.stdout).comments ?? []) : []; } catch { return []; }
+}
+
+// Every note in the session, or null when hunk could not be asked: a failed listing must never read as "all deleted".
+// Dry runs read WORKBENCH_DRY_RUN_HUNK_NOTES; unset, the session holds no notes.
+export function listNotes(t: Target): RawNote[] | null {
+  const r = run(["hunk", "session", "comment", "list", ...address(t), "--type", "all", "--json"], { dryStdout: process.env.WORKBENCH_DRY_RUN_HUNK_NOTES });
+  if (r.code !== 0) return null;
+  if (!r.stdout.trim()) return dryRun() ? [] : null;
+  try { const c = JSON.parse(r.stdout).comments; return Array.isArray(c) ? c : null; } catch { return null; }
 }
 
 // hunk 0.24's `comment add --json` prints {"result": {"commentId": "mcp:<uuid>", "filePath", "hunkIndex", "side", "line"}};
