@@ -58,7 +58,7 @@ function workset(members: { branch: string; worktree: string | null; role?: "wor
 }
 
 // hunk runs with the edit guard as its editor.
-const GUARD = "env EDITOR=workbench-edit-guard WORKBENCH_EDIT_WORKSET=ws1 WORKBENCH_EDIT_EDITOR=nvim ";
+const GUARD = "env EDITOR=workbench-edit-guard VISUAL=workbench-edit-guard WORKBENCH_EDIT_WORKSET=ws1 WORKBENCH_EDIT_EDITOR=nvim ";
 
 // The review and the window of one open, read as one object (both carry workset).
 const flat = (o: Opened) => ({ ...o.review!, ...o.window });

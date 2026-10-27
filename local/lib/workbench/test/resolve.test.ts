@@ -6,7 +6,7 @@ import type { Comment } from "../src/comments";
 import { run as replyCli } from "../src/cmd/reply";
 import type { RawNote } from "../src/hunk";
 import { syncMember } from "../src/notes";
-import { addReply, rehydrateReplies } from "../src/reply";
+import { addReply, recordThread, rehydrateReplies } from "../src/reply";
 import { drainResolved, pendingFile } from "../src/resolve";
 import { archiveFile, loadNotes, saveNotes } from "../src/review";
 import { drainRecorded } from "../src/spawn";
@@ -168,4 +168,26 @@ test("drainResolved returns the ids once and removes the file", () => {
   expect(drainResolved("ws1")).toEqual(["user:1", "user:2"]);
   expect(drainResolved("ws1")).toEqual([]);
   expect(existsSync(pendingFile("ws1"))).toBe(false);
+});
+
+test("final #1: a delivered note already in the snapshot (a tick racing a shell submit) is dropped, not kept", () => {
+  deliver(reviewFile("r1", [comment("user:1")]));
+  saveNotes("ws1", M, [note("user:1"), note("user:2")]); // the tick read these before submit cleared the directory
+  const w = win({ live: { [M]: { "user:1": null, "user:2": null } } }); saveWindow(w);
+  onScreen(note("user:1"), note("user:2"));
+  syncMember(w, member);
+  expect(loadNotes("ws1", M).map((n) => n.noteId)).toEqual(["user:2"]);
+});
+
+test("final #2: a thread the agent records while the sidebar holds the window survives saves and resolutions", () => {
+  deliver(reviewFile("r1", [comment("user:1"), comment("user:2")]));
+  const w = win({ threads: { "mcp:7": "user:1" } }); saveWindow(w);
+  recordThread("ws1", SID, "mcp:8", "user:2"); // the agent's process, after the sidebar loaded w
+  onScreen(agent("mcp:7"), agent("mcp:8"), threaded("user:9", "mcp:7", "/resolve"));
+  syncMember(w, member);
+  expect(loadWindow("ws1")!.threads).toEqual({ "mcp:8": "user:2" });
+  const held = loadWindow("ws1")!;
+  recordThread("ws1", SID, "mcp:10", "user:2");
+  saveWindow(held); // repoint and ensureWindow save the object they hold
+  expect(loadWindow("ws1")!.threads).toEqual({ "mcp:8": "user:2", "mcp:10": "user:2" });
 });

@@ -5,7 +5,7 @@ import { loadWindow, repoint } from "./window";
 import * as inbox from "./inbox";
 import { listPointers } from "./session";
 import { closeInPane, submitInPane } from "./sidebar-review";
-import { buildRows, clamp, headerLine, KEYS, move, scroll, splitKeys, STATUS, type Row } from "./sidebar-model";
+import { buildRows, clamp, headerLine, KEYS, oneLine, move, scroll, splitKeys, STATUS, type Row } from "./sidebar-model";
 import { diffBase } from "./stack";
 import { loadWorkset, type Workset } from "./workset";
 
@@ -36,7 +36,7 @@ export async function runSidebar(name: string): Promise<number> {
       const i = top + j, line = fit(r.text);
       out.push(i === sel ? `\x1b[7m${line}\x1b[0m` : r.kind === "header" ? `\x1b[1m${line}\x1b[0m` : line);
     });
-    out.push("", fit(status), `\x1b[2m${fit(KEYS)}\x1b[0m`);
+    out.push("", fit(oneLine(status)), `\x1b[2m${fit(KEYS)}\x1b[0m`);
     process.stdout.write("\x1b[H\x1b[2J" + out.join("\r\n"));
   };
   // hunk holds the current member's notes only in memory: snapshot them every tick, so a deletion or a

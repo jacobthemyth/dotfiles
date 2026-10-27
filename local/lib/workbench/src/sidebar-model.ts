@@ -11,6 +11,12 @@ export type Row =
 
 export const KEYS = "j/k move  ⏎ show  t throwaways  r review  s submit  c close (asks for yes)  q quit";
 export const STATUS = { alreadyOpen: "a review is already open", nothingToSubmit: "no review to submit; press r", nothingToClose: "nothing to close" } as const;
+// The status line is one line: a multi-line error (the dirty-file list) would push the key line off the pane.
+export function oneLine(s: string): string {
+  const parts = s.split("\n").map((l) => l.trim()).filter(Boolean);
+  return parts.reduce((acc, p, i) => (i === 0 ? p : `${acc}${acc.endsWith(":") ? " " : "; "}${p}`), "");
+}
+
 // The window is watching with no review open, reviewing with one.
 export const headerLine = (name: string, reviewId: string | null): string => (reviewId ? `${name}  reviewing ${reviewId}` : `${name}  watching`);
 

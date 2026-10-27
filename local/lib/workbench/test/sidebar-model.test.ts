@@ -1,7 +1,7 @@
 import { test, expect } from "bun:test";
 import type { Config } from "../src/config";
 import type { Pointer } from "../src/session";
-import { buildRows, clamp, headerLine, KEYS, move, scroll, sessionLine, splitKeys, STATUS, type SessionView } from "../src/sidebar-model";
+import { buildRows, clamp, headerLine, oneLine, KEYS, move, scroll, sessionLine, splitKeys, STATUS, type SessionView } from "../src/sidebar-model";
 import { addMember, type Workset } from "../src/workset";
 
 const cfg = { default_branch: "main" } as Config;
@@ -98,4 +98,8 @@ test("the key line names r and the status copy is fixed", () => {
 
 test("the session line counts resolved threads as closed", () => {
   expect(sessionLine(sv("claude-1", null, [[false, [1, 0, 2], 1], [true, [0, 1], 1]]))).toBe("claude-1  open  inbox: 1 unread  threads 3 open / 5");
+});
+
+test("final #5: a multi-line error becomes one status line", () => {
+  expect(oneLine("workbench: uncommitted changes (commit them):\n  /a/x\n  /a/y")).toBe("workbench: uncommitted changes (commit them): /a/x; /a/y");
 });

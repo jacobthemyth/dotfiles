@@ -26,8 +26,13 @@ export const removeWindow = (ws: string) => removeFile(windowFile(ws));
 export const newWindow = (ws: string): Window =>
   ({ workset: ws, hunkPaneId: null, hunkSessionId: null, hunkPaneCwd: null, current: null, live: {}, threads: {} });
 
+// The agent's process records threads into this file while the sidebar holds a copy across slow hunk calls:
+// keep the file's thread entries for the same hunk session. Removals go through persistThreads, as deltas.
 export function saveWindow(w: Window): void {
   if (dryRun()) w.commands = [...(w.commands ?? []), ...drainRecorded()];
+  let fresh: Window | null = null;
+  try { fresh = loadWindow(w.workset); } catch { /* corrupt: overwrite */ }
+  if (fresh && fresh.hunkSessionId === w.hunkSessionId) w.threads = { ...fresh.threads, ...w.threads };
   writeJson(windowFile(w.workset), w);
 }
 
@@ -46,7 +51,7 @@ export const hunkTarget = (w: Window, m: Member): hunk.Target => ({ id: w.hunkSe
 const SIDEBAR = (ws: string) => `workbench sidebar ${ws}`;
 // hunk's `e` runs the edit guard, which opens the user's editor only while a review is open.
 const guardEnv = (ws: string) => ({
-  EDITOR: "workbench-edit-guard", WORKBENCH_EDIT_WORKSET: ws, WORKBENCH_EDIT_EDITOR: process.env.VISUAL || process.env.EDITOR || "nvim",
+  EDITOR: "workbench-edit-guard", VISUAL: "workbench-edit-guard", WORKBENCH_EDIT_WORKSET: ws, WORKBENCH_EDIT_EDITOR: process.env.VISUAL || process.env.EDITOR || "nvim",
 });
 
 // A fresh hunk holds none of the reviewer's notes: re-show `m`'s snapshotted ones as agent comments by "you".

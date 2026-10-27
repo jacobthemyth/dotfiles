@@ -37,11 +37,13 @@ export function recordProxy(w: Window, memberId: string, proxyId: string, origin
 // Snapshots `m`'s notes from the live hunk session: deletions since the last sync leave the snapshot, notes on
 // screen are merged in by id, and the live set is rebuilt. When hunk cannot be listed nothing is deleted.
 export function syncMember(w: Window, m: Member): SyncResult {
-  const saved = loadNotes(w.workset, m.id);
+  // A delivered note is never kept: a tick that read the notes file just before a submit cleared it must not
+  // write those notes back for the next review to deliver again.
+  const delivered = archivedCommentIds(w.workset);
+  const saved = loadNotes(w.workset, m.id).filter((n) => !delivered.has(n.noteId));
   const all = hunk.listNotes(hunkTarget(w, m));
   if (all === null) { saveNotes(w.workset, m.id, saved); return { notes: saved, replies: [], deleted: [], warnings: [] }; }
   const nowIds = new Set(all.map((n) => n.noteId));
-  const delivered = archivedCommentIds(w.workset);
   const own = all.filter((n) => ownTopLevel(n) && !delivered.has(n.noteId));
   const prev = w.live[m.id] ?? {};
   const { notes, deleted } = applyDeletions(saved, prev, nowIds);

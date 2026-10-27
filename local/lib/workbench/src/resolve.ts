@@ -45,11 +45,14 @@ export function drainResolved(ws: string): string[] {
   return ids;
 }
 
-// Writes w.threads into the window file as it is now, unless the file has moved to another hunk session.
-export function persistThreads(w: Window): void {
+// Removes thread entries from the window file as it is now (a delta: entries another process added survive),
+// unless the file has moved to another hunk session.
+export function persistThreads(w: Window, removed: string[]): void {
   const fresh = loadWindow(w.workset);
   if (!fresh || fresh.hunkSessionId !== w.hunkSessionId) return;
-  writeJson(windowFile(w.workset), { ...fresh, threads: w.threads });
+  const threads = { ...fresh.threads };
+  for (const id of removed) delete threads[id];
+  writeJson(windowFile(w.workset), { ...fresh, threads });
 }
 
 const target = (w: Window): hunk.Target => ({ id: w.hunkSessionId, path: w.hunkPaneCwd ?? "" });
@@ -70,10 +73,12 @@ export function resolveThread(w: Window, commentId: string, text: string, onScre
   updateReviewFile(archiveFile(w.workset, found.reviewId), mark);
   for (const key of found.sessions) updateReviewFile(inboxFile(key, found.reviewId), mark);
   queue(w.workset, commentId);
-  const shown = Object.keys(w.threads).filter((id) => w.threads[id] === commentId);
+  // Read the file too: a reply note the agent added for this comment during the sync belongs to the thread.
+  const known = { ...(loadWindow(w.workset)?.threads ?? {}), ...w.threads };
+  const shown = Object.keys(known).filter((id) => known[id] === commentId);
   for (const id of [...first, ...shown.filter((id) => onScreen.has(id)), ...(onScreen.has(commentId) ? [commentId] : [])]) hunk.rmComment(target(w), id);
   for (const id of shown) delete w.threads[id];
-  persistThreads(w);
+  persistThreads(w, shown);
   return true;
 }
 

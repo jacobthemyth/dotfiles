@@ -5,7 +5,7 @@ import * as git from "./git";
 import { sub } from "./paths";
 import { archiveFile, clearNotes, hasWorktree, loadLock, loadNotes, loadReview, reconcileIds, releaseReview, saveReview, type Review } from "./review";
 import { syncMember } from "./notes";
-import { drainResolved } from "./resolve";
+import { archivedCommentIds, drainResolved } from "./resolve";
 import { loadWindow, saveWindow, type Window } from "./window";
 import { loadPointer, pointerKeys } from "./session";
 import { now, writeJson } from "./store";
@@ -88,8 +88,9 @@ export async function submitReview(name: string, opts: SubmitOptions = {}): Prom
   for (const m of ws.members.filter((x) => x.role === "work")) {
     if (reviewed(m)) work.push(m); else log(`  skipping ${m.id}: joined after open`);
   }
+  const delivered = tolerant("review archives", () => archivedCommentIds(name), new Set<string>(), warn);
   const notes = new Map(work.map((m) => [m.id, normaliseNotes(
-    tolerant(`notes snapshot for ${m.id}`, () => loadNotes(name, m.id), [], warn),
+    tolerant(`notes snapshot for ${m.id}`, () => loadNotes(name, m.id), [], warn).filter((n) => !delivered.has(n.noteId)),
     { member: m.id, repo: m.repo, slug: m.slug, branch: m.branch, sha: "" },
   )]));
   // Pointers say who is bound now; ws.sessions is only the history of who ever joined.
