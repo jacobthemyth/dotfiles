@@ -3,7 +3,7 @@
 # Status Report Collector
 #
 # Resolves a date range, runs the deterministic collectors (github, git,
-# documents, slack), and merges their output into combined.json.
+# documents, agent sessions), and merges their output into combined.json.
 # Makes NO LLM call and does NOT touch Linear or Google Calendar — those
 # are gathered by the agent via MCP.
 
@@ -130,13 +130,32 @@ else
     log_info "document_directories not configured, skipping documents"
 fi
 
+# --- Agent sessions (Claude Code + Codex) ---
+# Report output and the skill itself are always excluded so report-generation
+# and skill-maintenance sessions never count as work. pwd -P gives the real
+# path (sessions record resolved cwds, not the ~/.claude/skills symlink).
+SKILL_DIR="$(cd "$SCRIPT_DIR/.." && pwd -P)"
+SESSION_EXCLUDES="$(expand_path "$(get_config output_directory "$HOME/Desktop")"),$SKILL_DIR"
+while IFS= read -r p; do
+    [[ -n "$p" ]] && SESSION_EXCLUDES+=",$(expand_path "$p")"
+done < <(get_config_array session_exclude_paths | jq -r '.[]')
+
+log_info "Running agent sessions collector..."
+if "$SCRIPT_DIR/sessions.py" --start-date "$START_DATE" --end-date "$END_DATE" \
+    --exclude-paths "$SESSION_EXCLUDES" --repos-dir "$REPOS_DIR" \
+    --output "$TEMP_DIR/sessions.json"; then
+    SUCCESSFUL_COLLECTORS+=("sessions"); log_success "Agent sessions collected"
+else
+    log_warn "Sessions collector failed"
+fi
+
 # Note: Slack is NOT collected here. The agent reads the week's Slack summary
 # file directly (see SKILL.md), so it stays out of this scripted merge.
 
 # --- Merge ---
 COMBINED_JSON="$TEMP_DIR/combined.json"
 echo "{\"date_range\":{\"start\":\"$START_DATE\",\"end\":\"$END_DATE\"}}" > "$COMBINED_JSON"
-for src in github git documents; do
+for src in github git documents sessions; do
     if [[ -f "$TEMP_DIR/$src.json" ]]; then
         jq --slurpfile s "$TEMP_DIR/$src.json" ". + {\"$src\": \$s[0]}" \
             "$COMBINED_JSON" > "$COMBINED_JSON.tmp" && mv "$COMBINED_JSON.tmp" "$COMBINED_JSON"

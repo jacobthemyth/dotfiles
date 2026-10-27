@@ -9,5 +9,12 @@
   ],
   "slack_export_directory": "~/Documents/status-report/slack_summaries",
   "slack_user_name": "Your Name",
-  "output_directory": "~/Documents/status-report/reports"
+  "output_directory": "~/Documents/status-report/reports",
+  "session_exclude_paths": [
+    "~/.dotfiles",
+    "~/Code/personal",
+    "~/Documents/status-report",
+    "/private/tmp",
+    "/tmp"
+  ]
 }
