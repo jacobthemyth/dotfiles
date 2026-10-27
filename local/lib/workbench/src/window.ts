@@ -21,7 +21,17 @@ export type Window = {
 };
 
 export const windowFile = (ws: string) => join(sub("windows"), `${ws}.json`);
-export const loadWindow = (ws: string) => readJson<Window>(windowFile(ws));
+// A review opened before the window was split out kept the window's fields in reviews/<ws>.json: read them from
+// there until the first save writes the window file, so submit and the sidebar still find the live hunk.
+type Legacy = { current?: string | null; hunkPaneId?: string | null; hunkSessionId?: string | null; hunkPaneCwd?: string | null };
+export function loadWindow(ws: string): Window | null {
+  const w = readJson<Window>(windowFile(ws));
+  if (w) return w;
+  let old: Legacy | null = null;
+  try { old = readJson<Legacy>(join(sub("reviews"), `${ws}.json`)); } catch { return null; }
+  if (!old || !old.hunkPaneId) return null;
+  return { workset: ws, hunkPaneId: old.hunkPaneId, hunkSessionId: old.hunkSessionId ?? null, hunkPaneCwd: old.hunkPaneCwd ?? null, current: old.current ?? null, live: {}, threads: {} };
+}
 export const removeWindow = (ws: string) => removeFile(windowFile(ws));
 export const newWindow = (ws: string): Window =>
   ({ workset: ws, hunkPaneId: null, hunkSessionId: null, hunkPaneCwd: null, current: null, live: {}, threads: {} });

@@ -2,6 +2,7 @@ import { test, expect, beforeEach, afterEach } from "bun:test";
 import { mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { writeJson } from "../src/store";
 import { loadWindow, newWindow, removeWindow, saveWindow, setHunkSession, windowFile, windowOpen } from "../src/window";
 
 const KEYS = ["WORKBENCH_CONFIG", "WORKBENCH_STATE_DIR", "WORKBENCH_DRY_RUN", "WORKBENCH_DRY_RUN_TMUX"] as const;
@@ -46,4 +47,13 @@ test("saveWindow round-trips and removeWindow deletes", () => {
   expect({ ...back, commands: undefined }).toEqual({ ...w, commands: undefined });
   removeWindow("ws1");
   expect(loadWindow("ws1")).toBeNull();
+});
+
+test("a review opened before the split still has its window: loadWindow reads the old review file's hunk fields", () => {
+  writeJson(join(tmp, "state", "reviews", "ws1.json"), {
+    id: "r-1", workset: "ws1", opened: "t", snapshot: {}, locked: [], current: "/r#a", hunkPaneId: "%4", hunkSessionId: "sid-9", hunkPaneCwd: "/r",
+  });
+  expect(loadWindow("ws1")).toEqual({ workset: "ws1", hunkPaneId: "%4", hunkSessionId: "sid-9", hunkPaneCwd: "/r", current: "/r#a", live: {}, threads: {} });
+  writeJson(join(tmp, "state", "reviews", "ws2.json"), { id: "r-2", workset: "ws2", opened: "t", snapshot: {}, locked: [] });
+  expect(loadWindow("ws2")).toBeNull();
 });
