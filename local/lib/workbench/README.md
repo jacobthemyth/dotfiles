@@ -53,7 +53,7 @@ Membership is curated by hand. A member joins a workset only through `workbench 
 5. Edit with hunk's `e`: neovim on the real file; the diff refreshes when you quit.
 6. Submit (`s` in the sidebar, or `workbench submit`): one commit per touched member, authored by you, with `Workset:` and `Review:` trailers; the review goes to every open bound session's inbox, the notes snapshots are cleared, the lock is released and the window returns to watching.
 7. The agent wakes, runs `workbench inbox show`, works through it and answers with `workbench reply`; a reply shows in hunk at once when the window has that member on screen, and otherwise the next time it does.
-8. Reply `/resolve` (optionally followed by a closing note) under a thread in hunk to close it: the thread's notes leave the screen, it is never shown again, and the next review tells the agent it was resolved. `/resolve` under one of your own unsubmitted comments drops it.
+8. Reply `/resolve` (optionally followed by a closing note) under a thread in hunk to close it (move onto the note with `j`/`k`, press `R`, type, `Ctrl-S`): the thread's notes leave the screen, it is never shown again, and the next review tells the agent it was resolved. `/resolve` under one of your own unsubmitted comments drops it.
 
 Submit commits and delivers only for the members the review opened on. A member recorded after `open` is skipped (`skipping <id>: joined after open`), and so is one whose worktree has since switched branch. The review goes to sessions whose pointer is bound to the workset now; `workbench workset use` moves a session out of its previous workset.
 
