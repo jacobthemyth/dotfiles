@@ -71,7 +71,7 @@ The thin translation from one harness's hook protocol to Workbench's generic eve
 ### Review
 
 **Review**:
-One batch of comments and edits against a workset, delivered to every bound session when submitted.
+One batch of comments and edits against a workset, open from `r` in the sidebar (or `open --review`) until submit or close, and delivered to every bound session when submitted. A window with a review open is **reviewing**.
 _Avoid_: feedback, round, pass
 
 **Comment**:
@@ -87,11 +87,15 @@ The hold a review places on every `work` member's worktree while it is open. Age
 _Avoid_: freeze, mutex, claim
 
 **Submit**:
-The act that commits your edits, writes the review to each bound session's inbox, releases the lock and wakes the agents.
+The act that commits your edits, writes the review to each bound session's inbox, releases the lock, wakes the agents and returns the window to watching.
 
 **Close**:
-Leaving a review without submitting: the lock is released and comments are kept.
+Leaving a review without submitting: the lock is released, comments are kept and the window returns to watching.
 _Avoid_: cancel, abandon, discard
+
+**Resolution**:
+The reviewer closing a thread with a `/resolve` reply in hunk. A resolved thread is not re-shown and needs nothing from the agent; the next review lists it.
+_Avoid_: dismiss, done, close (that is leaving a review)
 
 **Inbox**:
 Where a session's submitted reviews wait to be read, and where agent replies are kept.
@@ -111,6 +115,10 @@ _Avoid_: viewer, pane (the tmux object)
 The workset tree rendered beside the reviewer: members with pull request state and stack position, bound sessions and their state.
 _Avoid_: tree, panel, navigator
 
-**Review window**:
-The tmux session `wb-<workset>` holding the sidebar and the reviewer.
+**Window**:
+The tmux session `wb-<workset>` holding the sidebar and the reviewer. It outlives any one review.
 _Avoid_: workspace
+
+**Watching**:
+A window with no review open: nothing is locked, the diff follows the agent's commits, replies show as they arrive, and comments typed in hunk wait as the next review's notes.
+_Avoid_: idle, read-only

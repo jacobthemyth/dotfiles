@@ -1,6 +1,6 @@
 # workbench: the window outlives the review, and threads can be resolved — Design Spec
 
-**Status:** Approved design (brainstormed 2026-10-26); not yet implemented.
+**Status:** Implemented 2026-10-26 on branch `workbench-watching` (63fc84d..HEAD).
 **Date:** 2026-10-26
 **Owner:** jacob@smithjs.org
 **Glossary:** `local/lib/workbench/CONTEXT.md`

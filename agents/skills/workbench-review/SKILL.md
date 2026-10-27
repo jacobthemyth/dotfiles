@@ -15,7 +15,8 @@ Your session key is `claude-$CLAUDE_CODE_SESSION_ID`. Workbench reads it from th
 3. Work through **change** comments in order. For each, make the change in the worktree, commit as usual, then `workbench reply --review <review id> --comment <comment id> --text "<what you did, one line, with the commit sha>"`.
 4. Answer **question** comments with `workbench reply --review <review id> --comment <comment id> --text "<answer>"`. Keep answers to a few sentences; a change that follows from the answer is a separate change you make and reply about.
 5. Acknowledge **note** comments only when they change what you do; otherwise leave them.
-6. End with one line in the conversation: review id, counts of changes made, questions answered, anything you disagreed with and why. Then resume what you were doing.
+6. A thread listed under **Resolved**, or rendered as ~~resolved~~, needs no reply and no work; a question you answered that then shows there is closed.
+7. End with one line in the conversation: review id, counts of changes made, questions answered, anything you disagreed with and why. Then resume what you were doing.
 
 A reply is kept with the review and shown beside the comment in the reviewer, now if the window is open on that member, else the next time it opens there. `workbench reply` exits 1 if the review or comment id is wrong; check the id in `workbench inbox show`.
 

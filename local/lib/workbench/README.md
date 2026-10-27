@@ -27,9 +27,10 @@ Glossary: [CONTEXT.md](CONTEXT.md). Design: [docs/superpowers/specs/2026-10-10-w
 | `workbench workset prune [<name>] [--yes]` | Prune workset records; never a git command. Prunable records (merged, upstream gone, branch gone) leave the workset and bases that pointed at them are re-pointed. A workset is deleted once it is empty and no session is open on it. With no name, every workset that would drop a record or be deleted is planned. The dropped members' branches and worktrees stay for `git cleanup`. Refused while a review is open or unread. Dry run without `--yes`. |
 | `workbench workset delete <name> [--yes]` | Forget a workset whole, live members included; the record, its pointers, inbox and notes go, its branches and worktrees stay. Refused while a review is open or unread, or a session is open on it. Dry run without `--yes`. |
 | `workbench scan [--json]` | Derive branches, worktrees and PRs; list claimed, unclaimed and prunable. |
-| `workbench open <workset> [--allow-dirty] [--no-attach]` | Open a review: lock the work worktrees, build the `wb-<workset>` tmux session. |
-| `workbench submit <workset> [-m\|--message <m>]` | Commit your edits, deliver the review to bound sessions' inboxes, release the lock, kill the review window. |
-| `workbench close <workset>` | Release the lock without submitting; notes are kept. Also clears a lock left behind by an `open` that failed part-way. |
+| `workbench open <workset> [--review] [--allow-dirty] [--no-attach]` | Build or repair the `wb-<workset>` review window, watching. `--review` also starts a review: lock the work worktrees and snapshot them; `--allow-dirty` lets it start on uncommitted changes. |
+| `workbench submit <workset> [-m\|--message <m>]` | Commit your edits, deliver the review to bound sessions' inboxes, release the lock and return the window to watching. |
+| `workbench close <workset>` | Release the lock without submitting and return the window to watching; notes are kept. Also clears a lock left behind by an `open` that failed part-way. |
+| `workbench edit-guard` | Internal: hunk's `$EDITOR` in a review window (through the `workbench-edit-guard` shim); opens your editor only while a review is open. |
 | `workbench inbox list \| show [id] \| wait [--timeout <s>] [--session <key>]` | Read a session's inbox (`show` marks the review read). |
 | `workbench reply --review <id> --comment <id> --text <t> [--session <key>]` | An agent's reply to one comment. |
 | `workbench hook claude [--watch]` | Hook entry point (reads hook JSON on stdin). |
@@ -45,12 +46,14 @@ Membership is curated by hand. A member joins a workset only through `workbench 
 
 ## Review flow
 
-1. `workbench open <workset>`: the work worktrees are locked and the review window opens (sidebar left, hunk right). Each work member's worktree must have that member's branch checked out; `open` refuses otherwise, because submit commits on the branch the worktree has checked out. If `open` fails after taking the lock, `workbench close <workset>` releases it.
-2. Select a member in the sidebar (`⏎`) to show its diff (working tree against the merge base with its diff base, the later of the merge bases with the local base and with its upstream, so neither a local `main` left behind nor an unpushed commit on a stacked base widens the diff). A member declared with `--path` shows only those pathspecs.
-3. Comment in hunk with `c`, text, `Ctrl-S`: `? ` makes a question, `// ` a note, anything else a change request.
-4. Edit with hunk's `e`: neovim on the real file; the diff refreshes when you quit.
-5. Submit (`s` in the sidebar, or `workbench submit`): one commit per touched member, authored by you, with `Workset:` and `Review:` trailers; the review goes to every open bound session's inbox, the notes snapshots are cleared and the review window is killed.
-6. The agent wakes, runs `workbench inbox show`, works through it and answers with `workbench reply`; the replies show in hunk the next time the window opens on that member.
+1. `workbench open <workset>`: the review window opens watching (sidebar left, hunk right). Nothing is locked: hunk follows the agent's commits with `--watch`, replies show as they arrive, and comments you type wait as the next review's notes. hunk's `e` is refused while watching ("lock first: press r in the sidebar"), because an edit made then would be left out of the next review's commit.
+2. Press `r` in the sidebar to start a review (or open with `workbench open <workset> --review`): the work worktrees are locked and each member is snapshotted. Each work member's worktree must have that member's branch checked out, and it must be clean unless you pass `--allow-dirty` to `open --review`; `r` refuses otherwise and says why in the status line.
+3. Select a member in the sidebar (`⏎`) to show its diff (working tree against the merge base with its diff base, the later of the merge bases with the local base and with its upstream, so neither a local `main` left behind nor an unpushed commit on a stacked base widens the diff). A member declared with `--path` shows only those pathspecs.
+4. Comment in hunk with `c`, text, `Ctrl-S`: `? ` makes a question, `// ` a note, anything else a change request. Deleting a comment in hunk deletes it from the review.
+5. Edit with hunk's `e`: neovim on the real file; the diff refreshes when you quit.
+6. Submit (`s` in the sidebar, or `workbench submit`): one commit per touched member, authored by you, with `Workset:` and `Review:` trailers; the review goes to every open bound session's inbox, the notes snapshots are cleared, the lock is released and the window returns to watching.
+7. The agent wakes, runs `workbench inbox show`, works through it and answers with `workbench reply`; a reply shows in hunk at once when the window has that member on screen, and otherwise the next time it does.
+8. Reply `/resolve` (optionally followed by a closing note) under a thread in hunk to close it: the thread's notes leave the screen, it is never shown again, and the next review tells the agent it was resolved. `/resolve` under one of your own unsubmitted comments drops it.
 
 Submit commits and delivers only for the members the review opened on. A member recorded after `open` is skipped (`skipping <id>: joined after open`), and so is one whose worktree has since switched branch. The review goes to sessions whose pointer is bound to the workset now; `workbench workset use` moves a session out of its previous workset.
 
@@ -60,9 +63,9 @@ When hunk restarts for a member (showing a member in another worktree, or reopen
 
 ## Sidebar keys
 
-`j`/`k` move, `⏎` show the selection in hunk, `t` show throwaways, `s` submit (prompts for the message, then closes the window), `c` close (asks for yes; keeps the window), `q` quit.
+The header says `<workset>  watching` or `<workset>  reviewing <review id>`. `j`/`k` move, `⏎` show the selection in hunk, `t` show throwaways, `r` start a review, `s` submit (prompts for the message; the window stays, watching), `c` close (asks for yes; the window stays), `q` quit the sidebar.
 
-Each bound session has a line: `<key>  open|closed  inbox: <n> unread  replies <r>/<c>`, where `c` counts the comments in that session's inbox reviews and `r` those with at least one reply.
+Each bound session has a line: `<key>  open|closed  inbox: <n> unread  threads <open> open / <total>`, where `total` counts the comments in that session's inbox reviews and `open` those not resolved.
 
 ## Walkthrough on a real workset
 
@@ -77,7 +80,7 @@ workbench workset show spike
 In the Claude session that did the work (or a new one in the member's worktree), ask it to run `workbench workset use spike`, then check `~/.local/state/workbench/sessions/claude-<id>.json` says `"workset": "spike"`.
 
 ```sh
-workbench open spike        # refuses on uncommitted changes; --allow-dirty to proceed anyway
+workbench open spike --review   # refuses on uncommitted changes; --allow-dirty to proceed anyway
 ```
 
 In hunk: leave one `? question`, one `// note` and one plain change request (`c`, text, `Ctrl-S`); press `e` on a changed line, edit, `:wq`. Then press `s` in the sidebar and give a message, or from another shell:
@@ -91,15 +94,14 @@ ls ~/.local/state/workbench/inbox/claude-<id>/        # the review file
 Within a few seconds the agent shows "Stop hook feedback" and runs `workbench inbox show`; it commits the change request and runs `workbench reply` for each comment. Then:
 
 ```sh
-workbench open spike    # replies appear as agent comments on the commented lines (toggle agent notes in hunk if hidden)
-workbench close spike   # release the lock when done reading
+# the window stayed up, watching: replies appear as agent comments on the commented lines (toggle agent notes in hunk if hidden)
 ```
 
 ## Known limitations
 
 
 - hunk 0.23 refuses `session reload --source` across worktrees, so showing a member in another worktree restarts hunk in the pane.
-- hunk user notes live only in the TUI's memory and die with it; the sidebar, `close` and `submit` snapshot them to `~/.local/state/workbench/reviews/<workset>/notes/`. Submit clears that directory once the review is delivered; close keeps it.
+- hunk user notes live only in the TUI's memory and die with it; the sidebar snapshots the current member's notes every five seconds (and on every member switch, `close` and `submit`) to `~/.local/state/workbench/reviews/<workset>/notes/`, so a deletion or a `/resolve` in hunk takes up to five seconds to take effect. Submit clears that directory once the review is delivered; close keeps it.
 - The lock is enforced by hooks. The Bash heuristic (write-like commands naming or running in a locked path) has false negatives; the prompt-submit context tells the agent about the lock as a backstop.
 - No GitHub posting: comments stay between you and the agents.
 - The sidebar is 44 columns wide, so long member ids and session lines are cut off.
