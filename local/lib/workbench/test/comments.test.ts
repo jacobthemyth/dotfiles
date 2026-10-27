@@ -1,7 +1,7 @@
 import { test, expect } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { normaliseNotes, parseSigil } from "../src/comments";
+import { normaliseNotes, parseSigil, parseResolve, threadedUserReplies } from "../src/comments";
 
 const fixture = join(import.meta.dir, "fixtures", "hunk-user-notes.json");
 
@@ -28,4 +28,23 @@ test("normalise takes a bare array, drops replies and stamps the anchor", () => 
   const c = normaliseNotes(raw, anchor);
   expect(c.map((x) => x.id)).toEqual(["user:1791644120301-1", "user:1791644131877-2"]);
   expect(c[0]).toMatchObject(anchor);
+});
+
+test("parseResolve takes /resolve with optional closing text and nothing else", () => {
+  expect(parseResolve("/resolve")).toEqual({ text: "" });
+  expect(parseResolve("  /resolve  done, thanks ")).toEqual({ text: "done, thanks" });
+  expect(parseResolve("/resolve\nmultiline")).toEqual({ text: "multiline" });
+  expect(parseResolve("/resolved")).toBeNull();
+  expect(parseResolve("ok /resolve")).toBeNull();
+});
+
+test("threadedUserReplies keeps user notes with a parent only", () => {
+  const raw = { comments: [
+    { noteId: "user:2", source: "user", parentId: "mcp:1", body: "/resolve", filePath: "f" },
+    { noteId: "user:1", source: "user", body: "x", filePath: "f" },
+    { noteId: "mcp:1", source: "agent", parentId: "user:1", body: "y", filePath: "f" },
+  ] };
+  expect(threadedUserReplies(raw)).toEqual([{ id: "user:2", parentId: "mcp:1", body: "/resolve" }]);
+  expect(threadedUserReplies(raw.comments)).toEqual([{ id: "user:2", parentId: "mcp:1", body: "/resolve" }]);
+  expect(threadedUserReplies(null)).toEqual([]);
 });

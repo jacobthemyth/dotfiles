@@ -43,9 +43,9 @@ function show(sessionId: string, c: Comment, r: Reply, live: Set<string>): boole
   testHooks.beforeShow?.();
   const t: hunk.Target = { id: sessionId, path: "" };
   const summary = `↩ ${r.text}`;
-  if (live.has(c.id)) return hunk.addAgentComment(t, { replyTo: c.id, summary, author: r.by });
+  if (live.has(c.id)) return hunk.addAgentComment(t, { replyTo: c.id, summary, author: r.by }) !== null;
   const line = c.line.side === "old" ? { oldLine: c.line.start } : { newLine: c.line.start };
-  return hunk.addAgentComment(t, { file: c.path, ...line, summary, rationale: `re: ${c.text}`, author: r.by });
+  return hunk.addAgentComment(t, { file: c.path, ...line, summary, rationale: `re: ${c.text}`, author: r.by }) !== null;
 }
 const liveNotes = (sessionId: string) => new Set(hunk.allNotes({ id: sessionId, path: "" }).map((n) => n.noteId));
 

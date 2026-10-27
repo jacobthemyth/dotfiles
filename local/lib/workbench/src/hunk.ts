@@ -61,10 +61,23 @@ export function allNotes(t: Target): RawNote[] {
   try { return r.code === 0 ? (JSON.parse(r.stdout).comments ?? []) : []; } catch { return []; }
 }
 
-// True when hunk accepted the comment.
-export function addAgentComment(t: Target, note: AgentNote): boolean {
+// hunk 0.24's `comment add --json` prints {"result": {"commentId": "mcp:<uuid>", "filePath", "hunkIndex", "side", "line"}};
+// the id is the noteId `comment list` reports for the new note.
+export function commentIdOf(stdout: string): string | null {
+  try { const id = JSON.parse(stdout)?.result?.commentId; return typeof id === "string" ? id : null; } catch { return null; }
+}
+
+let dryIds = 0;
+// The new note's id, or null when hunk refused the comment.
+export function addAgentComment(t: Target, note: AgentNote): string | null {
   const line = note.newLine !== undefined ? ["--new-line", String(note.newLine)] : ["--old-line", String(note.oldLine ?? 1)];
   const anchor = note.replyTo ? ["--reply-to", note.replyTo] : ["--file", note.file ?? "", ...line];
-  return run(["hunk", "session", "comment", "add", ...address(t), ...anchor, "--summary", note.summary,
-    ...(note.rationale ? ["--rationale", note.rationale] : []), ...(note.author ? ["--author", note.author] : []), "--json"]).code === 0;
+  const r = run(["hunk", "session", "comment", "add", ...address(t), ...anchor, "--summary", note.summary,
+    ...(note.rationale ? ["--rationale", note.rationale] : []), ...(note.author ? ["--author", note.author] : []), "--json"]);
+  if (r.code !== 0) return null;
+  return dryRun() ? `dry:${++dryIds}` : commentIdOf(r.stdout);
 }
+
+// hunk refuses to remove a note that still has replies: callers remove children first.
+export const rmComment = (t: Target, noteId: string): boolean =>
+  run(["hunk", "session", "comment", "rm", ...address(t), noteId, "--json"]).code === 0;
