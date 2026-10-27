@@ -8,6 +8,8 @@ import { CLOSE_WARNING, confirmClose } from "../src/sidebar-review";
 import { closeReview, submitReview, type ReviewFile } from "../src/submit";
 import { drainRecorded } from "../src/spawn";
 import { loadWindow } from "../src/window";
+import { pendingFile } from "../src/resolve";
+import { writeJson } from "../src/store";
 import { addMember, createWorkset, loadWorkset, saveWorkset } from "../src/workset";
 
 const GIT_ENV = {
@@ -392,4 +394,15 @@ test("submit still commits for a member whose id the workset rewrote after open"
   expect(logs.join("\n")).not.toContain("joined after open");
   expect(out.edits.map((e) => [e.branch, e.files])).toEqual([["feat", ["f.txt"]]]);
   expect(sh(a, "status", "--porcelain")).toBe("");
+});
+
+test("submit drains pending resolutions into the review file and empties the queue", async () => {
+  workset([{ branch: "feat", worktree: worktree("feat") }], ["claude-a"]);
+  savePointer({ key: "claude-a", harness: "claude", session: "a", workset: "ws1", cwd: "/", opened: "t", closed: null });
+  openReview("ws1", { allowDirty: false, review: true });
+  writeJson(pendingFile("ws1"), ["user:old"]);
+  const file = await submitReview("ws1", { message: "m", log });
+  expect(file.resolved).toEqual(["user:old"]);
+  expect(JSON.parse(readFileSync(join(tmp, "state", "inbox", "claude-a", `${file.id}.json`), "utf8")).resolved).toEqual(["user:old"]);
+  expect(existsSync(pendingFile("ws1"))).toBe(false);
 });

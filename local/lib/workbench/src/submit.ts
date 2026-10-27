@@ -5,6 +5,7 @@ import * as git from "./git";
 import { sub } from "./paths";
 import { archiveFile, clearNotes, hasWorktree, loadLock, loadNotes, loadReview, reconcileIds, releaseReview, saveReview, type Review } from "./review";
 import { syncMember } from "./notes";
+import { drainResolved } from "./resolve";
 import { loadWindow, saveWindow, type Window } from "./window";
 import { loadPointer, pointerKeys } from "./session";
 import { now, writeJson } from "./store";
@@ -15,6 +16,7 @@ export type FailedEdit = { repo: string; branch: string; files: string[]; error:
 export type ReviewFile = {
   id: string; workset: string; submitted: string; message: string | null;
   comments: Comment[]; edits: EditCommit[]; failed: FailedEdit[]; sessions: string[];
+  resolved: string[]; // comment ids the reviewer resolved since the previous submit, from any earlier review
 };
 export type SubmitOptions = {
   message?: string; prompt?: () => Promise<string>; log?: (line: string) => void; warn?: (line: string) => void;
@@ -112,7 +114,8 @@ export async function submitReview(name: string, opts: SubmitOptions = {}): Prom
   });
 
   // 4. Deliver to every open bound session, then archive.
-  const file: ReviewFile = { id: review.id, workset: name, submitted: now(), message, comments, edits, failed, sessions };
+  const resolved = tolerant("resolved queue", () => drainResolved(name), [], warn);
+  const file: ReviewFile = { id: review.id, workset: name, submitted: now(), message, comments, edits, failed, sessions, resolved };
   for (const k of sessions) writeJson(inboxFile(k, review.id), { ...file, read: false });
   writeJson(archiveFile(name, review.id), file);
   clearNotes(name); // delivered: the next review must not send them again

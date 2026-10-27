@@ -15,9 +15,12 @@ function ws(): Workset {
 const ptr = (key: string, closed: string | null): Pointer => ({ key, harness: "claude", session: key, workset: "w", cwd: "/", opened: "", closed });
 const reply = { at: "t", by: "claude", text: "ok" };
 // One review per entry: read flag and, per comment, its reply count.
-const sv = (key: string, closed: string | null, reviews: [boolean, number[]][] = []): SessionView => ({
+// One review per entry: read flag, per comment its reply count, and how many of its first comments are resolved.
+const sv = (key: string, closed: string | null, reviews: [boolean, number[], number?][] = []): SessionView => ({
   pointer: ptr(key, closed),
-  reviews: reviews.map(([read, cs]) => ({ read, comments: cs.map((n) => ({ replies: Array(n).fill(reply) })) })),
+  reviews: reviews.map(([read, cs, resolved = 0]) => ({
+    read, comments: cs.map((n, i) => ({ replies: Array(n).fill(reply), ...(i < resolved ? { resolved: { at: "t", by: "you", text: "" } } : {}) })),
+  })),
 });
 
 test("rows: ordered work members, a whole-stack row and sessions; throwaways hidden", () => {
@@ -28,8 +31,8 @@ test("rows: ordered work members, a whole-stack row and sessions; throwaways hid
     "*[work] o/r#b  PR #4 merged  (a → b)",
     "*whole stack o/r  (main → b)",
     "sessions",
-    "  claude-1  open  inbox: 1 unread  replies 3/5",
-    "  claude-2  closed  inbox: 0 unread  replies 0/0",
+    "  claude-1  open  inbox: 1 unread  threads 5 open / 5",
+    "  claude-2  closed  inbox: 0 unread  threads 0 open / 0",
   ]);
 });
 
@@ -55,11 +58,11 @@ test("scroll keeps the selection inside the window", () => {
   expect(scroll(4, -1, 5)).toBe(0);
 });
 
-test("session line: unread reviews, comments with at least one reply over all comments", () => {
-  expect(sessionLine(sv("claude-abc", null, [[false, [1, 1, 0, 0, 0]]]))).toBe("claude-abc  open  inbox: 1 unread  replies 2/5");
-  expect(sessionLine(sv("claude-x", "t", [[false, [0]], [false, []], [true, [3]]]))).toBe("claude-x  closed  inbox: 2 unread  replies 1/2");
-  // A comment from an older file without a replies field counts as unanswered.
-  expect(sessionLine({ pointer: ptr("k", null), reviews: [{ read: true, comments: [{}] }] })).toBe("k  open  inbox: 0 unread  replies 0/1");
+test("session line: unread reviews, open threads over all threads", () => {
+  expect(sessionLine(sv("claude-abc", null, [[false, [1, 1, 0, 0, 0]]]))).toBe("claude-abc  open  inbox: 1 unread  threads 5 open / 5");
+  expect(sessionLine(sv("claude-x", "t", [[false, [0]], [false, []], [true, [3]]]))).toBe("claude-x  closed  inbox: 2 unread  threads 2 open / 2");
+  // A comment from an older file without replies or resolved counts as open.
+  expect(sessionLine({ pointer: ptr("k", null), reviews: [{ read: true, comments: [{}] }] })).toBe("k  open  inbox: 0 unread  threads 1 open / 1");
 });
 
 test("splitKeys passes plain keys and arrows through", () => {
@@ -91,4 +94,8 @@ test("header shows the mode", () => {
 test("the key line names r and the status copy is fixed", () => {
   expect(KEYS).toBe("j/k move  ⏎ show  t throwaways  r review  s submit  c close (asks for yes)  q quit");
   expect(STATUS).toEqual({ alreadyOpen: "a review is already open", nothingToSubmit: "no review to submit; press r", nothingToClose: "nothing to close" });
+});
+
+test("the session line counts resolved threads as closed", () => {
+  expect(sessionLine(sv("claude-1", null, [[false, [1, 0, 2], 1], [true, [0, 1], 1]]))).toBe("claude-1  open  inbox: 1 unread  threads 3 open / 5");
 });

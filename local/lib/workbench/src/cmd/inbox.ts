@@ -1,6 +1,7 @@
 import { parseArgs } from "node:util";
 import * as inbox from "../inbox";
 import { renderMarkdown } from "../render";
+import { findArchived } from "../resolve";
 import { sessionKeyFromEnv } from "../session-key";
 import type { ReviewFile } from "../submit";
 
@@ -29,7 +30,7 @@ export async function run(args: string[]): Promise<number> {
         const all = inbox.list(key);
         const r = positionals[0] ? inbox.get(key, positionals[0]) : (all.find((x) => !x.read) ?? all.sort((a, b) => b.submitted.localeCompare(a.submitted))[0]);
         if (!r) return fail(positionals[0] ? `workbench: no review "${positionals[0]}" in ${key}` : `workbench: no reviews for ${key}`);
-        process.stdout.write(renderMarkdown(r));
+        process.stdout.write(renderMarkdown(r, (id) => findArchived(r.workset, id)));
         inbox.markRead(key, r.id);
         return 0;
       }

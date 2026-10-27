@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as inbox from "../src/inbox";
 import { renderMarkdown } from "../src/render";
+import type { Comment } from "../src/comments";
 import { inboxFile, type ReviewFile } from "../src/submit";
 import { writeJson } from "../src/store";
 import { sub } from "../src/paths";
@@ -14,7 +15,7 @@ afterEach(() => { delete process.env.WORKBENCH_STATE_DIR; rmSync(dir, { recursiv
 
 const review = (id: string, over: Partial<ReviewFile> = {}): ReviewFile => ({
   id, workset: "ws", submitted: "2026-10-10T10:00:00.000Z", message: null,
-  comments: [], edits: [], failed: [], sessions: ["claude-a"], ...over,
+  comments: [], edits: [], failed: [], sessions: ["claude-a"], resolved: [], ...over,
 });
 const put = (key: string, r: ReviewFile, read = false) => writeJson(inboxFile(key, r.id), { ...r, read });
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -194,4 +195,28 @@ test("a pointer closed before the watcher started does not stop it (a resume reo
   await sleep(20);
   setTimeout(() => put("claude-a", review("rv1")), 150);
   expect((await inbox.wait("claude-a", 3000, 30))?.id).toBe("rv1");
+});
+
+const cm = (over: Partial<Comment> = {}): Comment => ({
+  id: "user:1", member: "o/a#feat", repo: "/r", slug: "o/a", branch: "feat", path: "src/x.ts", line: { side: "new", start: 12, end: 14 },
+  sha: "abcdef1234567", type: "question", text: "why this?", replies: [], ...over,
+});
+
+test("render shows a resolved comment as one line without replies and lists resolved ids", () => {
+  const md = renderMarkdown(review("rv1", {
+    comments: [cm({ resolved: { at: "t", by: "you", text: "fine" }, replies: [{ at: "t", by: "agent", text: "because" }] })],
+    resolved: ["user:old", "user:gone"],
+  }), (id) => (id === "user:old" ? { reviewId: "r-prev", comment: cm({ id, path: "a.ts", line: { side: "new", start: 3, end: 3 }, text: "older" }) } : null));
+  expect(md).toContain("- ~~resolved~~ **question** `src/x.ts:12-14` (id `user:1`) — why this? — closed: fine");
+  expect(md).not.toContain("reply by");
+  expect(md).toContain("## Resolved");
+  expect(md).toContain("- `user:old` (review r-prev) `a.ts:3` — older");
+  expect(md).toContain("- `user:gone` (not found)");
+});
+
+test("render: a resolved comment with no closing text, and an old review file without the resolved list", () => {
+  const md = renderMarkdown({ ...review("rv1", { comments: [cm({ resolved: { at: "t", by: "you", text: "" } })] }), resolved: undefined as unknown as string[] });
+  expect(md).toContain("— why this? — closed");
+  expect(md).not.toContain("closed:");
+  expect(md).not.toContain("## Resolved");
 });

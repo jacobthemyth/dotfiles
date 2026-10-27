@@ -37,7 +37,7 @@ const comment = (id: string, over: Partial<Comment> = {}): Comment => ({
   sha: "abc", type: "question", text: "why this?", replies: [], ...over,
 });
 const reviewFile = (id: string, comments: Comment[]): ReviewFile => ({
-  id, workset: "ws1", submitted: "2026-10-10T10:00:00.000Z", message: null, comments, edits: [], failed: [], sessions: [KEY],
+  id, workset: "ws1", submitted: "2026-10-10T10:00:00.000Z", message: null, comments, edits: [], failed: [], sessions: [KEY], resolved: [],
 });
 function deliver(f: ReviewFile) {
   writeJson(inboxFile(KEY, f.id), { ...f, read: true });

@@ -15,15 +15,15 @@ export const STATUS = { alreadyOpen: "a review is already open", nothingToSubmit
 export const headerLine = (name: string, reviewId: string | null): string => (reviewId ? `${name}  reviewing ${reviewId}` : `${name}  watching`);
 
 // A bound session and the inbox reviews it holds (only the fields the session line counts).
-export type SessionView = { pointer: Pointer; reviews: { read: boolean; comments: { replies?: unknown[] }[] }[] };
+export type SessionView = { pointer: Pointer; reviews: { read: boolean; comments: { replies?: unknown[]; resolved?: unknown }[] }[] };
 export type View = { showThrowaway: boolean; sessions: SessionView[]; current: string | null };
 
-// `<key>  open|closed  inbox: <unread> unread  replies <answered>/<comments>`
+// `<key>  open|closed  inbox: <unread> unread  threads <open> open / <total>`; a resolved thread is not open.
 export function sessionLine(s: SessionView): string {
   const unread = s.reviews.filter((r) => !r.read).length;
   const comments = s.reviews.flatMap((r) => r.comments);
-  const answered = comments.filter((c) => (c.replies?.length ?? 0) > 0).length;
-  return `${s.pointer.key}  ${s.pointer.closed ? "closed" : "open"}  inbox: ${unread} unread  replies ${answered}/${comments.length}`;
+  const open = comments.filter((c) => !c.resolved).length;
+  return `${s.pointer.key}  ${s.pointer.closed ? "closed" : "open"}  inbox: ${unread} unread  threads ${open} open / ${comments.length}`;
 }
 
 export function prLabel(pr: Member["pr"]): string {

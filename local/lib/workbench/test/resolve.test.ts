@@ -40,7 +40,7 @@ const comment = (id: string, over: Partial<Comment> = {}): Comment => ({
   sha: "abc", type: "question", text: "why this?", replies: [{ at: "t", by: KEY, text: "because" }], ...over,
 });
 const reviewFile = (id: string, comments: Comment[]): ReviewFile => ({
-  id, workset: "ws1", submitted: "2026-10-10T10:00:00.000Z", message: null, comments, edits: [], failed: [], sessions: [KEY],
+  id, workset: "ws1", submitted: "2026-10-10T10:00:00.000Z", message: null, comments, edits: [], failed: [], sessions: [KEY], resolved: [],
 });
 const deliver = (f: ReviewFile) => { writeJson(inboxFile(KEY, f.id), { ...f, read: true }); writeJson(archiveFile("ws1", f.id), f); };
 const archive = (id: string) => readJson<ReviewFile>(archiveFile("ws1", id))!;
