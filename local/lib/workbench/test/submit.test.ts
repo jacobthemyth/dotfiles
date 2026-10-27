@@ -22,7 +22,7 @@ function sh(cwd: string, ...args: string[]) {
 
 let tmp: string, repo: string, logs: string[];
 const log = (s: string) => { logs.push(s); };
-const KEYS = ["WORKBENCH_CONFIG", "WORKBENCH_STATE_DIR", "WORKBENCH_DRY_RUN", "WORKBENCH_DRY_RUN_TMUX", "WORKBENCH_DRY_RUN_FAIL", ...Object.keys(GIT_ENV)];
+const KEYS = ["WORKBENCH_CONFIG", "WORKBENCH_STATE_DIR", "WORKBENCH_DRY_RUN", "WORKBENCH_DRY_RUN_TMUX", "WORKBENCH_DRY_RUN_FAIL", "WORKBENCH_DRY_RUN_HUNK_SESSIONS", "WORKBENCH_DRY_RUN_HUNK_NOTES", ...Object.keys(GIT_ENV)];
 const saved = Object.fromEntries(KEYS.map((k) => [k, process.env[k]]));
 beforeEach(() => {
   logs = [];
