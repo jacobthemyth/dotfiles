@@ -12,7 +12,8 @@ const commands: Record<string, () => Promise<(args: string[]) => Promise<number>
   close: async () => (await import("./cmd/close")).run,
   inbox: async () => (await import("./cmd/inbox")).run,
   reply: async () => (await import("./cmd/reply")).run,
+  "edit-guard": async () => (await import("./cmd/edit-guard")).run,
 };
 const load = commands[group ?? ""];
-if (!load) { console.error("usage: workbench <config|workset|hook|scan|open|sidebar|submit|close|inbox|reply> ..."); process.exit(2); }
+if (!load) { console.error("usage: workbench <config|workset|hook|scan|open|sidebar|submit|close|inbox|reply|edit-guard> ..."); process.exit(2); }
 process.exit(await (await load())(rest));

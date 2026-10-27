@@ -43,6 +43,10 @@ export const windowOpen = (ws: string): boolean => loadWindow(ws) !== null && tm
 
 export const hunkTarget = (w: Window, m: Member): hunk.Target => ({ id: w.hunkSessionId, path: w.hunkPaneCwd ?? m.worktree! });
 const SIDEBAR = (ws: string) => `workbench sidebar ${ws}`;
+// hunk's `e` runs the edit guard, which opens the user's editor only while a review is open.
+const guardEnv = (ws: string) => ({
+  EDITOR: "workbench-edit-guard", WORKBENCH_EDIT_WORKSET: ws, WORKBENCH_EDIT_EDITOR: process.env.VISUAL || process.env.EDITOR || "nvim",
+});
 
 // User notes live only in hunk's memory; copy what it holds now for the live member, merged by noteId.
 export function snapshotNotes(w: Window, m: Member): hunk.RawNote[] {
@@ -79,7 +83,7 @@ function reshowOwnNotes(w: Window, m: Member): void {
 // Runs hunk for `m` in `pane` (default: the recorded hunk pane), then looks for the session it registers
 // and shows it the agent replies to `m`'s comments (a fresh hunk holds no notes).
 function startHunk(w: Window, m: Member, base: string, pane = w.hunkPaneId): boolean {
-  if (!pane || !hunk.start(pane, m.worktree!, diffRef(m.worktree!, base, m.branch), m.paths ?? [])) return false;
+  if (!pane || !hunk.start(pane, m.worktree!, diffRef(m.worktree!, base, m.branch), m.paths ?? [], guardEnv(w.workset))) return false;
   w.hunkPaneId = pane;
   w.hunkPaneCwd = m.worktree;
   w.current = m.id;

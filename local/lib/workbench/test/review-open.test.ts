@@ -20,13 +20,14 @@ function sh(cwd: string, ...args: string[]) {
 }
 
 let tmp: string, repo: string;
-const KEYS = ["WORKBENCH_CONFIG", "WORKBENCH_STATE_DIR", "WORKBENCH_DRY_RUN", "WORKBENCH_DRY_RUN_TMUX", "WORKBENCH_DRY_RUN_FAIL", "WORKBENCH_DRY_RUN_HUNK_SESSIONS", "WORKBENCH_DRY_RUN_HUNK_NOTES"] as const;
+const KEYS = ["VISUAL", "EDITOR", "WORKBENCH_CONFIG", "WORKBENCH_STATE_DIR", "WORKBENCH_DRY_RUN", "WORKBENCH_DRY_RUN_TMUX", "WORKBENCH_DRY_RUN_FAIL", "WORKBENCH_DRY_RUN_HUNK_SESSIONS", "WORKBENCH_DRY_RUN_HUNK_NOTES"] as const;
 const saved = Object.fromEntries(KEYS.map((k) => [k, process.env[k]]));
 beforeEach(() => {
   tmp = realpathSync(mkdtempSync(join(tmpdir(), "wb-open-")));
   process.env.WORKBENCH_STATE_DIR = join(tmp, "state");
   process.env.WORKBENCH_CONFIG = join(tmp, "config.toml");
   process.env.WORKBENCH_DRY_RUN = "1";
+  process.env.VISUAL = "nvim";
   writeFileSync(join(tmp, "config.toml"), `repo_roots = []\ndefault_branch = "main"\n`);
   repo = join(tmp, "repo");
   mkdirSync(repo);
@@ -55,6 +56,9 @@ function workset(members: { branch: string; worktree: string | null; role?: "wor
   saveWorkset(ws);
   return ws;
 }
+
+// hunk runs with the edit guard as its editor.
+const GUARD = "env EDITOR=workbench-edit-guard WORKBENCH_EDIT_WORKSET=ws1 WORKBENCH_EDIT_EDITOR=nvim ";
 
 // The review and the window of one open, read as one object (both carry workset).
 const flat = (o: Opened) => ({ ...o.review!, ...o.window });
@@ -129,7 +133,7 @@ test("the diff base is the base's upstream when the local branch has fallen behi
   const r = flat(openReview("ws1", { allowDirty: false, review: true }));
   const upstreamBase = sh(wt, "merge-base", "origin/main", "feat");
   expect(upstreamBase).not.toBe(sh(wt, "merge-base", "main", "feat"));
-  expect(r.commands!).toContain(`tmux respawn-pane -k -t %1 -c ${wt} hunk diff ${upstreamBase} --watch`);
+  expect(r.commands!).toContain(`tmux respawn-pane -k -t %1 -c ${wt} ${GUARD}hunk diff ${upstreamBase} --watch`);
 });
 
 test("the diff base stays local when the base branch is ahead of its upstream", () => {
@@ -148,7 +152,7 @@ test("the diff base stays local when the base branch is ahead of its upstream", 
   const r = flat(openReview("ws1", { allowDirty: false, review: true }));
   const localBase = sh(b, "merge-base", "feat", "feat2");
   expect(localBase).not.toBe(sh(b, "merge-base", "origin/feat", "feat2"));
-  expect(r.commands!).toContain(`tmux respawn-pane -k -t %1 -c ${b} hunk diff ${localBase} --watch`);
+  expect(r.commands!).toContain(`tmux respawn-pane -k -t %1 -c ${b} ${GUARD}hunk diff ${localBase} --watch`);
 });
 
 test("dry run records new-session, hunk diff against the merge base, then split-window", () => {
@@ -160,7 +164,7 @@ test("dry run records new-session, hunk diff against the merge base, then split-
   const at = (s: string) => cmds.findIndex((c) => c.startsWith(s));
   const ns = at("tmux new-session"), hd = at("tmux respawn-pane"), sw = at("tmux split-window");
   expect(cmds[ns]).toBe(`tmux new-session -d -s wb-ws1 -c ${wt} -x 220 -y 60 -P -F #{pane_id}`);
-  expect(cmds[hd]).toBe(`tmux respawn-pane -k -t %1 -c ${wt} hunk diff ${mb} --watch`);
+  expect(cmds[hd]).toBe(`tmux respawn-pane -k -t %1 -c ${wt} ${GUARD}hunk diff ${mb} --watch`);
   expect(cmds[sw]).toBe(`tmux split-window -h -b -l 44 -c ${wt} -t %1 workbench sidebar ws1`);
   expect(ns).toBeGreaterThanOrEqual(0);
   expect(hd).toBeGreaterThan(ns);
@@ -197,7 +201,7 @@ test("reopen respawns a dead hunk pane", () => {
   workset([{ branch: "feat", worktree: wt }]);
   openReview("ws1", { allowDirty: false, review: true });
   const mb = sh(wt, "merge-base", "main", "feat");
-  expect(acts(reopen(panes([SIDEBAR, { id: "%1", dead: true, start: "" }])))).toEqual([`tmux respawn-pane -k -t %1 -c ${wt} hunk diff ${mb} --watch`]);
+  expect(acts(reopen(panes([SIDEBAR, { id: "%1", dead: true, start: "" }])))).toEqual([`tmux respawn-pane -k -t %1 -c ${wt} ${GUARD}hunk diff ${mb} --watch`]);
 });
 
 test("reopen replaces a hunk pane that is gone and re-splits a missing sidebar", () => {
@@ -207,7 +211,7 @@ test("reopen replaces a hunk pane that is gone and re-splits a missing sidebar",
   const mb = sh(wt, "merge-base", "main", "feat");
   expect(acts(reopen(panes([SIDEBAR])))).toEqual([
     `tmux split-window -h -t %2 -c ${wt} -P -F #{pane_id}`,
-    `tmux respawn-pane -k -t %3 -c ${wt} hunk diff ${mb} --watch`,
+    `tmux respawn-pane -k -t %3 -c ${wt} ${GUARD}hunk diff ${mb} --watch`,
     "tmux resize-pane -t %2 -x 44",
   ]);
   expect(loadWindow("ws1")!.hunkPaneId).toBe("%3");
@@ -229,7 +233,7 @@ test("re-pointing to another worktree snapshots notes and respawns hunk there", 
   expect(saved.hunkPaneCwd).toBe(b);
   const cmds = saved.commands!.slice(n);
   expect(cmds.some((c) => c.startsWith("hunk session reload"))).toBe(false);
-  expect(cmds).toContain(`tmux respawn-pane -k -t %1 -c ${b} hunk diff ${sh(b, "merge-base", "feat", "feat2")} --watch`);
+  expect(cmds).toContain(`tmux respawn-pane -k -t %1 -c ${b} ${GUARD}hunk diff ${sh(b, "merge-base", "feat", "feat2")} --watch`);
   const notes = join(tmp, "state", "reviews", "ws1", "notes", `${repo.replace(/[/#]/g, "_")}_feat.json`);
   expect(existsSync(notes)).toBe(true);
   expect(loadNotes("ws1", `${repo}#feat`)).toEqual([]);
@@ -356,7 +360,7 @@ test("a member's paths follow -- on the hunk command, at open and on reload", ()
   const ws = workset([{ branch: "feat", worktree: wt, paths: ["docs/", "feat.txt"] }]);
   const r = flat(openReview("ws1", { allowDirty: false, review: true }));
   const mb = sh(wt, "merge-base", "main", "feat");
-  expect(r.commands!).toContain(`tmux respawn-pane -k -t %1 -c ${wt} hunk diff ${mb} --watch -- docs/ feat.txt`);
+  expect(r.commands!).toContain(`tmux respawn-pane -k -t %1 -c ${wt} ${GUARD}hunk diff ${mb} --watch -- docs/ feat.txt`);
   const n = r.commands!.length;
   expect(repoint(loadWindow("ws1")!, ws, ws.members[0], "main")).toBe(true);
   expect(loadWindow("ws1")!.commands!.slice(n)).toContain(`hunk session reload --session-path ${wt} --source ${wt} --json -- diff ${mb} -- docs/ feat.txt`);

@@ -1,0 +1,3 @@
+#!/bin/sh
+# hunk's $EDITOR inside a workbench review window: one word, so hunk can run it however it runs editors.
+exec workbench edit-guard "$@"

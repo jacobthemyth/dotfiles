@@ -17,8 +17,10 @@ const address = (t: Target) => (t.id ? [t.id] : ["--repo", t.path]);
 // ref is a single revision (the merge base, so the working tree shows) or a `<base>...<branch>` range.
 // paths, when given, follow `--` and limit the diff to those pathspecs (`hunk diff [target] [-- <pathspec...>]`).
 const pathspec = (paths: string[]) => (paths.length ? ["--", ...paths] : []);
-export function start(pane: string, worktree: string, ref: string, paths: string[] = []): boolean {
-  return tmux.respawn(pane, worktree, ["hunk", "diff", ref, "--watch", ...pathspec(paths)]);
+// env, when given, is set for hunk alone (`env K=V hunk ...`).
+export function start(pane: string, worktree: string, ref: string, paths: string[] = [], env: Record<string, string> = {}): boolean {
+  const pre = Object.keys(env).length ? ["env", ...Object.entries(env).map(([k, v]) => `${k}=${v}`)] : [];
+  return tmux.respawn(pane, worktree, [...pre, "hunk", "diff", ref, "--watch", ...pathspec(paths)]);
 }
 
 type Listed = { sessionId: string; terminal?: { locations?: { source: string; paneId?: string }[] } };
