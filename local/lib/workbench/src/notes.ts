@@ -1,4 +1,5 @@
 import { threadedUserReplies, type ThreadedReply } from "./comments";
+import { applyResolutions, archivedCommentIds } from "./resolve";
 import * as hunk from "./hunk";
 import { loadNotes, saveNotes } from "./review";
 import { hunkTarget, loadWindow, type Window } from "./window";
@@ -40,16 +41,19 @@ export function syncMember(w: Window, m: Member): SyncResult {
   const all = hunk.listNotes(hunkTarget(w, m));
   if (all === null) { saveNotes(w.workset, m.id, saved); return { notes: saved, replies: [], deleted: [], warnings: [] }; }
   const nowIds = new Set(all.map((n) => n.noteId));
+  const delivered = archivedCommentIds(w.workset);
+  const own = all.filter((n) => ownTopLevel(n) && !delivered.has(n.noteId));
   const prev = w.live[m.id] ?? {};
   const { notes, deleted } = applyDeletions(saved, prev, nowIds);
   const merged = new Map(notes.map((n) => [n.noteId, n]));
-  for (const n of all.filter(ownTopLevel)) merged.set(n.noteId, n);
-  const out = [...merged.values()];
-  saveNotes(w.workset, m.id, out);
+  for (const n of own) merged.set(n.noteId, n);
   const live: Record<string, string | null> = {};
-  for (const n of all.filter(ownTopLevel)) live[n.noteId] = null;
+  for (const n of own) live[n.noteId] = null;
   for (const [id, original] of Object.entries(prev)) if (original !== null && nowIds.has(id) && merged.has(original)) live[id] = original;
   w.live[m.id] = live;
+  const replies = threadedUserReplies(all);
+  const { notes: out, warnings } = applyResolutions(w, m, replies, nowIds, [...merged.values()]);
+  saveNotes(w.workset, m.id, out);
   persistLive(w, m.id);
-  return { notes: out, replies: threadedUserReplies(all), deleted, warnings: [] };
+  return { notes: out, replies, deleted, warnings };
 }

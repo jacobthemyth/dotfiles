@@ -11,8 +11,8 @@ export async function run(args: string[]): Promise<number> {
     if (!values.review || !values.comment || !values.text?.trim()) return fail(USAGE, 2);
     const key = sessionKeyFromEnv(values);
     if (!key) return fail("workbench: no session key; set WORKBENCH_SESSION or pass --session <key>", 2);
-    const { shown } = addReply(key, values.review, values.comment, values.text.trim());
-    console.log(`replied to ${values.comment} in ${values.review}${shown ? " (shown in the reviewer)" : ""}`);
+    const { shown, resolved } = addReply(key, values.review, values.comment, values.text.trim());
+    console.log(`replied to ${values.comment} in ${values.review}${shown ? " (shown in the reviewer)" : resolved ? " (thread resolved)" : ""}`);
     return 0;
   } catch (e) {
     if ((e as { code?: string }).code?.startsWith("ERR_PARSE_ARGS")) return fail(`workbench: ${(e as Error).message}`, 2);

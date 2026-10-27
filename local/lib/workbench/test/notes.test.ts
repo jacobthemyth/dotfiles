@@ -70,10 +70,10 @@ test("syncMember keeps a proxy still on screen and returns threaded user replies
   const w = win(); saveWindow(w);
   saveNotes("ws1", M, [note("user:1")]);
   recordProxy(w, M, "mcp:p", "user:1");
-  onScreen(note("mcp:p", { source: "agent", author: "you" }), note("user:9", { parentId: "mcp:p", body: "/resolve" }));
+  onScreen(note("mcp:p", { source: "agent", author: "you" }), note("user:9", { parentId: "mcp:p", body: "thanks" }));
   const r = syncMember(w, member);
   expect(loadWindow("ws1")!.live[M]).toEqual({ "mcp:p": "user:1" });
-  expect(r.replies).toEqual([{ id: "user:9", parentId: "mcp:p", body: "/resolve" }]);
+  expect(r.replies).toEqual([{ id: "user:9", parentId: "mcp:p", body: "thanks" }]);
   expect(loadNotes("ws1", M).map((n) => n.noteId)).toEqual(["user:1"]);
 });
 
