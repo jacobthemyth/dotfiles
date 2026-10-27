@@ -1,13 +1,12 @@
-import { config, loadReview } from "./review";
+import { config, loadReview, startReview } from "./review";
 import { loadWindow, repoint } from "./window";
 import * as inbox from "./inbox";
 import { listPointers } from "./session";
 import { closeInPane, submitInPane } from "./sidebar-review";
-import { buildRows, clamp, move, scroll, splitKeys, type Row } from "./sidebar-model";
+import { buildRows, clamp, headerLine, KEYS, move, scroll, splitKeys, STATUS, type Row } from "./sidebar-model";
 import { diffBase } from "./stack";
 import { loadWorkset, type Workset } from "./workset";
 
-const KEYS = "j/k move  ⏎ show  t throwaways  s submit  c close (asks for yes)  q quit";
 
 export async function runSidebar(name: string): Promise<number> {
   if (!process.stdin.isTTY) { console.error("workbench: the sidebar needs a terminal"); return 1; }
@@ -28,7 +27,7 @@ export async function runSidebar(name: string): Promise<number> {
     sel = clamp(rows, sel);
     const width = process.stdout.columns || 44;
     const fit = (s: string) => (s.length > width ? s.slice(0, width - 1) + "…" : s);
-    const out = [`\x1b[1m${name}\x1b[0m  ${review ? review.id : "(no open review)"}`, ""];
+    const out = [`\x1b[1m${headerLine(name, review?.id ?? null)}\x1b[0m`, ""];
     const height = Math.max(1, (process.stdout.rows || 24) - 5);
     top = scroll(top, sel, height);
     rows.slice(top, top + height).forEach((r, j) => {
@@ -87,7 +86,13 @@ export async function runSidebar(name: string): Promise<number> {
         case "k": case "\x1b[A": sel = move(rows, sel, -1); break;
         case "\r": if (row) show(row); break;
         case "t": showThrowaway = !showThrowaway; break;
-        case "s": case "c": void reviewAction(key); return;
+        case "r":
+          if (loadReview(name)) { status = STATUS.alreadyOpen; break; }
+          try { status = `review ${startReview(name, { allowDirty: false }).id} open`; } catch (e) { status = (e as Error).message; }
+          break;
+        case "s": case "c":
+          if (!loadReview(name)) { status = key === "s" ? STATUS.nothingToSubmit : STATUS.nothingToClose; break; }
+          void reviewAction(key); return;
         default: return;
       }
       render();

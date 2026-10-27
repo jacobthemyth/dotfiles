@@ -9,6 +9,11 @@ export type Row =
   | { kind: "stack"; text: string; node: StackNode }
   | { kind: "session"; text: string };
 
+export const KEYS = "j/k move  ⏎ show  t throwaways  r review  s submit  c close (asks for yes)  q quit";
+export const STATUS = { alreadyOpen: "a review is already open", nothingToSubmit: "no review to submit; press r", nothingToClose: "nothing to close" } as const;
+// The window is watching with no review open, reviewing with one.
+export const headerLine = (name: string, reviewId: string | null): string => (reviewId ? `${name}  reviewing ${reviewId}` : `${name}  watching`);
+
 // A bound session and the inbox reviews it holds (only the fields the session line counts).
 export type SessionView = { pointer: Pointer; reviews: { read: boolean; comments: { replies?: unknown[] }[] }[] };
 export type View = { showThrowaway: boolean; sessions: SessionView[]; current: string | null };

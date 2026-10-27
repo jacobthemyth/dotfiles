@@ -1,7 +1,7 @@
 import { test, expect } from "bun:test";
 import type { Config } from "../src/config";
 import type { Pointer } from "../src/session";
-import { buildRows, clamp, move, scroll, sessionLine, splitKeys, type SessionView } from "../src/sidebar-model";
+import { buildRows, clamp, headerLine, KEYS, move, scroll, sessionLine, splitKeys, STATUS, type SessionView } from "../src/sidebar-model";
 import { addMember, type Workset } from "../src/workset";
 
 const cfg = { default_branch: "main" } as Config;
@@ -81,4 +81,14 @@ test("splitKeys holds a reply cut off at the chunk end for the next chunk", () =
 
 test("splitKeys drops a lone Esc instead of holding it", () => {
   expect(splitKeys("\x1b")).toEqual({ keys: [], rest: "" });
+});
+
+test("header shows the mode", () => {
+  expect(headerLine("ws1", null)).toBe("ws1  watching");
+  expect(headerLine("ws1", "r-1")).toBe("ws1  reviewing r-1");
+});
+
+test("the key line names r and the status copy is fixed", () => {
+  expect(KEYS).toBe("j/k move  ⏎ show  t throwaways  r review  s submit  c close (asks for yes)  q quit");
+  expect(STATUS).toEqual({ alreadyOpen: "a review is already open", nothingToSubmit: "no review to submit; press r", nothingToClose: "nothing to close" });
 });
