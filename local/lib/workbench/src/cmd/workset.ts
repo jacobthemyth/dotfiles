@@ -5,7 +5,7 @@ import { derive, foundId, unclaimed } from "../derive";
 import * as gh from "../gh";
 import * as git from "../git";
 import { refreshStoredPr, summarizeAll, type WorksetSummary } from "../triage";
-import { planPrune, planDelete, executePrune, renderPlan, pruneAll, type PrunePlan } from "../prune";
+import { planPrune, planDelete, executePrune, renderPlan, pruneAll, WINDOW_OPEN, type PrunePlan } from "../prune";
 import { sessionKeyFromEnv } from "../session-key";
 import { loadPointer, unbindWorkset, useWorkset } from "../session";
 import { baseSource, diffBase, orderMembers } from "../stack";
@@ -215,10 +215,12 @@ export async function run(args: string[]): Promise<number> {
         if (gh.lastGhError) console.error("gh not available: PR state from stored members");
         if (plans.length === 0) { console.log("nothing to prune"); return 0; }
         let ok = true;
+        // With no name, a workset skipped because its window is up is reported but does not fail the run.
+        const fails = (plan: PrunePlan) => !(positionals.length === 0 && plan.refused === WINDOW_OPEN);
         for (const plan of plans) {
-          if (!values.yes) { console.log(renderPlan(plan)); if (plan.refused) ok = false; continue; }
+          if (!values.yes) { console.log(renderPlan(plan)); if (plan.refused && fails(plan)) ok = false; continue; }
           console.log(`${plan.workset}:`);
-          if (!executePrune(plan, (line) => console.log(`  ${line}`))) ok = false;
+          if (!executePrune(plan, (line) => console.log(`  ${line}`)) && fails(plan)) ok = false;
         }
         return ok ? 0 : 1;
       }

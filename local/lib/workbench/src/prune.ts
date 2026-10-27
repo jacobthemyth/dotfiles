@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import * as git from "./git";
 import { removeInbox, removePidFile, unreadCount } from "./inbox";
 import { clearNotes, loadLock } from "./review";
+import { windowOpen } from "./window";
 import { closeStale, listPointers, loadPointer, pointerState, removePointer, type Pointer } from "./session";
 import { boundKeys, memberStatuses, type MemberStatus, type TriageDeps } from "./triage";
 import { deleteWorkset, listWorksets, loadWorkset, removeMember, saveWorkset, type Member, type Workset } from "./workset";
@@ -11,7 +12,7 @@ import { deleteWorkset, listWorksets, loadWorkset, removeMember, saveWorkset, ty
 // worktree stay for `git cleanup`.
 export type Rebase = { member: Member; from: string; to: string; viaPr: boolean };
 export type PrunePlan = {
-  workset: string; refused: string | null;                    // "locked" | "unread review"
+  workset: string; refused: string | null;                    // "review window open" | "locked" | "unread review" | "open session <key>"
   dropped: MemberStatus[];                                    // prunable records that leave the workset
   forgotten: MemberStatus[];                                  // not prunable, dropped anyway because the workset is deleted whole
   kept: MemberStatus[];                                       // records that stay, with reason
@@ -54,12 +55,15 @@ function newBase(repo: string, from: string, prBase: string | null, dropped: Mem
   return to;
 }
 
+// The window file and tmux session are keyed by the workset's name: quit the window before changing the record.
+export const WINDOW_OPEN = "review window open";
 const refusedPlan = (ws: Workset, refused: string): PrunePlan =>
   ({ workset: ws.name, refused, dropped: [], forgotten: [], kept: [], rebase: [], deleteWorkset: false, keepReason: null, pointers: { close: [], delete: [] } });
 
 // `all` forgets the workset whole whatever its members hold (the `delete` command); an open session then
 // refuses the plan instead of keeping the workset.
 export function planPrune(ws: Workset, deps: TriageDeps = {}, { all = false } = {}): PrunePlan {
+  if (windowOpen(ws.name)) return refusedPlan(ws, WINDOW_OPEN);
   if (loadLock(ws.name)) return refusedPlan(ws, "locked");
   if (boundKeys(ws).some((k) => unreadCount(k) > 0)) return refusedPlan(ws, "unread review");
   const ptr = pointerPlan(ws, deps.nowMs);
@@ -145,7 +149,8 @@ export function pruneAll(deps: TriageDeps = {}): PrunePlan[] {
     const ws = loadWorkset(name);
     if (!ws) continue;
     const plan = planPrune(ws, deps);
-    if (!plan.refused && (plan.dropped.length > 0 || plan.deleteWorkset)) out.push(plan);
+    // A windowed workset is listed, refused, so the run says why it was skipped.
+    if (plan.refused === WINDOW_OPEN || (!plan.refused && (plan.dropped.length > 0 || plan.deleteWorkset))) out.push(plan);
   }
   return out;
 }

@@ -2,6 +2,7 @@ import { existsSync, readdirSync, renameSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { sub } from "./paths";
 import { loadLock } from "./review";
+import { windowOpen } from "./window";
 import { listPointers, savePointer } from "./session";
 import { readJson, writeJson } from "./store";
 import { deleteWorkset, isValidName, loadWorkset, saveWorkset } from "./workset";
@@ -13,6 +14,7 @@ export function renameWorkset(from: string, to: string): void {
   if (!ws) throw new Error(`workbench: no workset "${from}"`);
   if (!isValidName(to)) throw new Error(`workbench: invalid workset name "${to}"`);
   if (loadWorkset(to)) throw new Error(`workbench: workset "${to}" exists`);
+  if (windowOpen(from)) throw new Error(`workbench: "${from}" has a review window open; quit it first`);
   if (loadLock(from)) throw new Error(`workbench: "${from}" has an open review; close or submit it first`);
   const reviews = join(sub("reviews"), from), reviewsTo = join(sub("reviews"), to);
   if (existsSync(reviewsTo)) throw new Error(`workbench: reviews/${to} already exists; remove or rename it first`);

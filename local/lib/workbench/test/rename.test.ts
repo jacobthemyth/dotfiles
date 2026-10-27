@@ -68,3 +68,28 @@ test("renameWorkset skips a stray file under inbox/", () => {
   renameWorkset("a", "b");
   expect(loadWorkset("b")).not.toBeNull();
 });
+
+const withWindow = (ws: string, tmuxUp: boolean, fn: () => void) => {
+  const prev = { d: process.env.WORKBENCH_DRY_RUN, t: process.env.WORKBENCH_DRY_RUN_TMUX };
+  process.env.WORKBENCH_DRY_RUN = "1";
+  process.env.WORKBENCH_DRY_RUN_TMUX = JSON.stringify({ sessions: tmuxUp ? { [`wb-${ws}`]: { panes: [] } } : {} });
+  writeJson(join(sub("windows"), `${ws}.json`), { workset: ws, hunkPaneId: "%1", hunkSessionId: "s", hunkPaneCwd: "/r", current: null, live: {}, threads: {} });
+  try { fn(); } finally {
+    if (prev.d === undefined) delete process.env.WORKBENCH_DRY_RUN; else process.env.WORKBENCH_DRY_RUN = prev.d;
+    if (prev.t === undefined) delete process.env.WORKBENCH_DRY_RUN_TMUX; else process.env.WORKBENCH_DRY_RUN_TMUX = prev.t;
+  }
+};
+
+test("rename is refused while a review window is open", () => {
+  saveWorkset(createWorkset("a"));
+  withWindow("a", true, () => {
+    expect(() => renameWorkset("a", "b")).toThrow('workbench: "a" has a review window open; quit it first');
+  });
+  expect(loadWorkset("a")).not.toBeNull();
+});
+
+test("a stale window file without a tmux session does not block rename", () => {
+  saveWorkset(createWorkset("a"));
+  withWindow("a", false, () => { renameWorkset("a", "b"); });
+  expect(loadWorkset("b")).not.toBeNull();
+});

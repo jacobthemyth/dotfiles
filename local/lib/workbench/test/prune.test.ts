@@ -592,3 +592,37 @@ test("delete command: dry run changes nothing, --yes forgets the workset, unknow
   expect(miss.err).toBe('workbench: no workset "nope"');
   expect((await capture(() => worksetRun(["delete"]))).code).toBe(2);
 });
+
+async function withWindow(ws: string, fn: () => unknown) {
+  const prev = { d: process.env.WORKBENCH_DRY_RUN, t: process.env.WORKBENCH_DRY_RUN_TMUX };
+  process.env.WORKBENCH_DRY_RUN = "1";
+  process.env.WORKBENCH_DRY_RUN_TMUX = JSON.stringify({ sessions: { [`wb-${ws}`]: { panes: [] } } });
+  writeJson(join(sub("windows"), `${ws}.json`), { workset: ws, hunkPaneId: "%1", hunkSessionId: "s", hunkPaneCwd: "/r", current: null, live: {}, threads: {} });
+  try { await fn(); } finally {
+    if (prev.d === undefined) delete process.env.WORKBENCH_DRY_RUN; else process.env.WORKBENCH_DRY_RUN = prev.d;
+    if (prev.t === undefined) delete process.env.WORKBENCH_DRY_RUN_TMUX; else process.env.WORKBENCH_DRY_RUN_TMUX = prev.t;
+  }
+}
+
+test("prune refuses a workset with a review window open", async () => {
+  dead(DEFAULT_NAME);
+  await withWindow(DEFAULT_NAME, () => {
+    const plan = planPrune(loadWorkset(DEFAULT_NAME)!);
+    expect(plan.refused).toBe("review window open");
+    expect(planDelete(loadWorkset(DEFAULT_NAME)!).refused).toBe("review window open");
+  });
+  expect(loadWorkset(DEFAULT_NAME)!.members.length).toBe(2);
+});
+
+test("prune of every workset reports a windowed one as refused without failing the run", async () => {
+  dead(DEFAULT_NAME);
+  let code = -1;
+  const lines: string[] = [];
+  const log = console.log;
+  console.log = (...a: unknown[]) => { lines.push(a.join(" ")); };
+  try { await withWindow(DEFAULT_NAME, async () => { code = await worksetRun(["prune", "--yes"]); }); }
+  finally { console.log = log; }
+  expect(code).toBe(0);
+  expect(lines.join("\n")).toContain("refused: review window open");
+  expect(loadWorkset(DEFAULT_NAME)!.members.length).toBe(2);
+});
