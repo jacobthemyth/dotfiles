@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { remoteSlug } from "../src/git";
 import { run as worksetRun } from "../src/cmd/workset";
-import { loadWorkset, saveWorkset, type Member, type Workset } from "../src/workset";
+import { createWorkset, loadWorkset, saveWorkset, type Member, type Workset } from "../src/workset";
 
 const ENV = {
   ...process.env, GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t",
@@ -179,4 +179,20 @@ test("workset add records each --path, and show lists them", async () => {
   const bad = await capture(() => worksetRun(["add", "spike", "--repo", a, "--branch", "feat/a", "--path", " "]));
   expect(bad.code).toBe(1);
   expect(bad.err).toContain("--path must not be empty");
+});
+
+test("add resolves a relative --repo and --worktree against the caller's cwd", async () => {
+  const repo = mkRepo("infra");
+  const wt = mkWorktree(repo, "spike");
+  createWorkset("spike");
+  const cwd = process.cwd();
+  process.chdir(repo);
+  try {
+    const r = await capture(() => worksetRun(["add", "spike", "--repo", ".", "--branch", "spike", "--worktree", ".worktrees/spike"]));
+    expect(r.code).toBe(0);
+  } finally { process.chdir(cwd); }
+  const m = loadWorkset("spike")!.members[0];
+  expect(m.repo).toBe(repo);
+  expect(m.worktree).toBe(wt.path);
+  expect(m.id).toBe(`${remoteSlug(repo)}#spike`);
 });

@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { expandHome } from "../paths";
 import { loadConfig, type Config } from "../config";
@@ -119,11 +120,13 @@ export async function run(args: string[]): Promise<number> {
         }
         const ws = loadWorkset(positionals[0]);
         if (!ws) return fail(`workbench: no workset "${positionals[0]}"`);
+        // Stored paths are read later from other working directories (the sidebar, a review), so a
+        // relative --repo or --worktree is resolved against the caller's cwd now.
         // The slug is what PR lookups are keyed by; a member without one is never asked about on GitHub.
-        const repo = expandHome(values.repo);
+        const repo = resolve(expandHome(values.repo));
         const m = addMember(ws, {
           repo, slug: git.remoteSlug(repo), branch: values.branch, added_by: "hand",
-          worktree: values.worktree ? expandHome(values.worktree) : undefined,
+          worktree: values.worktree ? resolve(expandHome(values.worktree)) : undefined,
           base: values.base, base_source: values.base ? "declared" : undefined, paths: values.path, order, role: values.role as Role | undefined,
         });
         saveWorkset(ws);
