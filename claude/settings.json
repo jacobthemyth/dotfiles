@@ -6,7 +6,6 @@
     ],
     "defaultMode": "auto"
   },
-  "model": "fable",
   "hooks": {
     "PreToolUse": [
       {
@@ -142,7 +141,7 @@
     "pinned": {
       "source": {
         "source": "directory",
-        "path": "/Users/jake/.claude/pinned-marketplace"
+        "path": "/Users/jacob/.claude/pinned-marketplace"
       }
     }
   },
@@ -158,7 +157,7 @@
       "effortLevel": "high"
     },
     "claude-opus-5-5": {
-      "effortLevel": "high"
+      "effortLevel": "medium"
     }
   },
   "tui": "fullscreen",

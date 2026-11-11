@@ -1,0 +1,22 @@
+{
+  "name": "pinned",
+  "owner": {
+    "name": "Jake Smith"
+  },
+  "metadata": {
+    "description": "Plugins pinned to a specific upstream commit. Edit the sha to move a pin."
+  },
+  "plugins": [
+    {
+      "name": "superpowers",
+      "description": "obra/superpowers pinned to v6.4.2",
+      "category": "development",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/obra/superpowers.git",
+        "sha": "8ca22dba9a94f28898bbce59f2537ff4d87c747d"
+      },
+      "homepage": "https://github.com/obra/superpowers"
+    }
+  ]
+}
